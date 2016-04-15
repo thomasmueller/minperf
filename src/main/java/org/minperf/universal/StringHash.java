@@ -1,0 +1,93 @@
+package org.minperf.universal;
+
+import java.nio.charset.Charset;
+
+/**
+ * A hash implementation for string keys.
+ */
+public class StringHash implements UniversalHash<String> {
+
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
+    @Override
+    public int universalHash(String key, long index) {
+        if (index == 0) {
+            // use the default hash of a string, which might already be
+            // available
+            return key.hashCode();
+        }
+        return getSipHash24(key, index, index);
+    }
+
+    /**
+     * A cryptographically relatively secure hash function. It is supposed
+     * to protected against hash-flooding denial-of-service attacks.
+     * 
+     * @param o the string
+     * @param k0 key 0
+     * @param k1 key 1
+     * @return the hash value
+     */
+    public static int getSipHash24(String o, long k0, long k1) {
+        byte[] b = o.getBytes(UTF8);
+        return getSipHash24(b, 0, b.length, k0, k1);
+    }
+
+    /**
+     * A cryptographically relatively secure hash function. It is supposed
+     * to protected against hash-flooding denial-of-service attacks.
+     * 
+     * @param b the data
+     * @param start the start position
+     * @param end the end position plus one
+     * @param k0 key 0
+     * @param k1 key 1
+     * @return the hash value
+     */
+    public static int getSipHash24(byte[] b, int start, int end, long k0,
+            long k1) {
+        long v0 = k0 ^ 0x736f6d6570736575L;
+        long v1 = k1 ^ 0x646f72616e646f6dL;
+        long v2 = k0 ^ 0x6c7967656e657261L;
+        long v3 = k1 ^ 0x7465646279746573L;
+        int repeat;
+        for (int off = start; off <= end + 8; off += 8) {
+            long m;
+            if (off <= end) {
+                m = 0;
+                int i = 0;
+                for (; i < 8 && off + i < end; i++) {
+                    m |= ((long) b[off + i] & 255) << (8 * i);
+                }
+                if (i < 8) {
+                    m |= ((long) b.length) << 56;
+                }
+                v3 ^= m;
+                repeat = 2;
+            } else {
+                m = 0;
+                v2 ^= 0xff;
+                repeat = 4;
+            }
+            for (int i = 0; i < repeat; i++) {
+                v0 += v1;
+                v2 += v3;
+                v1 = Long.rotateLeft(v1, 13);
+                v3 = Long.rotateLeft(v3, 16);
+                v1 ^= v0;
+                v3 ^= v2;
+                v0 = Long.rotateLeft(v0, 32);
+                v2 += v1;
+                v0 += v3;
+                v1 = Long.rotateLeft(v1, 17);
+                v3 = Long.rotateLeft(v3, 21);
+                v1 ^= v2;
+                v3 ^= v0;
+                v2 = Long.rotateLeft(v2, 32);
+            }
+            v0 ^= m;
+        }
+        return (int) (v0 ^ v1 ^ v2 ^ v3);
+    }
+
+}
