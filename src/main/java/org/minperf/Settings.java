@@ -48,7 +48,7 @@ public class Settings {
     private static final int[] RICE_SPLIT_2 = { 0, 4, 14, 50, 188, 726, 2858,
             11346, 45214, 180512 };
 
-    private static final int CACHE_SPLITS = 128;
+    private static final int CACHE_SPLITS = 256;
 
     private final int leafSize;
     private final int loadFactor;

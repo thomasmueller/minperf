@@ -11,8 +11,8 @@ public class FunctionInfo {
     int leafSize;
     int loadFactor;
     double bitsPerKey;
-    double generateMicros;
-    double evaluateMicros;
+    double generateNanos;
+    double evaluateNanos;
     
     @Override
     public String toString() {
@@ -20,9 +20,9 @@ public class FunctionInfo {
                 " leafSize: " + leafSize +
                 " loadFactor: " + loadFactor +
                 " bitsPerKey: " + bitsPerKey +
-                " generateSeconds: " + (generateMicros * size / 1000000) + 
-                " generateMicrosPerKey: " + generateMicros + 
-                " evaluateMicrosPerKey: " + evaluateMicros;
+                " generateSeconds: " + (generateNanos * size / 1_000_000_000) + 
+                " generateNanosPerKey: " + generateNanos + 
+                " evaluateNanosPerKey: " + evaluateNanos;
     }
 
 }

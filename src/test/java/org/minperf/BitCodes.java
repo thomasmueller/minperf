@@ -7,7 +7,7 @@ import java.util.Random;
 import org.junit.Test;
 
 /**
- * Tests for Rice-Golomb codes, Elias Delta codes, and the BitBuffer class.
+ * Tests for Rice-Golomb codes, Elias Delta codes, and the FastBitBuffer class.
  */
 public class BitCodes {
 
@@ -146,6 +146,8 @@ public class BitCodes {
             buff.writeEliasDelta(val);
             buff.writeNumber(123, 10);
             int pos = buff.position();
+            byte[] data = buff.toByteArray();
+            assertEquals((pos + 7) / 8, data.length);
             buff = new BitBuffer(buff.toByteArray());
             assertEquals(val, buff.readEliasDelta());
             assertEquals(123, buff.readNumber(10));

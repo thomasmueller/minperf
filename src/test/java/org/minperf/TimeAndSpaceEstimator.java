@@ -9,6 +9,39 @@ import java.util.Comparator;
  */
 public class TimeAndSpaceEstimator {
 
+    public static void listEvalulationTimes() {
+        System.out.println("4.5 Evaluation times");
+        int size = 100000;
+        for (int loadFactor = 20; loadFactor <= 20000; loadFactor *= 10) {
+            System.out.println("loadFactor " + loadFactor);
+            for (int leafSize = 6; leafSize < 18; leafSize++) {
+                FunctionInfo info = RandomizedTest.test(leafSize, loadFactor,
+                        size, true);
+                System.out.println("  leafSize " + leafSize + " " +
+                        info.evaluateNanos);
+            }
+        }
+    }
+
+    public static void listMaxRecursionDepth() {
+        System.out.println("5.2 Time and Space Complexity of Evaluation - maximum recursion depth");
+        int leafSize = 2;
+        for (int loadFactor = 8; loadFactor < 100000; loadFactor *= 2) {
+            int recursionDepth = 1;
+            int size = loadFactor * 20;
+            Settings settings = new Settings(leafSize, loadFactor);
+            while (size > leafSize) {
+                int split = settings.getSplit(size);
+                if (split < 0) {
+                    split = 2;
+                }
+                size /= split;
+                recursionDepth++;
+            }
+            System.out.println("loadFactor=" + loadFactor + " max recursion depth: " + recursionDepth);
+        }
+    }
+
     public static void spaceUsageEstimateSmallSet() {
         System.out.println("4.9 Space Usage and Generation Time");
         for (int leafSize = 8; leafSize <= 14; leafSize++) {
@@ -25,16 +58,16 @@ public class TimeAndSpaceEstimator {
         System.out.println("Estimations");
         for (int leafSize = 6; leafSize <= 23; leafSize++) {
             FunctionInfo info = spaceUsageEstimate(leafSize, 65536);
-            System.out.printf("        (%d, %.4f)\n", (long) info.generateMicros, info.bitsPerKey);
+            System.out.printf("        (%d, %.4f)\n", (long) info.generateNanos, info.bitsPerKey);
         }
         System.out.println("Theoretical Limit: " + Math.log(Math.E) / Math.log(2));
         System.out.println("Reality");
         for (int leafSize = 6; leafSize < 14; leafSize++) {
             FunctionInfo info = RandomizedTest.test(leafSize, 4 * 1024, 4 * 1024, false);
-            System.out.printf("        (%d, %.4f)\n", (long) info.generateMicros * 221, info.bitsPerKey);
+            System.out.printf("        (%d, %.4f)\n", (long) info.generateNanos * 221, info.bitsPerKey);
         }
     }
-    
+
     public static void calcBestSizes() {
         ArrayList<FunctionInfo> bestPlans = new ArrayList<FunctionInfo>();
         int maxLeafSize = 25;
@@ -46,12 +79,12 @@ public class TimeAndSpaceEstimator {
                 boolean add = true;
                 for (int i = 0; i < bestPlans.size(); i++) {
                     FunctionInfo info2 = bestPlans.get(i);
-                    if (info.generateMicros * info.size < info2.generateMicros * info2.size &&
+                    if (info.generateNanos * info.size < info2.generateNanos * info2.size &&
                             info.bitsPerKey < info2.bitsPerKey) {
                         bestPlans.remove(i);
                         i--;
                         continue;
-                    } else if (info2.generateMicros * info2.size < info.generateMicros * info.size &&
+                    } else if (info2.generateNanos * info2.size < info.generateNanos * info.size &&
                         info2.bitsPerKey < info.bitsPerKey) {
                         add = false;
                         break;
@@ -73,7 +106,7 @@ public class TimeAndSpaceEstimator {
                 }
                 return Integer.compare(o1.loadFactor, o2.loadFactor);
             }
-            
+
         });
         for (int i = 1; i < bestPlans.size() - 1; i++) {
             FunctionInfo info = bestPlans.get(i);
@@ -86,7 +119,7 @@ public class TimeAndSpaceEstimator {
         }
         for (int i = 0; i < bestPlans.size(); i++) {
             FunctionInfo info = bestPlans.get(i);
-            System.out.println(info.leafSize + " " + info.size + " " + info.bitsPerKey + " " + info.generateMicros * info.size);
+            System.out.println(info.leafSize + " " + info.size + " " + info.bitsPerKey + " " + info.generateNanos * info.size);
         }
         StringBuilder buff = new StringBuilder();
         buff.append("{");
@@ -100,23 +133,23 @@ public class TimeAndSpaceEstimator {
         buff.append("};");
         System.out.println(buff);
     }
-    
+
     public static void calcGoodLoadFactors() {
         ArrayList<FunctionInfo> bestPlans = new ArrayList<FunctionInfo>();
         int maxLeafSize = 25;
         for (int loadFactor = 128; loadFactor <= 8 * 1024; loadFactor *= 2) {
-            System.out.println("loadFactor " + loadFactor);            
+            System.out.println("loadFactor " + loadFactor);
             for (int leafSize = 6; leafSize <= maxLeafSize; leafSize++) {
                 FunctionInfo info = estimateTimeAndSpace(leafSize, loadFactor);
                 boolean add = true;
                 for (int i = 0; i < bestPlans.size(); i++) {
                     FunctionInfo info2 = bestPlans.get(i);
-                    if (info.generateMicros < info2.generateMicros &&
+                    if (info.generateNanos < info2.generateNanos &&
                             info.bitsPerKey < info2.bitsPerKey) {
                         bestPlans.remove(i);
                         i--;
                         continue;
-                    } else if (info2.generateMicros < info.generateMicros &&
+                    } else if (info2.generateNanos < info.generateNanos &&
                             info2.bitsPerKey < info.bitsPerKey) {
                         add = false;
                         break;
@@ -136,7 +169,7 @@ public class TimeAndSpaceEstimator {
                 }
                 return Integer.compare(o1.loadFactor, o2.loadFactor);
             }
-            
+
         });
         FunctionInfo[][] minMax = new FunctionInfo[maxLeafSize + 1][2];
         int leafIndex = 0;
@@ -166,7 +199,7 @@ public class TimeAndSpaceEstimator {
             System.out.printf("    %d & %d & %1.2f \\\\\n", i, min.loadFactor, min.bitsPerKey);
         }
     }
-    
+
     private static FunctionInfo spaceUsageEstimate(int leafSize, int maxSize) {
         int size = leafSize;
         int factor = size;
@@ -205,10 +238,10 @@ public class TimeAndSpaceEstimator {
         FunctionInfo info = new FunctionInfo();
         info.leafSize = leafSize;
         info.bitsPerKey = total;
-        info.generateMicros = totalCalls;
+        info.generateNanos = totalCalls;
         return info;
     }
-    
+
     static FunctionInfo estimateTimeAndSpace(int leafSize, int loadFactor) {
         return estimateTimeAndSpace(leafSize, loadFactor, 1024 * 1024);
     }
@@ -227,17 +260,17 @@ public class TimeAndSpaceEstimator {
         return info;
     }
 
-    
+
     private static double calcEstimatedHashCallsPerKey(long size, int split) {
         double p2 = size, p1 = split;
-        return 0.3 * Math.pow(2.37, p1) * 
+        return 0.3 * Math.pow(2.37, p1) *
                 Math.pow(p2 / p1, 1 / (0.34 + (7 / Math.pow(p1, 2.1))));
     }
-    
+
     private static long calcEstimatedHashCallsPerKey(int leafSize) {
         double p = Probability.probabilitySplitIntoMSubsetsOfSizeN(leafSize, 1);
         return (long) (3.267 * (Math.pow(-1/Math.log(1 - p), 1.0457) /
                 leafSize));
-    }    
+    }
 
 }

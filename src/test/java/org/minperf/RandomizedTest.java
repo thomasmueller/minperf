@@ -17,12 +17,12 @@ import org.minperf.universal.UniversalHash;
  * Methods to test the MPHF with random data.
  */
 public class RandomizedTest {
-    
+
     private static final boolean MULTI_THREADED = true;
-    
+
     private static final char[] HEX = "0123456789abcdef".toCharArray();
     private static final int[] HEX_DECODE = new int['f' + 1];
-    
+
     static {
         for (int i = 0; i < HEX_DECODE.length; i++) {
             HEX_DECODE[i] = -1;
@@ -34,10 +34,10 @@ public class RandomizedTest {
             HEX_DECODE[i + 'a'] = HEX_DECODE[i + 'A'] = i + 10;
         }
     }
-    
+
     public static void runTests() {
-        int[] pairs = { 
-                23, 828, 23, 1656, 23, 3312, 
+        int[] pairs = {
+                23, 828, 23, 1656, 23, 3312,
                 23, 6624, 25, 1250, 25,
                 3750, 25, 7500, 25, 15000 };
         for (int i = 0; i < pairs.length; i += 2) {
@@ -47,32 +47,44 @@ public class RandomizedTest {
             System.out.println(info);
         }
     }
-    
+
     static void verifyParameters() {
-        int size = 100000;
-        int leafSize = 11;
-        int loadFactor = 150;
         System.out.println("4.1 Parameters");
-        // CHD: 1.927 seconds; 2.2512 bits/key; eval 0.33 microseconds/key
-        System.out.println("  size " + size + " leafSize " + leafSize + " loadFactor " + loadFactor);
+        // size 100000
+        // CHD: generated in 1.52 seconds, 2.257 bits/key, eval 219 nanoseconds/key
+        // GOV: generated in 0.32 seconds, 2.324 bits/key, eval 207 nanoseconds/key
         for (int i = 0; i < 5; i++) {
-            FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, true);
-            System.out.println("  " + info.bitsPerKey + " bits/key");
-            System.out.println("  " + info.generateMicros * size / 1000000 +
-                    " seconds to generate");
-            System.out.println("  " + info.evaluateMicros +
-                    " microseconds to evaluate");
-            if (info.bitsPerKey < 1.75 && 
-                    info.generateMicros * size / 1000000 < 1.0 && 
-                    info.evaluateMicros < 1.0) {
-                // all tests passed
+            if (verifyOneTest()) {
                 return;
             }
             RandomizedTest.test(4, 1024, 8 * 1024, true);
         }
         Assert.fail();
     }
-    
+
+    private static boolean verifyOneTest() {
+        int size = 100_000;
+        int leafSize = 11;
+        int loadFactor = 50;
+        for (int j = 0; j < 5; j++) {
+            System.gc();
+        }
+        System.out.println("  size " + size + " leafSize " + leafSize + " loadFactor " + loadFactor);
+        FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, true);
+        System.out.println("  " + info.bitsPerKey + " bits/key");
+        System.out.println("  " + info.generateNanos * size / 1_000_000_000 +
+                " seconds to generate");
+        System.out.println("  " + info.evaluateNanos +
+                " nanoseconds to evaluate");
+        if (info.bitsPerKey < 2.0 &&
+                info.generateNanos * size / 1_000_000_000 < 1.0 &&
+                info.evaluateNanos < 300) {
+            // all tests passed
+            return true;
+        }
+        return false;
+    }
+
     public static void experimentalResults() {
         System.out.println("6 Experimental Results");
         int loadFactor = 16 * 1024;
@@ -93,7 +105,7 @@ public class RandomizedTest {
             FunctionInfo info = test(leafSize, loadFactor, size, false);
             System.out.println("        (" + info.leafSize + ", " + info.bitsPerKey + ")");
         }
-        System.out.println("leafSize, generation time in micros/key");
+        System.out.println("leafSize, generation time in nanos/key");
         ArrayList<FunctionInfo> infos = new ArrayList<FunctionInfo>();
         for (int leafSize = 2; leafSize <= 12; leafSize++) {
             int size = 1024 * 1024 / leafSize;
@@ -101,34 +113,34 @@ public class RandomizedTest {
             FunctionInfo info = test(leafSize, 128, size, true);
             infos.add(info);
             System.out.println("        (" + info.leafSize + ", " +
-                    info.generateMicros + ")");
+                    info.generateNanos + ")");
         }
         System.out
-                .println("leafSize, evaluation time in micros/key");
+                .println("leafSize, evaluation time in nanos/key");
         for (FunctionInfo info : infos) {
             System.out.println("        (" + info.leafSize + ", " +
-                    info.evaluateMicros + ")");
+                    info.evaluateNanos + ")");
         }
     }
-        
-    public static void reasonableParameterValues() {        
+
+    public static void reasonableParameterValues() {
         System.out.println("6.1 Reasonable Parameter Values");
         int leafSize = 10;
         int size = 16 * 1024;
         System.out.println("(leafSize=" + leafSize + ", size=" + size +
-                "): loadFactor, generation time in micros/key");
+                "): loadFactor, generation time in nanos/key");
         ArrayList<FunctionInfo> infos = new ArrayList<FunctionInfo>();
         for (int loadFactor = 8; loadFactor <= 16 * 1024; loadFactor *= 2) {
             FunctionInfo info = test(leafSize, loadFactor, 16 * 1024, true);
             infos.add(info);
             System.out.println("        (" + info.loadFactor + ", " +
-                    info.generateMicros + ")");
+                    info.generateNanos + ")");
         }
         System.out
-                .println("loadFactor, evaluation time in micros/key");
+                .println("loadFactor, evaluation time in nanos/key");
         for (FunctionInfo info : infos) {
             System.out.println("        (" + info.loadFactor + ", " +
-                    info.evaluateMicros + ")");
+                    info.evaluateNanos + ")");
         }
         System.out
                 .println("loadFactor, bits/key");
@@ -137,35 +149,47 @@ public class RandomizedTest {
                     info.bitsPerKey + ")");
         }
     }
-    
-    static <T> void test(HashSet<T> set, UniversalHash<T> hash,
-            byte[] description, int leafSize, int loadFactor) {
+
+    private static <T> long test(HashSet<T> set, UniversalHash<T> hash,
+            byte[] description, int leafSize, int loadFactor, int measureCount) {
         BitSet known = new BitSet();
-        RecSplitEvaluator<T> eval = 
+        RecSplitEvaluator<T> eval =
                 RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
                 buildEvaluator(new BitBuffer(description));
         // Profiler prof = new Profiler().startCollecting();
-        for (T x : set) {
-            int index = eval.evaluate(x);
-            if (index > set.size() || index < 0) {
-                Assert.fail("wrong entry: " + x + " " + index +
-                        " leafSize " + leafSize + 
-                        " loadFactor " + loadFactor +
-                        " hash " + convertBytesToHex(description));
+        long evaluateNanos = System.nanoTime();
+        for (int i = 0; i < measureCount; i++) {
+            for (T x : set) {
+                int index = eval.evaluate(x);
+                if (index > set.size() || index < 0) {
+                    Assert.fail("wrong entry: " + x + " " + index +
+                            " leafSize " + leafSize +
+                            " loadFactor " + loadFactor +
+                            " hash " + convertBytesToHex(description));
+                }
+                if (known.get(index)) {
+                    eval.evaluate(x);
+                    Assert.fail("duplicate entry: " + x + " " + index +
+                            " leafSize " + leafSize +
+                            " loadFactor " + loadFactor +
+                            " hash " + convertBytesToHex(description));
+                }
+                known.set(index);
             }
-            if (known.get(index)) {
-                eval.evaluate(x);
-                Assert.fail("duplicate entry: " + x + " " + index +
-                        " leafSize " + leafSize + 
-                        " loadFactor " + loadFactor +
-                        " hash " + convertBytesToHex(description));
-            }
-            known.set(index);
         }
+        return evaluateNanos = System.nanoTime() - evaluateNanos;
         // System.out.println(prof.getTop(5));
     }
 
+    public static FunctionInfo testAndMeasure(int leafSize, int loadFactor, int size) {
+        return test(leafSize, loadFactor, size, true, 1_000_000_000 / size);
+    }
+
     public static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate) {
+        return test(leafSize, loadFactor, size, evaluate, 1);
+    }
+
+    private static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate, int measureCount) {
         HashSet<Long> set = createSet(size, 1);
         UniversalHash<Long> hash = new LongHash();
         long generateNanos = System.nanoTime();
@@ -178,9 +202,7 @@ public class RandomizedTest {
         assertTrue(bits <= data.length * 8);
         long evaluateNanos = 0;
         if (evaluate) {
-            evaluateNanos = System.nanoTime();
-            test(set, hash, data, leafSize, loadFactor);
-            evaluateNanos = System.nanoTime() - evaluateNanos;
+            evaluateNanos = test(set, hash, data, leafSize, loadFactor, measureCount);
         }
         FunctionInfo info = new FunctionInfo();
         info.leafSize = leafSize;
@@ -188,9 +210,9 @@ public class RandomizedTest {
         info.loadFactor = loadFactor;
         info.bitsPerKey = (double) bits / size;
         if (evaluate) {
-            info.evaluateMicros = (double) evaluateNanos / 1000 / size;
+            info.evaluateNanos = (double) evaluateNanos / size;
         }
-        info.generateMicros = (double) generateNanos / 1000 / size;
+        info.generateNanos = (double) generateNanos / size;
         return info;
     }
 
@@ -241,5 +263,5 @@ public class RandomizedTest {
         }
         return buff;
     }
-    
+
 }

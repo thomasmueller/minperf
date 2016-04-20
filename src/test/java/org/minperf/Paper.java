@@ -16,6 +16,8 @@ public class Paper {
         // 4.4 Data Format
         BitCodes.printPositiveMapping();
         Graphics.generateSampleTikz();
+        // 4.5 Evaluation Algorithm
+        TimeAndSpaceEstimator.listEvalulationTimes();
         // 4.7 Probabilities
         Probability.bucketTooLarge();
         Probability.asymmetricCase();        
@@ -25,6 +27,8 @@ public class Paper {
         // 4.9 Space Usage and Generation Time
         TimeAndSpaceEstimator.spaceUsageEstimateSmallSet();
         TimeAndSpaceEstimator.spaceUsageEstimate();
+        // 5.2 Time and Space Complexity of Evaluation
+        TimeAndSpaceEstimator.listMaxRecursionDepth();
         // 6.1 Reasonable Parameter Values
         RandomizedTest.reasonableParameterValues();
         // 6.2 Using Real-World Data

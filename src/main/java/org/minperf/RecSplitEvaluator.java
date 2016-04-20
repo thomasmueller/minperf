@@ -4,7 +4,7 @@ import org.minperf.universal.UniversalHash;
 
 /**
  * Evaluate the minimum perfect hash function.
- * 
+ *
  * @param <T> the key type
  */
 public class RecSplitEvaluator<T> {
@@ -13,40 +13,48 @@ public class RecSplitEvaluator<T> {
     private final BitBuffer in;
     private final UniversalHash<T> hash;
 
+    private final long size;
+    private final long dataBits;
+    private final int bucketCount;
+    private final int tableStart;
+    private final int bitsPerEntry;
+    private final int headerBits;
+
     RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash,
             Settings settings) {
         this.settings = settings;
         this.hash = hash;
         this.in = buffer;
-    }
 
-    public int evaluate(T obj) {
         in.seek(0);
-        long size = in.readEliasDelta() - 1;
-        int bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
+        size = in.readEliasDelta() - 1;
+        bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
-        int x;
-        int bitsPerEntry;
-        long dataBits;
-        long startIndex = 1;
         if (bucketCount == 1) {
             bitsPerEntry = 0;
             dataBits = 0;
-            x = 0;
         } else {
-            // startIndex += 
-            //        Settings.SUPPLEMENTAL_HASH_CALLS * in.readGolombRice(0);
-            dataBits = settings.getEstimatedBits(size) + 
+            dataBits = settings.getEstimatedBits(size) +
                     BitBuffer.unfoldSigned(in.readEliasDelta() - 1);
             bitsPerEntry = (int) in.readGolombRice(2);
+        }
+        tableStart = in.position();
+        int tableBits = (bitsPerEntry + bitsPerEntry) * (bucketCount - 1);
+        headerBits = tableStart + tableBits;
+
+    }
+
+    public int evaluate(T obj) {
+        int x;
+        if (bucketCount == 1) {
+            x = 0;
+        } else {
             x = hash.universalHash(obj, 0);
             x = Settings.supplementalHash(x, 0, bucketCount);
         }
-        int tableStart = in.position();
-        int tableBits = (bitsPerEntry + bitsPerEntry) * (bucketCount - 1);
-        int headerBits = tableStart + tableBits;
         int add, start, pSize;
         if (x == 0) {
+            in.seek(tableStart);
             add = 0;
             start = 0;
         } else {
@@ -63,11 +71,11 @@ public class RecSplitEvaluator<T> {
         } else {
             pSize = (int) (size - add);
         }
-        if (bucketCount > 1) {
+        if (bucketCount > 0) {
             in.seek(headerBits + start);
         }
-        int hashCode = hash.universalHash(obj, startIndex);
-        return add + evaluate(in, obj, hashCode, startIndex - 1, 0, pSize);
+        int hashCode = hash.universalHash(obj, 1);
+        return add + evaluate(in, obj, hashCode, 0, 0, pSize);
     }
 
     private int evaluate(BitBuffer in, T obj, int hashCode,
@@ -97,7 +105,7 @@ public class RecSplitEvaluator<T> {
         } else {
             firstPart = size / split;
             otherPart = firstPart;
-        }                  
+        }
         if (obj == null) {
             int s = firstPart;
             for (int i = 0; i < split; i++) {

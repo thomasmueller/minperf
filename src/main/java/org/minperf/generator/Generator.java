@@ -163,7 +163,6 @@ public class Generator<T> {
         }
         int bitsPerEntry = 32 - Integer.numberOfLeadingZeros(maxOffset);
         if (bucketCount > 1) {
-            // d.writeGolombRice(0, 0);
             d.writeEliasDelta(BitBuffer.foldSigned(
                     dataBits - settings.getEstimatedBits(size)) + 1);
             d.writeGolombRice(2, bitsPerEntry);
