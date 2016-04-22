@@ -48,17 +48,22 @@ public class BitBuffer {
     }
 
     public long readNumber(int bitCount) {
-        int available = 64 - (pos & 63);
+        long x = readNumber(pos, bitCount);
+        pos += bitCount;
+        return x;
+    }
+
+    public long readNumber(int pos, int bitCount) {
+        int remainingBits = 64 - (pos & 63);
         int index = pos >>> 6;
         long x = data[index];
-        if (bitCount <= available) {
-            x >>>= available - bitCount;
-            pos += bitCount;
+        if (bitCount <= remainingBits) {
+            x >>>= remainingBits - bitCount;
             return x & ((1L << bitCount) - 1);
         }
-        pos += available;
-        x = x & ((1L << available) - 1);
-        return (x << (bitCount - available)) | readNumber(bitCount - available);
+        x = x & ((1L << remainingBits) - 1);
+        return (x << (bitCount - remainingBits)) |
+                (data[index + 1] >>> (64 - bitCount + remainingBits));
     }
 
     /**
@@ -94,16 +99,22 @@ public class BitBuffer {
         return (data[pos >>> 6] >>> (63 - (pos++ & 63))) & 1;
     }
 
-    public int readUntilZero() {
+    int readUntilZero(int pos) {
         int remainingBits = 64 - (pos & 63);
-        long x = data[pos >>> 6] << (64 - remainingBits);
+        int index = pos >>> 6;
+        long x = data[index] << (64 - remainingBits);
         int count = Long.numberOfLeadingZeros(~x);
         if (count < remainingBits) {
-            pos += count + 1;
             return count;
         }
-        pos += count;
-        return count + readUntilZero();
+        x = data[index + 1];
+        return count + Long.numberOfLeadingZeros(~x);
+    }
+
+    private int readUntilZero() {
+        int len = readUntilZero(pos);
+        pos += len + 1;
+        return len;
     }
 
     public void writeGolombRice(int shift, long value) {
@@ -129,6 +140,15 @@ public class BitBuffer {
         //     x |= readBit() << i;
         // }
         // return x;
+    }
+
+    public void skipGolombRice(int shift) {
+        pos = skipGolombRice(pos, shift);
+    }
+
+    public int skipGolombRice(int pos, int shift) {
+        int q = readUntilZero(pos);
+        return pos + q + 1 + shift;
     }
 
     public void writeEliasDelta(long value) {

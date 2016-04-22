@@ -4,97 +4,106 @@ import org.minperf.universal.UniversalHash;
 
 /**
  * Evaluate the minimum perfect hash function.
+ * Concurrent reads are supported.
  *
  * @param <T> the key type
  */
 public class RecSplitEvaluator<T> {
 
     private final Settings settings;
-    private final BitBuffer in;
     private final UniversalHash<T> hash;
 
+    private final BitBuffer buffer;
     private final long size;
     private final long dataBits;
     private final int bucketCount;
     private final int tableStart;
     private final int bitsPerEntry;
+    private final int bitsPerEntry2;
     private final int headerBits;
 
     RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash,
             Settings settings) {
         this.settings = settings;
         this.hash = hash;
-        this.in = buffer;
+        this.buffer = buffer;
 
-        in.seek(0);
-        size = in.readEliasDelta() - 1;
+        buffer.seek(0);
+        size = buffer.readEliasDelta() - 1;
         bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
         if (bucketCount == 1) {
             bitsPerEntry = 0;
+            bitsPerEntry2 = 0;
             dataBits = 0;
         } else {
             dataBits = settings.getEstimatedBits(size) +
-                    BitBuffer.unfoldSigned(in.readEliasDelta() - 1);
-            bitsPerEntry = (int) in.readGolombRice(2);
+                    BitBuffer.unfoldSigned(buffer.readEliasDelta() - 1);
+            bitsPerEntry = (int) buffer.readGolombRice(2);
+            if (Settings.COMPLEX_BUCKET_HEADER) {
+                bitsPerEntry2 = (int) buffer.readGolombRice(2);
+            } else {
+                bitsPerEntry2 = bitsPerEntry;
+            }
         }
-        tableStart = in.position();
-        int tableBits = (bitsPerEntry + bitsPerEntry) * (bucketCount - 1);
+        tableStart = buffer.position();
+        int tableBits = (bitsPerEntry + bitsPerEntry2) * (bucketCount - 1);
         headerBits = tableStart + tableBits;
-
     }
 
     public int evaluate(T obj) {
-        int x;
+        int hashCode;
+        int bucket;
         if (bucketCount == 1) {
-            x = 0;
+            hashCode = 0;
+            bucket = 0;
         } else {
-            x = hash.universalHash(obj, 0);
-            x = Settings.supplementalHash(x, 0, bucketCount);
+            hashCode = hash.universalHash(obj, 0);
+            bucket = Settings.supplementalHash(hashCode, 0, bucketCount);
         }
         int add, start, pSize;
-        if (x == 0) {
-            in.seek(tableStart);
+        int pos;
+        if (bucket == 0) {
+            pos = tableStart;
             add = 0;
             start = 0;
         } else {
-            in.seek(tableStart + (bitsPerEntry + bitsPerEntry) * (x - 1));
-            int expectedAdd = (int) (size * x / bucketCount);
-            int expectedStart = (int) (dataBits * x / bucketCount);
-            add = (int) BitBuffer.unfoldSigned(in.readNumber(bitsPerEntry)) + expectedAdd;
-            start = (int) BitBuffer.unfoldSigned(in.readNumber(bitsPerEntry)) + expectedStart;
+            pos = tableStart + (bitsPerEntry + bitsPerEntry2) * (bucket - 1);
+            int expectedAdd = (int) (size * bucket / bucketCount);
+            add = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry)) + expectedAdd;
+            pos += bitsPerEntry;
+            if (Settings.COMPLEX_BUCKET_HEADER) {
+                long db = expectedAdd == 0 ? dataBits : (dataBits * add / expectedAdd);
+                int expectedStart = (int) (db * bucket / bucketCount);
+                start = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry2)) + expectedStart;
+            } else {
+                int expectedStart = (int) (dataBits * bucket / bucketCount);
+                start = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry2)) + expectedStart;
+            }
+            pos += bitsPerEntry2;
         }
-        if (x < bucketCount - 1) {
-            int expectedAdd = (int) (size * (x + 1) / bucketCount);
-            int nextAdd = (int) BitBuffer.unfoldSigned(in.readNumber(bitsPerEntry)) + expectedAdd;
+        if (bucket < bucketCount - 1) {
+            int expectedAdd = (int) (size * (bucket + 1) / bucketCount);
+            int nextAdd = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry)) + expectedAdd;
             pSize = nextAdd - add;
         } else {
             pSize = (int) (size - add);
         }
         if (bucketCount > 0) {
-            in.seek(headerBits + start);
+            pos = headerBits + start;
         }
-        int hashCode = hash.universalHash(obj, 1);
-        return add + evaluate(in, obj, hashCode, 0, 0, pSize);
+
+        hashCode = hash.universalHash(obj, 1);
+        return add + evaluate(pos, obj, hashCode, 0, 0, pSize);
     }
 
-    private int evaluate(BitBuffer in, T obj, int hashCode,
-            long startIndex, int add, int size) {
+    private int skip(int pos, int size) {
         if (size < 2) {
-            return add;
+            return pos;
         }
-        long oldX = Settings.getUniversalHashIndex(startIndex);
-        long index = in.readGolombRice(settings.getGolombRiceShift(size)) + startIndex + 1;
-        long x = Settings.getUniversalHashIndex(index);
+        pos = buffer.skipGolombRice(pos, settings.getGolombRiceShift(size));
         if (size <= settings.getLeafSize()) {
-            if (obj == null) {
-                return -1;
-            }
-            if (x != oldX) {
-                hashCode = hash.universalHash(obj, x + 1);
-            }
-            int h = Settings.supplementalHash(hashCode, index, size);
-            return add + h;
+            return pos;
         }
         int split = settings.getSplit(size);
         int firstPart, otherPart;
@@ -106,32 +115,63 @@ public class RecSplitEvaluator<T> {
             firstPart = size / split;
             otherPart = firstPart;
         }
-        if (obj == null) {
-            int s = firstPart;
-            for (int i = 0; i < split; i++) {
-                evaluate(in, null, 0, 0, 0, s);
-                s = otherPart;
+        int s = firstPart;
+        for (int i = 0; i < split; i++) {
+            pos = skip(pos, s);
+            s = otherPart;
+        }
+        return pos;
+    }
+
+    private int evaluate(int pos, T obj, int hashCode,
+            long index, int add, int size) {
+        while (true) {
+            if (size < 2) {
+                return add;
             }
-            return -1;
-        }
-        if (x != oldX) {
-            hashCode = hash.universalHash(obj, x + 1);
-        }
-        if (firstPart != otherPart) {
-            int h = Settings.supplementalHash(hashCode, index, size);
-            if (h < firstPart) {
-                return evaluate(in, obj, hashCode, index, add, firstPart);
+            int shift = settings.getGolombRiceShift(size);
+            long q = buffer.readUntilZero(pos);
+            pos += q + 1;
+            long value = (q << shift) | buffer.readNumber(pos, shift);
+            pos += shift;
+            long oldX = Settings.getUniversalHashIndex(index);
+            index += value + 1;
+            long x = Settings.getUniversalHashIndex(index);
+            if (x != oldX) {
+                hashCode = hash.universalHash(obj, x + 1);
             }
-            evaluate(in, null, 0, 0, 0, firstPart);
-            add += firstPart;
-            return evaluate(in, obj, hashCode, index, add, otherPart);
+            if (size <= settings.getLeafSize()) {
+                int h = Settings.supplementalHash(hashCode, index, size);
+                return add + h;
+            }
+            int split = settings.getSplit(size);
+            int firstPart, otherPart;
+            if (split < 0) {
+                firstPart = -split;
+                otherPart = size - firstPart;
+                split = 2;
+            } else {
+                firstPart = size / split;
+                otherPart = firstPart;
+            }
+            if (firstPart != otherPart) {
+                int h = Settings.supplementalHash(hashCode, index, size);
+                if (h < firstPart) {
+                    size = firstPart;
+                    continue;
+                }
+                pos = skip(pos, firstPart);
+                add += firstPart;
+                size = otherPart;
+                continue;
+            }
+            int h = Settings.supplementalHash(hashCode, index, split);
+            for (int i = 0; i < h; i++) {
+                pos = skip(pos, firstPart);
+                add += firstPart;
+            }
+            size = firstPart;
         }
-        int h = Settings.supplementalHash(hashCode, index, split);
-        for (int i = 0; i < h; i++) {
-            evaluate(in, null, 0, 0, 0, firstPart);
-            add += firstPart;
-        }
-        return evaluate(in, obj, hashCode, index, add, firstPart);
     }
 
 }

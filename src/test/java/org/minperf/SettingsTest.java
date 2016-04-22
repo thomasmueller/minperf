@@ -9,7 +9,7 @@ import org.junit.Test;
  * Tests the constants, and generate the constants used in the Settings class.
  */
 public class SettingsTest {
-    
+
     /**
      * Calculate the constants from scratch. This it quite slow.
      */
@@ -20,7 +20,7 @@ public class SettingsTest {
         generateRiceSplitMore();
         generateRiceSplit2();
     }
-    
+
     public static void printSplitRule() {
         System.out.println("4.3 Recursion: Split Rule");
         int x = 14;
@@ -60,7 +60,7 @@ public class SettingsTest {
                 int m = split, n = i / m;
                 double p = Probability
                         .probabilitySplitIntoMSubsetsOfSizeN(m, n);
-                // System.out.println("leafSize " + leafSize + " size=" + i + 
+                // System.out.println("leafSize " + leafSize + " size=" + i +
                 //         " split " + split + " p=" + p);
                 if (leafSize > 2) {
                     assertTrue(p > lastP);
@@ -69,13 +69,23 @@ public class SettingsTest {
                 if (split <= 2) {
                     break;
                 }
-                
+
                 int k = BitCodes.calcBestGolombRiceShift(p);
                 int k2 = s.getGolombRiceShift(i);
                 assertEquals(k2, k);
                 assertEquals(split, s.getSplit(i));
                 split = Settings.calcNextSplit(split);
             }
+        }
+    }
+
+    @Test
+    public void verifyUniversalHashIndex() {
+        for (int i = 0; i < 1024 * 1024; i++) {
+            long index = Settings.getUniversalHashIndex(i);
+            assertEquals("i: " + i, i / 1024, index);
+            boolean needNew = Settings.needNewUniversalHashIndex(index);
+            assertEquals(index % 1024 == 0, needNew);
         }
     }
 
@@ -103,7 +113,7 @@ public class SettingsTest {
             }
         }
     }
-    
+
     private static void generateEstimatedSpaceUsage() {
         StringBuilder buff = new StringBuilder();
         buff.append("int[] ESTIMATED_SPACE = {0");
@@ -238,5 +248,5 @@ public class SettingsTest {
             }
         }
     }
-    
+
 }

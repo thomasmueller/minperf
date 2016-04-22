@@ -20,10 +20,10 @@ public class RecSplitBuilder<T> {
     private RecSplitBuilder(UniversalHash<T> hash) {
         this.hash = hash;
     }
-    
+
     /**
      * Create a new instance of the builder, with the given universal hash implementation.
-     * 
+     *
      * @param <T> the type
      * @param hash the universal hash function
      * @return the builder
@@ -35,7 +35,7 @@ public class RecSplitBuilder<T> {
     public RecSplitBuilder<T> loadFactor(int loadFactor) {
         if (loadFactor < 8 || loadFactor > 65536) {
             throw new IllegalArgumentException("loadFactor out of range: " + loadFactor);
-        }        
+        }
         this.loadFactor = loadFactor;
         return this;
     }
@@ -47,7 +47,7 @@ public class RecSplitBuilder<T> {
         this.leafSize = leafSize;
         return this;
     }
-    
+
     public RecSplitBuilder<T> multiThreaded(boolean multiThreaded) {
         this.multiThreaded = multiThreaded;
         return this;
@@ -57,7 +57,7 @@ public class RecSplitBuilder<T> {
         Settings s = new Settings(leafSize, loadFactor);
         Generator<T> g = new Generator<T>(hash, s, multiThreaded);
         BitBuffer result = g.generate(collection);
-        // we could re-use the generator, 
+        // we could re-use the generator,
         // so that starting and stopping threads is not needed
         // when generate is called multiple times
         g.dispose();
@@ -68,5 +68,5 @@ public class RecSplitBuilder<T> {
         Settings s = new Settings(leafSize, loadFactor);
         return new RecSplitEvaluator<T>(new BitBuffer(description), hash, s);
     }
-    
+
 }

@@ -16,7 +16,6 @@ public class Graphics {
         int leafSize = 6;
         int loadFactor = 32;
         int size = 70;
-        //int size = 97;
         HashSet<Long> set = RandomizedTest.createSet(size, 6);
         UniversalHash<Long> hash = new LongHash();
         Settings settings = new Settings(leafSize, loadFactor);
@@ -33,7 +32,7 @@ public class Graphics {
         bits.append("\\hline\n");
         bits.append(" & Bucket Header \\\\\n");
         int startDataSize = buff.position();
-        long dataBits = settings.getEstimatedBits(size) + 
+        long dataBits = settings.getEstimatedBits(size) +
                 BitBuffer.unfoldSigned(buff.readEliasDelta() - 1);
         appendLastBits(bits, buff, buff.position() - startDataSize);
         bits.append(" & data bits: " + dataBits + " (Elias Delta code of difference, plus 1)\\\\\n");
@@ -46,7 +45,7 @@ public class Graphics {
         int tableStart = buff.position();
         int tableBits = (bitsPerEntry + bitsPerEntry) * (bucketCount - 1);
         int headerBits = tableStart + tableBits;
-        int[] pSizeList = new int[bucketCount]; 
+        int[] pSizeList = new int[bucketCount];
         int[] startList = new int[bucketCount];
         bits.append("\\hline\n");
         bits.append(" & Offset Array \\\\\n");
@@ -102,14 +101,14 @@ public class Graphics {
         System.out.println("\\end{tikzpicture}");
         System.out.println(bits.toString());
     }
-    
+
     private static String getSizeTikz(int size) {
         if (size == 1) {
             return "line width=0.02em";
         }
         return "line width="+(size/35.)+"ex";
     }
-    
+
     private static String generateSampleTikz(Settings settings, BitBuffer in, StringBuilder bits, int size) {
         if (size == 0) {
             return "node {$x$}";
@@ -141,7 +140,7 @@ public class Graphics {
         appendLastBits(bits, in, count);
         bits.append(" & index: " + x + " (inner node of size " + size +
                 ", k=" + shift +") \\\\\n");
-        
+
         int split = settings.getSplit(size);
         int firstPart, otherPart;
         if (split < 0) {
@@ -151,7 +150,7 @@ public class Graphics {
         } else {
             firstPart = size / split;
             otherPart = firstPart;
-        }        
+        }
         int childSize = firstPart;
         StringBuilder buff = new StringBuilder();
         buff.append("node {$x$} ");

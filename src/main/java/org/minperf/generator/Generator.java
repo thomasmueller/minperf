@@ -20,7 +20,7 @@ public class Generator<T> {
     final Settings settings;
     final UniversalHash<T> hash;
     final Processor<T> processor;
-    
+
     public Generator(UniversalHash<T> hash, Settings settings, boolean multiThreaded) {
         this.settings = settings;
         this.hash = hash;
@@ -151,29 +151,49 @@ public class Generator<T> {
             }
             add += sizes[i];
         }
-        long dataBits = bitOut.position();
-        int maxOffset = 0;
-        for (int i = 0; i < outList.size(); i++) {
-            int expectedAdd = (int) (size * i / bucketCount);
-            int offsetAdd = addList[i] - expectedAdd;
-            maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetAdd));
-            int expectedStart = (int) (dataBits * i / bucketCount);
-            int offsetStart = startList[i] - expectedStart;
-            maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetStart));
-        }
-        int bitsPerEntry = 32 - Integer.numberOfLeadingZeros(maxOffset);
         if (bucketCount > 1) {
+            long dataBits = bitOut.position();
+            int maxOffset = 0;
+            int maxStartOffset = 0;
+            for (int i = 0; i < outList.size(); i++) {
+                int expectedAdd = (int) (size * i / bucketCount);
+                int offsetAdd = addList[i] - expectedAdd;
+                maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetAdd));
+                if (Settings.COMPLEX_BUCKET_HEADER) {
+                    long db = expectedAdd == 0 ? dataBits : (dataBits * addList[i] / expectedAdd);
+                    int expectedStart2 = (int) (db * i / bucketCount);
+                    int offsetStart2 = startList[i] - expectedStart2;
+                    maxStartOffset = Math.max(maxStartOffset,
+                            (int) BitBuffer.foldSigned(offsetStart2));
+                } else {
+                    int expectedStart = (int) (dataBits * i / bucketCount);
+                    int offsetStart = startList[i] - expectedStart;
+                    maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetStart));
+                }
+            }
+            int bitsPerEntry = 32 - Integer.numberOfLeadingZeros(maxOffset);
             d.writeEliasDelta(BitBuffer.foldSigned(
                     dataBits - settings.getEstimatedBits(size)) + 1);
             d.writeGolombRice(2, bitsPerEntry);
-        }
-        for (int i = 1; i < outList.size(); i++) {
-            int expectedAdd = (int) (size * i / bucketCount);
-            int offsetAdd = addList[i] - expectedAdd;
-            d.writeNumber(BitBuffer.foldSigned(offsetAdd), bitsPerEntry);
-            int start = (int) (dataBits * i / bucketCount);
-            d.writeNumber(BitBuffer.foldSigned(startList[i] - start),
-                    bitsPerEntry);
+            int bitsPerEntry2 = 32 - Integer.numberOfLeadingZeros(maxStartOffset);
+            if (Settings.COMPLEX_BUCKET_HEADER) {
+                d.writeGolombRice(2, bitsPerEntry2);
+            }
+            for (int i = 1; i < outList.size(); i++) {
+                int expectedAdd = (int) (size * i / bucketCount);
+                int offsetAdd = addList[i] - expectedAdd;
+                d.writeNumber(BitBuffer.foldSigned(offsetAdd), bitsPerEntry);
+                if (Settings.COMPLEX_BUCKET_HEADER) {
+                    long db = expectedAdd == 0 ? dataBits : dataBits * addList[i] / expectedAdd;
+                    int expectedStart2 = (int) (db * i / bucketCount);
+                    int offsetStart = startList[i] - expectedStart2;
+                    d.writeNumber(BitBuffer.foldSigned(offsetStart), bitsPerEntry2);
+                } else {
+                    int expectedStart = (int) (dataBits * i / bucketCount);
+                    int offsetStart = startList[i] - expectedStart;
+                    d.writeNumber(BitBuffer.foldSigned(offsetStart), bitsPerEntry);
+                }
+            }
         }
         d.write(bitOut);
     }

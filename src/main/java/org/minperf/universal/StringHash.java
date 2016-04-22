@@ -22,7 +22,7 @@ public class StringHash implements UniversalHash<String> {
     /**
      * A cryptographically relatively secure hash function. It is supposed
      * to protected against hash-flooding denial-of-service attacks.
-     * 
+     *
      * @param o the string
      * @param k0 key 0
      * @param k1 key 1
@@ -36,7 +36,7 @@ public class StringHash implements UniversalHash<String> {
     /**
      * A cryptographically relatively secure hash function. It is supposed
      * to protected against hash-flooding denial-of-service attacks.
-     * 
+     *
      * @param b the data
      * @param start the start position
      * @param end the end position plus one
@@ -88,6 +88,11 @@ public class StringHash implements UniversalHash<String> {
             v0 ^= m;
         }
         return (int) (v0 ^ v1 ^ v2 ^ v3);
+    }
+
+    @Override
+    public String toString() {
+        return "StringHash (SipHash)";
     }
 
 }
