@@ -61,7 +61,7 @@ public class RecSplitEvaluator<T> {
             hashCode = hash.universalHash(obj, 0);
             bucket = Settings.supplementalHash(hashCode, 0, bucketCount);
         }
-        int add, start, pSize;
+        int add, start;
         int pos;
         if (bucket == 0) {
             pos = tableStart;
@@ -82,19 +82,19 @@ public class RecSplitEvaluator<T> {
             }
             pos += bitsPerEntry2;
         }
+        int bucketSize;
         if (bucket < bucketCount - 1) {
             int expectedAdd = (int) (size * (bucket + 1) / bucketCount);
             int nextAdd = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry)) + expectedAdd;
-            pSize = nextAdd - add;
+            bucketSize = nextAdd - add;
         } else {
-            pSize = (int) (size - add);
+            bucketSize = (int) (size - add);
         }
         if (bucketCount > 0) {
             pos = headerBits + start;
         }
-
         hashCode = hash.universalHash(obj, 1);
-        return add + evaluate(pos, obj, hashCode, 0, 0, pSize);
+        return add + evaluate(pos, obj, hashCode, 0, 0, bucketSize);
     }
 
     private int skip(int pos, int size) {

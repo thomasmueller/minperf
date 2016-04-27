@@ -18,7 +18,7 @@ public class BitCodes {
     }
 
     private static void testPerformance() {
-        BitBuffer buff = new BitBuffer(new byte[1024 * 1024]);
+        BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
         int len = 10000;
         for (int i = 0; i < len; i++) {
             buff.writeGolombRice(10, i);
@@ -33,19 +33,19 @@ public class BitCodes {
         time = System.currentTimeMillis() - time;
         System.out.println("time: " + time);
     }
-    
+
     public static void printRiceExamples() {
         for (int i = 0; i < 20; i++) {
-            System.out.println("  " + i + " & " + 
+            System.out.println("  " + i + " & " +
                     getRice(i, 0) + " & " +
-                    getRice(i, 1) + " & " + 
-                    getRice(i, 2) + " & " + 
-                    getRice(i, 3) + " & " + 
-                    getRice(i, 4) + " & " + 
+                    getRice(i, 1) + " & " +
+                    getRice(i, 2) + " & " +
+                    getRice(i, 3) + " & " +
+                    getRice(i, 4) + " & " +
                     getRice(i, 5) + " \\\\");
         }
     }
-    
+
     @Test
     public void testGolombRiceCoding() {
         assertEquals("0", getRice(0, 0));
@@ -77,9 +77,9 @@ public class BitCodes {
             getRice(r.nextLong() & 0x7fffffffL, 60);
         }
     }
-    
+
     private static String getRice(long value, int shift) {
-        BitBuffer buff = new BitBuffer(new byte[16 * 1024]);
+        BitBuffer buff = new BitBuffer(128 * 1024);
         buff.writeGolombRice(shift, value);
         int size = BitBuffer.getGolombRiceSize(shift, value);
         buff.seek(0);
@@ -93,7 +93,7 @@ public class BitCodes {
     }
 
     static double calcEntropy(double p) {
-        // On the Determination of Optimal Parameterized Prefix Codes 
+        // On the Determination of Optimal Parameterized Prefix Codes
         // for Adaptive Entropy Coding
         // Amir Said
         // 2.13, page 12
@@ -106,7 +106,7 @@ public class BitCodes {
         // alpha = p - 1
         return k + (1 / (1 - Math.pow(1 - p, Math.pow(2, k))));
     }
-    
+
     static int calcBestGolombRiceShift(double p) {
         double goldenRatio = (Math.sqrt(5) + 1) / 2;
 
@@ -114,34 +114,34 @@ public class BitCodes {
         double mean = (1 - p) / p;
         double logGoldenRatioMinus1 = Math.log(goldenRatio - 1);
         double k = 1 + (Math.log(logGoldenRatioMinus1 /
-                Math.log(mean / (mean + 1))) / Math.log(2));  
-        
+                Math.log(mean / (mean + 1))) / Math.log(2));
+
         // variant b
-        // from "On the Determination of Optimal Parameterized 
+        // from "On the Determination of Optimal Parameterized
         // Prefix Codes for Adaptive Entropy Coding"
-        // double k2 = 1 + Math.log(Math.log(goldenRatio) / 
+        // double k2 = 1 + Math.log(Math.log(goldenRatio) /
         // Math.log(1 / (1 - p))) / Math.log(2);
 
         return Math.max(0, (int) k);
     }
-    
+
     public static void printEliasDeltaExample() {
         System.out.println("Elias Delta code examples");
         for (int i = 1; i < 10; i++) {
-            System.out.println("  " + i + " & " + 
+            System.out.println("  " + i + " & " +
                     getEliasDelta(i) + " \\\\");
         }
         for (int i = 10; i < 1000000; i *= 10) {
-            System.out.println("  " + i + " & " + 
+            System.out.println("  " + i + " & " +
                     getEliasDelta(i) + " \\\\");
         }
     }
-    
+
     @Test
     public void testEliasDeltaRoundtrip() {
         Random r = new Random(1);
         for (int i = 0; i < 1000; i++) {
-            BitBuffer buff = new BitBuffer(new byte[1024 * 1024]);
+            BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
             long val = (r.nextLong() & 0xfffffffL) + 1;
             buff.writeEliasDelta(val);
             buff.writeNumber(123, 10);
@@ -169,9 +169,9 @@ public class BitCodes {
             getEliasDelta(i);
         }
     }
-    
+
     static String getEliasDelta(int value) {
-        BitBuffer buff = new BitBuffer(new byte[1024 * 1024]);
+        BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
         buff.writeEliasDelta(value);
         int size = buff.position();
         buff.seek(0);
@@ -189,9 +189,9 @@ public class BitCodes {
 
     @Test
     public void testWriteBuffer() {
-        BitBuffer buff = new BitBuffer(new byte[1000]);
+        BitBuffer buff = new BitBuffer(8000);
         for (int i = 1; i < 100; i++) {
-            BitBuffer b = new BitBuffer(new byte[20]);
+            BitBuffer b = new BitBuffer(160);
             b.writeEliasDelta(i);
             buff.write(b);
         }
@@ -203,7 +203,7 @@ public class BitCodes {
 
     @Test
     public void testSeek() {
-        BitBuffer buff = new BitBuffer(new byte[1000]);
+        BitBuffer buff = new BitBuffer(8000);
         for (int i = 0; i < 100; i++) {
             buff.seek(10 * i);
             buff.writeNumber(i, 8);
@@ -243,9 +243,12 @@ public class BitCodes {
     public void testGolombRice() {
         Random r = new Random(1);
         for (int i = 0; i < 1000; i++) {
-            BitBuffer buff = new BitBuffer(new byte[1024 * 1024]);
+            BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
             int shift = r.nextInt(8);
             int val = r.nextInt(100000);
+if(val == 64588) {
+;    System.out.println("test");
+}
             buff.writeGolombRice(shift, val);
             buff.writeGolombRice(1, 10);
             int len = buff.position();

@@ -53,11 +53,12 @@ public class RandomizedTest {
         // size 100000
         // CHD: generated in 1.52 seconds, 2.257 bits/key, eval 219 nanoseconds/key
         // GOV: generated in 0.32 seconds, 2.324 bits/key, eval 207 nanoseconds/key
+        RandomizedTest.test(8, 1024, 8 * 1024, true);
         for (int i = 0; i < 5; i++) {
             if (verifyOneTest()) {
                 return;
             }
-            RandomizedTest.test(4, 1024, 8 * 1024, true);
+            RandomizedTest.test(8, 1024, 8 * 1024, true);
         }
         Assert.fail();
     }
@@ -65,7 +66,7 @@ public class RandomizedTest {
     private static boolean verifyOneTest() {
         int size = 100_000;
         int leafSize = 11;
-        int loadFactor = 50;
+        int loadFactor = 45;
         for (int j = 0; j < 5; j++) {
             System.gc();
         }
@@ -76,9 +77,9 @@ public class RandomizedTest {
                 " seconds to generate");
         System.out.println("  " + info.evaluateNanos +
                 " nanoseconds to evaluate");
-        if (info.bitsPerKey < 2.0 &&
-                info.generateNanos * size / 1_000_000_000 < 1.0 &&
-                info.evaluateNanos < 300) {
+        if (info.bitsPerKey < 1.97 &&
+                info.generateNanos * size / 1_000_000_000 < 0.5 &&
+                info.evaluateNanos < 280) {
             // all tests passed
             return true;
         }

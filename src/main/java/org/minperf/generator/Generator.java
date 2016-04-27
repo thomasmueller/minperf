@@ -87,7 +87,7 @@ public class Generator<T> {
         int size = collection.size();
         int bucketCount = (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
-        BitBuffer all = new BitBuffer(new byte[10 + size / 2]);
+        BitBuffer all = new BitBuffer(size * 4 + 100);
         all.writeEliasDelta(size + 1);
         if (size > 1) {
             generateBuckets(collection, size, bucketCount, all);
@@ -138,14 +138,15 @@ public class Generator<T> {
         }
         generate(data, hashes, outList);
         // assuming 4 bits per key worst case
-        BitBuffer bitOut = new BitBuffer(new byte[10 + (int) (size / 2)]);
+        BitBuffer bitOut = new BitBuffer((int) size * 4 + 100);
         int add = 0;
         int[] startList = new int[outList.size()];
         int[] addList = new int[outList.size()];
         for (int i = 0; i < outList.size(); i++) {
             addList[i] = add;
-            startList[i] = bitOut.position();
             BitBuffer out = outList.get(i);
+            processOverlap(bitOut, out);
+            startList[i] = bitOut.position();
             if (out != null) {
                 bitOut.write(out);
             }
@@ -196,6 +197,26 @@ public class Generator<T> {
             }
         }
         d.write(bitOut);
+    }
+
+    private static void processOverlap(BitBuffer buffer, BitBuffer append) {
+        if (append == null) {
+            return;
+        }
+        int best = 0;
+        for (int size = 1; size < 64; size++) {
+            if (buffer.position() < size || append.position() < size) {
+                break;
+            }
+            long b = buffer.readNumber(buffer.position() - size, size);
+            long a = append.readNumber(0, size);
+            if (a == b) {
+                best = size;
+            }
+        }
+        if (best > 0) {
+            buffer.seek(buffer.position() - best);
+        }
     }
 
     private void generate(final T[][] lists,

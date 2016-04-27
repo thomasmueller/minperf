@@ -22,7 +22,7 @@ class SingleThreadedProcessor<T> implements Processor<T> {
     public void process(T[][] lists, int[][] hashLists, ArrayList<BitBuffer> outList) {
         for (int i = 0; i < lists.length; i++) {
             int size = lists[i].length;
-            out = new BitBuffer(new byte[10 + size * 4]); 
+            out = new BitBuffer(size * 4 + 100);
             generator.generate(lists[i], hashLists[i], 0, this);
             outList.add(out);
         }
@@ -45,5 +45,5 @@ class SingleThreadedProcessor<T> implements Processor<T> {
     public void dispose() {
         // nothing to do
     }
-    
+
 }

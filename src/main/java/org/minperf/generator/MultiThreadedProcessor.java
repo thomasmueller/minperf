@@ -14,7 +14,7 @@ import org.minperf.BitBuffer;
 class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> {
 
     private static ForkJoinPool pool;
-    
+
     private static final long serialVersionUID = 1L;
     final Generator<T> generator;
     BitBuffer out;
@@ -28,7 +28,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
         this.hashes = hashes;
         this.startIndex = startIndex;
     }
-    
+
     public MultiThreadedProcessor(Generator<T> recSplitGenerator) {
         pool = new ForkJoinPool(Generator.PARALLELISM);
         generator = recSplitGenerator;
@@ -60,7 +60,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     @Override
     public void writeLeaf(int shift, long index) {
         int bits = BitBuffer.getGolombRiceSize(shift, index);
-        out = new BitBuffer(new byte[(bits + 7) / 8]);
+        out = new BitBuffer(bits);
         out.writeGolombRice(shift, index);
     }
 
@@ -80,7 +80,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
                 bits += p.out.position();
             }
         }
-        out = new BitBuffer(new byte[(bits + 7) / 8]);
+        out = new BitBuffer(bits);
         out.writeGolombRice(shift, index);
         for (MultiThreadedProcessor<T> p : list) {
             if (p.out != null) {
@@ -88,7 +88,6 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
             }
             p.clean();
         }
-
     }
 
     private void clean() {
@@ -101,7 +100,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     protected void compute() {
         generator.generate(data, hashes, startIndex, this);
     }
-    
+
     @Override
     public void dispose() {
         pool.shutdown();

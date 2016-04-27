@@ -6,7 +6,7 @@ package org.minperf;
 public class Paper {
 
     public static void main(String... args) {
-        
+
         simpleTest();
 
         // 4.1 Parameters
@@ -20,7 +20,7 @@ public class Paper {
         TimeAndSpaceEstimator.listEvalulationTimes();
         // 4.7 Probabilities
         Probability.bucketTooLarge();
-        Probability.asymmetricCase();        
+        Probability.asymmetricCase();
         // 4.8 Rice
         BitCodes.printRiceExamples();
         BitCodes.printEliasDeltaExample();
@@ -35,9 +35,9 @@ public class Paper {
         WikipediaTest.main();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();
-        
+
     }
-    
+
     private static void simpleTest() {
         for (int i = 8; i < 1000; i *= 2) {
             RandomizedTest.test(2, i, i, true);

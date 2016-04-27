@@ -12,14 +12,20 @@ public class TimeAndSpaceEstimator {
     public static void listEvalulationTimes() {
         System.out.println("4.5 Evaluation times");
         int size = 100000;
-        for (int loadFactor = 20; loadFactor <= 20000; loadFactor *= 10) {
-            System.out.println("loadFactor " + loadFactor);
-            for (int leafSize = 6; leafSize < 18; leafSize++) {
+        for (int loadFactor = 25; loadFactor <= 20000; loadFactor *= 10) {
+            System.out.println("    \\addplot");
+            System.out.println("        plot coordinates {");
+            double minBitsPerKey = 10, maxBitsPerKey = 0;
+            for (int leafSize = 8; leafSize < 16; leafSize++) {
                 FunctionInfo info = RandomizedTest.test(leafSize, loadFactor,
                         size, true);
-                System.out.println("  leafSize " + leafSize + " " +
-                        info.evaluateNanos);
+                System.out.println("        (" + leafSize + ", " + info.evaluateNanos + ")");
+                minBitsPerKey = Math.min(minBitsPerKey, info.bitsPerKey);
+                maxBitsPerKey = Math.max(maxBitsPerKey, info.bitsPerKey);
             }
+            System.out.println("   };");
+            System.out.printf("   \\addlegendentry{$loadFactor$ %d; from %.2f to %.2f bits/key}\n",
+                    loadFactor, maxBitsPerKey, minBitsPerKey);
         }
     }
 

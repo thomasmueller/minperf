@@ -13,6 +13,10 @@ public class BitBuffer {
     private final long[] data;
     private int pos;
 
+    public BitBuffer(int bits) {
+        this.data = new long[(bits + 63) / 64];
+    }
+
     public BitBuffer(byte[] data) {
         this.data = new long[(data.length + 7) / 8];
         if (this.data.length != data.length * 8) {
@@ -54,6 +58,9 @@ public class BitBuffer {
     }
 
     public long readNumber(int pos, int bitCount) {
+        if (bitCount == 0) {
+            return 0;
+        }
         int remainingBits = 64 - (pos & 63);
         int index = pos >>> 6;
         long x = data[index];
@@ -107,8 +114,18 @@ public class BitBuffer {
         if (count < remainingBits) {
             return count;
         }
-        x = data[index + 1];
-        return count + Long.numberOfLeadingZeros(~x);
+        return readUntilZeroMore(count, index);
+    }
+
+    private int readUntilZeroMore(int count, int index) {
+        while (true) {
+            long x = data[++index];
+            if (x == -1L) {
+                count += 64;
+                continue;
+            }
+            return count + Long.numberOfLeadingZeros(~x);
+        }
     }
 
     private int readUntilZero() {

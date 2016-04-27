@@ -19,12 +19,12 @@ public class PerformanceTest {
     // GOV: 2.32 bits/key, 132 nanoseconds/key
 
     // RecSplit with FastLongHash:
-    // 2.00 bits/key, 159 nanoseconds/key evaluation time
+    // 1.96 bits/key, 164 nanoseconds/key evaluation time
     private int leafSize = 11;
     private int loadFactor = 50;
 
     // RecSplit with FastLongHash:
-    // 2.31 bits/key, 130 nanoseconds/key evaluation time
+    // 2.24 bits/key, 130 nanoseconds/key evaluation time
     // private int leafSize = 12;
     // private int loadFactor = 26;
 
