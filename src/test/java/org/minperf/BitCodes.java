@@ -246,9 +246,6 @@ public class BitCodes {
             BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
             int shift = r.nextInt(8);
             int val = r.nextInt(100000);
-if(val == 64588) {
-;    System.out.println("test");
-}
             buff.writeGolombRice(shift, val);
             buff.writeGolombRice(1, 10);
             int len = buff.position();
