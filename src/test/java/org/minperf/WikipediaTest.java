@@ -6,8 +6,8 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.minperf.universal.StringHash;
 import org.minperf.universal.UniversalHash;
+import org.minperf.utils.Text;
 
 /**
  * Test a from from Wikipedia.
@@ -40,15 +40,17 @@ public class WikipediaTest {
         byte[] data = new byte[(int) f.length()];
         f.readFully(data);
         ArrayList<Text> list = new ArrayList<Text>(30 * 1024 * 1024);
-        Text t = new Text(data, 0);
+        int end = Text.indexOf(data, 0, '\n');
+        Text t = new Text(data, 0, end);
         long time = System.currentTimeMillis();
         while (true) {
             list.add(t);
-            int end = t.end;
             if (end >= data.length - 1) {
                 break;
             }
-            t = new Text(data, end + 1);
+            int start = end + 1;
+            end = Text.indexOf(data, start, '\n');
+            t = new Text(data, start, end - start);
             long now = System.currentTimeMillis();
             if (now - time > 2000) {
                 System.out.println("size: " + list.size());
@@ -74,15 +76,17 @@ public class WikipediaTest {
         byte[] data = new byte[(int) f.length()];
         f.readFully(data);
         HashSet<Text> set = new HashSet<Text>(40 * 1024 * 1024);
-        Text t = new Text(data, 0);
+        int end = Text.indexOf(data, 0, '\n');
+        Text t = new Text(data, 0, end);
         long time = System.currentTimeMillis();
         while (true) {
             set.add(t);
-            int end = t.end;
             if (end >= data.length - 1) {
                 break;
             }
-            t = new Text(data, end + 1);
+            int start = end + 1;
+            end = Text.indexOf(data, start, '\n');
+            t = new Text(data, start, end - start);
             long now = System.currentTimeMillis();
             if (now - time > 2000) {
                 System.out.println("size: " + set.size());
@@ -142,72 +146,5 @@ public class WikipediaTest {
         System.out.println("len: " + desc.length);
         int bits = desc.length * 8;
         System.out.println(((double) bits / set.size()) + " bits/key");
-    }
-
-    /**
-     * A text.
-     */
-    static class Text {
-
-        /**
-         * The byte data (may be shared, so must not be modified).
-         */
-        final byte[] data;
-
-        /**
-         * The start and end location.
-         */
-        final int start, end;
-
-        Text(byte[] data, int start) {
-            this.data = data;
-            this.start = start;
-            int end = start;
-            while (data[end] != '\n') {
-                end++;
-            }
-            this.end = end;
-        }
-
-        /**
-         * The hash code (using a universal hash function).
-         *
-         * @param index the hash function index
-         * @return the hash code
-         */
-        public int hashCode(long index) {
-            return StringHash.getSipHash24(data, start, end, index, 0);
-        }
-
-        @Override
-        public int hashCode() {
-            return hashCode(0);
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (other == this) {
-                return true;
-            } else if (!(other instanceof Text)) {
-                return false;
-            }
-            Text o = (Text) other;
-            int s2 = o.start;
-            int e2 = o.end;
-            if (e2 - s2 != end - start) {
-                return false;
-            }
-            for (int s1 = start; s1 < end; s1++, s2++) {
-                if (data[s1] != o.data[s2]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            return new String(data, start, end - start);
-        }
     }
 }

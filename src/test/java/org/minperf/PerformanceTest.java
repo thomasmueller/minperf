@@ -78,13 +78,13 @@ public class PerformanceTest {
         } else {
             hash = new LongHash();
         }
-        long start = System.nanoTime();
-        BitBuffer buff = RecSplitBuilder.newInstance(hash).
-                leafSize(leafSize).loadFactor(loadFactor).
-                multiThreaded(true).generate(set);
-        byte[] data = buff.toByteArray();
 
+        long start = System.nanoTime();
+        byte[] data = RecSplitBuilder.newInstance(hash).
+                leafSize(leafSize).loadFactor(loadFactor).
+                multiThreaded(true).generate(set).toByteArray();
         long time = System.nanoTime() - start;
+
         int bits = data.length * 8;
         System.out.printf("Generated in %.2f seconds at %.2f bits/key, using %s\n",
                 time / 1_000_000_000., (double) bits / size,
