@@ -53,6 +53,13 @@ public class RecSplitBuilder<T> {
         return this;
     }
 
+    /**
+     * Generate the hash function description for a collection.
+     * The entries in the collection must be unique.
+     *
+     * @param collection the collection
+     * @return the hash function description
+     */
     public BitBuffer generate(Collection<T> collection) {
         Settings s = new Settings(leafSize, loadFactor);
         Generator<T> g = new Generator<T>(hash, s, multiThreaded);
