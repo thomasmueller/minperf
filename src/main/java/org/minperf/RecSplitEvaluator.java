@@ -52,14 +52,13 @@ public class RecSplitEvaluator<T> {
     }
 
     public int evaluate(T obj) {
-        int hashCode;
+        long hashCode;
         int bucket;
+        hashCode = hash.universalHash(obj, 0);
         if (bucketCount == 1) {
-            hashCode = 0;
             bucket = 0;
         } else {
-            hashCode = hash.universalHash(obj, 0);
-            bucket = Settings.supplementalHash(hashCode, 0, bucketCount);
+            bucket = Settings.scale(hashCode, bucketCount);
         }
         int add, start;
         int pos;
@@ -93,7 +92,6 @@ public class RecSplitEvaluator<T> {
         if (bucketCount > 0) {
             pos = headerBits + start;
         }
-        hashCode = hash.universalHash(obj, 1);
         return add + evaluate(pos, obj, hashCode, 0, 0, bucketSize);
     }
 
@@ -123,7 +121,7 @@ public class RecSplitEvaluator<T> {
         return pos;
     }
 
-    private int evaluate(int pos, T obj, int hashCode,
+    private int evaluate(int pos, T obj, long hashCode,
             long index, int add, int size) {
         while (true) {
             if (size < 2) {
@@ -138,7 +136,7 @@ public class RecSplitEvaluator<T> {
             index += value + 1;
             long x = Settings.getUniversalHashIndex(index);
             if (x != oldX) {
-                hashCode = hash.universalHash(obj, x + 1);
+                hashCode = hash.universalHash(obj, x);
             }
             if (size <= settings.getLeafSize()) {
                 int h = Settings.supplementalHash(hashCode, index, size);

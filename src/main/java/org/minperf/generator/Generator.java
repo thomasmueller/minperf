@@ -32,7 +32,7 @@ public class Generator<T> {
     }
 
     @SuppressWarnings("unchecked")
-    void generate(T[] data, int[] hashes, long startIndex, Processor<T> p) {
+    void generate(T[] data, long[] hashes, long startIndex, Processor<T> p) {
         int size = data.length;
         if (size < 2) {
             return;
@@ -49,7 +49,7 @@ public class Generator<T> {
             if (Settings.needNewUniversalHashIndex(index)) {
                 long x = Settings.getUniversalHashIndex(index);
                 for (int i = 0; i < size; i++) {
-                    hashes[i] = hash.universalHash(data[i], x + 1);
+                    hashes[i] = hash.universalHash(data[i], x);
                 }
             }
             if (trySplitEvenly(hashes, index)) {
@@ -70,14 +70,14 @@ public class Generator<T> {
             otherPart = firstPart;
         }
         T[][] data2;
-        int[][] hashes2;
+        long[][] hashes2;
         if (firstPart != otherPart) {
             data2 = (T[][]) new Object[][] { (T[]) new Object[firstPart],
                     (T[]) new Object[otherPart] };
-            hashes2 = new int[][] { new int[firstPart], new int[otherPart] };
+            hashes2 = new long[][] { new long[firstPart], new long[otherPart] };
         } else {
             data2 = (T[][]) new Object[split][firstPart];
-            hashes2 = new int[split][firstPart];
+            hashes2 = new long[split][firstPart];
         }
         splitEvenly(data, hashes, index, data2, hashes2);
         p.split(writeK, writeIndex, index, data2, hashes2);
@@ -110,8 +110,8 @@ public class Generator<T> {
             if (bucketCount == 1) {
                 b = 0;
             } else {
-                int h = hash.universalHash(t, 0);
-                b = Settings.supplementalHash(h, 0, bucketCount);
+                long h = hash.universalHash(t, 0);
+                b = Settings.scale(h, bucketCount);
             }
             sizes[b]++;
             if (sizes[b] > maxBucketSize) {
@@ -123,16 +123,16 @@ public class Generator<T> {
         ArrayList<BitBuffer> outList = new ArrayList<BitBuffer>();
         @SuppressWarnings("unchecked")
         T[][] data = (T[][]) new Object[bucketCount][];
-        int[][] hashes = new int[bucketCount][];
+        long[][] hashes = new long[bucketCount][];
         for (int i = 0; i < bucketCount; i++) {
             ArrayList<T> list = subList.get(i);
             int len = list.size();
             @SuppressWarnings("unchecked")
             T[] x = (T[]) list.toArray(new Object[len]);
             data[i] = x;
-            int[] h = new int[len];
+            long[] h = new long[len];
             for (int j = 0; j < len; j++) {
-                h[j] = hash.universalHash(list.get(j), 1);
+                h[j] = hash.universalHash(list.get(j), 0);
             }
             hashes[i] = h;
         }
@@ -220,19 +220,19 @@ public class Generator<T> {
     }
 
     private void generate(final T[][] lists,
-            final int[][] hashLists,
+            final long[][] hashLists,
             final ArrayList<BitBuffer> outList) {
         processor.process(lists, hashLists, outList);
     }
 
-    private long getIndex(T[] data, int[] hashes, long startIndex) {
+    private long getIndex(T[] data, long[] hashes, long startIndex) {
         int size = data.length;
         long index = startIndex + 1;
         outer: while (true) {
             if (Settings.needNewUniversalHashIndex(index)) {
                 long x = Settings.getUniversalHashIndex(index);
                 for (int i = 0; i < size; i++) {
-                    hashes[i] = hash.universalHash(data[i], x + 1);
+                    hashes[i] = hash.universalHash(data[i], x);
                 }
                 Arrays.sort(hashes);
                 for (int i = 1; i < size; i++) {
@@ -252,7 +252,7 @@ public class Generator<T> {
         }
     }
 
-    private boolean trySplitEvenly(int[] hashes, long index) {
+    private boolean trySplitEvenly(long[] hashes, long index) {
         int size = hashes.length;
         int split = settings.getSplit(size);
         int firstPart, otherPart;
@@ -267,7 +267,7 @@ public class Generator<T> {
         if (firstPart != otherPart) {
             int limit = firstPart;
             for (int i = 0; i < size; i++) {
-                int x = hashes[i];
+                long x = hashes[i];
                 int h = Settings.supplementalHash(x, index, size);
                 if (h < limit) {
                     if (--firstPart < 0) {
@@ -284,7 +284,7 @@ public class Generator<T> {
         int[] count = new int[split];
         Arrays.fill(count, firstPart);
         for (int i = 0; i < size; i++) {
-            int x = hashes[i];
+            long x = hashes[i];
             int h = Settings.supplementalHash(x, index, split);
             if (--count[h] < 0) {
                 return false;
@@ -293,8 +293,8 @@ public class Generator<T> {
         return true;
     }
 
-    private void splitEvenly(T[] data, int[] hashes, long index, T[][] data2,
-            int[][] hashes2) {
+    private void splitEvenly(T[] data, long[] hashes, long index, T[][] data2,
+            long[][] hashes2) {
         int size = data.length;
         int split = data2.length;
         int firstPartSize = data2[0].length;
@@ -304,7 +304,7 @@ public class Generator<T> {
             int limit = firstPartSize;
             for (int i = 0; i < size; i++) {
                 T t = data[i];
-                int h = hashes[i];
+                long h = hashes[i];
                 int bucket = Settings.supplementalHash(h, index, size);
                 if (bucket < limit) {
                     data2[0][i0] = t;
@@ -321,7 +321,7 @@ public class Generator<T> {
         int[] pos = new int[split];
         for (int i = 0; i < size; i++) {
             T t = data[i];
-            int h = hashes[i];
+            long h = hashes[i];
             int bucket = Settings.supplementalHash(h, index, split);
             int p = pos[bucket]++;
             data2[bucket][p] = t;
@@ -329,11 +329,11 @@ public class Generator<T> {
         }
     }
 
-    static <T> boolean tryUnique(int[] hashes, long index) {
+    static <T> boolean tryUnique(long[] hashes, long index) {
         int bits = 0;
         int size = hashes.length;
         for (int i = 0; i < size; i++) {
-            int x = hashes[i];
+            long x = hashes[i];
             int h = Settings.supplementalHash(x, index, size);
             if ((bits & (1 << h)) != 0) {
                 return false;

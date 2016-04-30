@@ -8,18 +8,18 @@ package org.minperf.universal;
  * (the earlier the better).
  * <p>
  * The returned value does not need to be uniformly distributed.
- * 
+ *
  * @param <T> the type
  */
 public interface UniversalHash<T> {
 
     /**
      * Calculate the hash of the given object.
-     * 
+     *
      * @param key the key in the set
      * @param index the hash function index (0, 1, 2,...)
-     * @return an integer value with 32 bits
+     * @return the universal hash (64 bits)
      */
-    int universalHash(T key, long index);
+    long universalHash(T key, long index);
 
 }

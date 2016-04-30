@@ -19,12 +19,12 @@ public class PerformanceTest {
     // GOV: 2.32 bits/key, 132 nanoseconds/key
 
     // RecSplit with FastLongHash:
-    // 1.96 bits/key, 164 nanoseconds/key evaluation time
+    // 1.97 bits/key, 163 nanoseconds/key evaluation time
     private int leafSize = 11;
-    private int loadFactor = 50;
+    private int loadFactor = 55;
 
     // RecSplit with FastLongHash:
-    // 2.24 bits/key, 130 nanoseconds/key evaluation time
+    // 2.32 bits/key, 138 nanoseconds/key evaluation time
     // private int leafSize = 12;
     // private int loadFactor = 26;
 
@@ -90,11 +90,9 @@ public class PerformanceTest {
                 time / 1_000_000_000., (double) bits / size,
                 hash);
 
-        for (int i = 0; i < 10; i++) {
-            System.gc();
-        }
-
-        RecSplitEvaluator<Long> eval = RecSplitBuilder.newInstance(hash).
+        CountingHash<Long> count = new CountingHash<Long>(hash);
+        RecSplitEvaluator<Long> eval = RecSplitBuilder.
+                newInstance(count).
                 leafSize(leafSize).loadFactor(loadFactor).
                 buildEvaluator(new BitBuffer(data));
         BitSet bitSet = new BitSet();
@@ -108,7 +106,16 @@ public class PerformanceTest {
             }
             bitSet.set(y);
         }
+
+        for (int i = 0; i < 10; i++) {
+            System.gc();
+        }
+
         if (repeat > 0) {
+            eval = RecSplitBuilder.
+                    newInstance(hash).
+                    leafSize(leafSize).loadFactor(loadFactor).
+                    buildEvaluator(new BitBuffer(data));
             start = System.nanoTime();
             for (int i = 0; i < repeat; i++) {
                 for (int j = 0; j < size; j++) {
@@ -120,8 +127,10 @@ public class PerformanceTest {
                 }
             }
             time = System.nanoTime() - start;
-            System.out.printf("Evaluation time: %d nanoseconds/key\n",
-                    (int) (((double) time / repeat / size)));
+            System.out.printf("Evaluation time: %d nanoseconds/key, " +
+                    "universalHash: %f calls/key \n",
+                    (int) (((double) time / repeat / size)),
+                    (double) count.getCount() / size);
         }
     }
 
@@ -142,14 +151,44 @@ public class PerformanceTest {
     static class FastLongHash implements UniversalHash<Long> {
 
         @Override
-        public int universalHash(Long key, long index) {
-            // universalHashCalls++;
-            return (int) (Long.rotateLeft(key, (int) index) ^ (key >>> 16));
+        public long universalHash(Long key, long index) {
+            return Long.rotateLeft(key, (int) index) ^ (key >>> 16);
         }
 
         @Override
         public String toString() {
             return "FastLongHash (rotate&xor)";
+        }
+
+    }
+
+    /**
+     * A fast long hash implementation. It is not recommended to use this in the
+     * real world, it is just used to test the effect of using a faster hash
+     * function.
+     */
+    static class CountingHash<K> implements UniversalHash<K> {
+
+        private final UniversalHash<K> base;
+        private long count;
+
+        CountingHash(UniversalHash<K> base) {
+            this.base = base;
+        }
+
+        long getCount() {
+            return count;
+        }
+
+        @Override
+        public long universalHash(K key, long index) {
+            count++;
+            return base.universalHash(key, index);
+        }
+
+        @Override
+        public String toString() {
+            return "MeasuredHash " + base;
         }
 
     }

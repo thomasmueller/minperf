@@ -19,7 +19,7 @@ class SingleThreadedProcessor<T> implements Processor<T> {
     }
 
     @Override
-    public void process(T[][] lists, int[][] hashLists, ArrayList<BitBuffer> outList) {
+    public void process(T[][] lists, long[][] hashLists, ArrayList<BitBuffer> outList) {
         for (int i = 0; i < lists.length; i++) {
             int size = lists[i].length;
             out = new BitBuffer(size * 4 + 100);
@@ -34,7 +34,7 @@ class SingleThreadedProcessor<T> implements Processor<T> {
     }
 
     @Override
-    public void split(int shift, long index, long startIndex, T[][] data2, int[][] hashes2) {
+    public void split(int shift, long index, long startIndex, T[][] data2, long[][] hashes2) {
         out.writeGolombRice(shift, index);
         for (int i = 0; i < data2.length; i++) {
             generator.generate(data2[i], hashes2[i], startIndex, this);

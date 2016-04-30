@@ -44,13 +44,13 @@ public class Text {
      * @param index the hash function index
      * @return the hash code
      */
-    public int hashCode(long index) {
+    public long hashCode(long index) {
         return StringHash.getSipHash24(data, offset, offset + len, index, 0);
     }
 
     @Override
     public int hashCode() {
-        return hashCode(0);
+        return (int) hashCode(0);
     }
 
     @Override
@@ -102,7 +102,7 @@ public class Text {
     public static class UniversalTextHash implements UniversalHash<Text> {
 
         @Override
-        public int universalHash(Text o, long index) {
+        public long universalHash(Text o, long index) {
             return o.hashCode(index);
         }
 

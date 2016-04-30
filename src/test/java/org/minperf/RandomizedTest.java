@@ -63,10 +63,26 @@ public class RandomizedTest {
         Assert.fail();
     }
 
+    static void verifyParametersBestSize() {
+        // System.out.println(RandomizedTest.test(23, 828, 828, true));
+        System.out.println(RandomizedTest.test(23, 1656, 1656, true));
+        // System.out.println(RandomizedTest.test(23, 3312, 3312, true));
+        // System.out.println(RandomizedTest.test(23, 6624, 6624, true));
+        // System.out.println(RandomizedTest.test(25, 1250, 1250, true));
+        // System.out.println(RandomizedTest.test(25, 3750, 3750, true));
+        // System.out.println(RandomizedTest.test(25, 7500, 7500, true));
+        // System.out.println(RandomizedTest.test(25, 15000, 15000, true));
+
+        // size: 1656 leafSize: 23 loadFactor: 1656 bitsPerKey: 1.517512077294686
+        // generateSeconds: 907.279643 evaluateNanosPerKey: 554.3478260869565
+        // size: 1250 leafSize: 25 loadFactor: 1250 bitsPerKey: 1.5112
+        // generateSeconds: 7416.210937 evaluateNanosPerKey: 312.8
+    }
+
     private static boolean verifyOneTest() {
         int size = 100_000;
-        int leafSize = 11;
-        int loadFactor = 45;
+        int leafSize = 10;
+        int loadFactor = 55;
         for (int j = 0; j < 5; j++) {
             System.gc();
         }
@@ -77,9 +93,9 @@ public class RandomizedTest {
                 " seconds to generate");
         System.out.println("  " + info.evaluateNanos +
                 " nanoseconds to evaluate");
-        if (info.bitsPerKey < 1.97 &&
+        if (info.bitsPerKey < 1.94 &&
                 info.generateNanos * size / 1_000_000_000 < 0.5 &&
-                info.evaluateNanos < 280) {
+                info.evaluateNanos < 250) {
             // all tests passed
             return true;
         }
@@ -97,7 +113,7 @@ public class RandomizedTest {
             size = Math.max(size, 32 * 1024);
             FunctionInfo info = TimeAndSpaceEstimator.estimateTimeAndSpace(leafSize, loadFactor, size);
             System.out.println("        (" + info.leafSize + ", " + info.bitsPerKey + ")");
-            System.out.println("size: " + size);
+            // System.out.println("size: " + size);
         }
         System.out.println("experimental");
         for (int leafSize = 2; leafSize <= 23; leafSize++) {
@@ -157,8 +173,7 @@ public class RandomizedTest {
         RecSplitEvaluator<T> eval =
                 RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
                 buildEvaluator(new BitBuffer(description));
-        // Profiler prof = new Profiler().startCollecting();
-        long evaluateNanos = System.nanoTime();
+        // verify
         for (int i = 0; i < measureCount; i++) {
             for (T x : set) {
                 int index = eval.evaluate(x);
@@ -176,6 +191,20 @@ public class RandomizedTest {
                             " hash " + convertBytesToHex(description));
                 }
                 known.set(index);
+            }
+        }
+        // measure
+        // Profiler prof = new Profiler().startCollecting();
+        long evaluateNanos = System.nanoTime();
+        for (int i = 0; i < measureCount; i++) {
+            for (T x : set) {
+                int index = eval.evaluate(x);
+                if (index > set.size() || index < 0) {
+                    Assert.fail("wrong entry: " + x + " " + index +
+                            " leafSize " + leafSize +
+                            " loadFactor " + loadFactor +
+                            " hash " + convertBytesToHex(description));
+                }
             }
         }
         return evaluateNanos = System.nanoTime() - evaluateNanos;

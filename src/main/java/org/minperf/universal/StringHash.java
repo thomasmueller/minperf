@@ -10,12 +10,7 @@ public class StringHash implements UniversalHash<String> {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     @Override
-    public int universalHash(String key, long index) {
-        if (index == 0) {
-            // use the default hash of a string, which might already be
-            // available
-            return key.hashCode();
-        }
+    public long universalHash(String key, long index) {
         return getSipHash24(key, index, index);
     }
 
@@ -28,7 +23,7 @@ public class StringHash implements UniversalHash<String> {
      * @param k1 key 1
      * @return the hash value
      */
-    public static int getSipHash24(String o, long k0, long k1) {
+    public static long getSipHash24(String o, long k0, long k1) {
         byte[] b = o.getBytes(UTF8);
         return getSipHash24(b, 0, b.length, k0, k1);
     }
@@ -44,7 +39,7 @@ public class StringHash implements UniversalHash<String> {
      * @param k1 key 1
      * @return the hash value
      */
-    public static int getSipHash24(byte[] b, int start, int end, long k0,
+    public static long getSipHash24(byte[] b, int start, int end, long k0,
             long k1) {
         long v0 = k0 ^ 0x736f6d6570736575L;
         long v1 = k1 ^ 0x646f72616e646f6dL;
@@ -87,7 +82,7 @@ public class StringHash implements UniversalHash<String> {
             }
             v0 ^= m;
         }
-        return (int) (v0 ^ v1 ^ v2 ^ v3);
+        return v0 ^ v1 ^ v2 ^ v3;
     }
 
     @Override

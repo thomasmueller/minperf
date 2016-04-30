@@ -1,5 +1,6 @@
 package org.minperf;
 
+
 /**
  * The settings used to generate the hash function.
  */
@@ -25,7 +26,7 @@ public class Settings {
      * Could be increased to reduce the number of universal hash function calls,
      * which also speeds up evaluation time.
      */
-    private static final int SUPPLEMENTAL_HASH_SHIFT = 10;
+    private static final int SUPPLEMENTAL_HASH_SHIFT = 18;
 
     /**
      * The number of times the same universal hash is mixed using the
@@ -180,14 +181,32 @@ public class Settings {
         return loadFactor;
     }
 
-    public static int supplementalHash(int x, long index, int size) {
-        x += index;
+    public static int scale(long x, int size) {
+        // this is actually not completely uniform,
+        // there is a small bias towards smaller numbers
+        // possible speedup for the 2^n case:
+        // return x & (size - 1);
+        // division would also be faster
+        return (int) ((x & (-1L >>> 1)) % size);
+    }
+
+    private static int scale(int x, int size) {
+        // this is actually not completely uniform,
+        // there is a small bias towards smaller numbers
+        // possible speedup for the 2^n case:
+        // return x & (size - 1);
+        // division would also be faster
+        return (x & (-1 >>> 1)) % size;
+    }
+
+    public static int supplementalHash(long hash, long index, int size) {
+        // it would be better to use long,
+        // but not sure what the best constant would be then
+        int x = (int) (Long.rotateLeft(hash, (int) index) + index);
         x = ((x >>> 16) ^ x) * 0x45d9f3b;
         x = ((x >>> 16) ^ x) * 0x45d9f3b;
         x = (x >>> 16) ^ x;
-        // possible speedup for the 2^n case:
-        // return x & (size - 1);
-        return (x & (-1 >>> 1)) % size;
+        return scale(x, size);
     }
 
 }

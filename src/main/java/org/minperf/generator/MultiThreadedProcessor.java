@@ -19,10 +19,10 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     final Generator<T> generator;
     BitBuffer out;
     private T[] data;
-    private int[] hashes;
+    private long[] hashes;
     private long startIndex;
 
-    MultiThreadedProcessor(Generator<T> generator, T[] data, int[] hashes, long startIndex) {
+    MultiThreadedProcessor(Generator<T> generator, T[] data, long[] hashes, long startIndex) {
         this.generator = generator;
         this.data = data;
         this.hashes = hashes;
@@ -35,7 +35,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     }
 
     @Override
-    public void process(final T[][] lists, final int[][] hashLists, final ArrayList<BitBuffer> outList) {
+    public void process(final T[][] lists, final long[][] hashLists, final ArrayList<BitBuffer> outList) {
         pool.invoke(new RecursiveAction() {
 
             private static final long serialVersionUID = 1L;
@@ -65,7 +65,7 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     }
 
     @Override
-    public void split(int shift, long index, long startIndex, T[][] data2, int[][] hashes2) {
+    public void split(int shift, long index, long startIndex, T[][] data2, long[][] hashes2) {
         int split = data2.length;
         @SuppressWarnings("unchecked")
         MultiThreadedProcessor<T>[] list = new MultiThreadedProcessor[split];

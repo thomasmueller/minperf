@@ -10,12 +10,12 @@ import org.minperf.BitBuffer;
  * @param <T> the type
  */
 interface Processor<T> {
-    
-    void process(T[][] lists, int[][] hashLists, ArrayList<BitBuffer> outList);
+
+    void process(T[][] lists, long[][] hashLists, ArrayList<BitBuffer> outList);
 
     void writeLeaf(int shift, long index);
 
-    void split(int shift, long index, long startIndex, T[][] data2, int[][] hashes2);
+    void split(int shift, long index, long startIndex, T[][] data2, long[][] hashes2);
 
     void dispose();
 }

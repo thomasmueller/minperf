@@ -6,10 +6,7 @@ package org.minperf.universal;
 public class LongHash implements UniversalHash<Long> {
 
     @Override
-    public int universalHash(Long key, long index) {
-        if (index == 0) {
-            return key.hashCode();
-        }
+    public long universalHash(Long key, long index) {
         long x = key.longValue();
         long v0 = index ^ 0x736f6d6570736575L;
         long v1 = index ^ 0x646f72616e646f6dL;
@@ -33,7 +30,7 @@ public class LongHash implements UniversalHash<Long> {
             v2 = Long.rotateLeft(v2, 32);
         }
         v0 ^= x;
-        return (int) (v0 ^ v1 ^ v2 ^ v3);
+        return v0 ^ v1 ^ v2 ^ v3;
     }
 
     @Override

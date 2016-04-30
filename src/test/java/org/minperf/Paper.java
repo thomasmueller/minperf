@@ -9,15 +9,11 @@ public class Paper {
 
         simpleTest();
 
-        // 4.1 Parameters
-        RandomizedTest.verifyParameters();
         // 4.3 Split Rule
         SettingsTest.printSplitRule();
         // 4.4 Data Format
         BitCodes.printPositiveMapping();
         Graphics.generateSampleTikz();
-        // 4.5 Evaluation Algorithm
-        TimeAndSpaceEstimator.listEvalulationTimes();
         // 4.7 Probabilities
         Probability.bucketTooLarge();
         Probability.asymmetricCase();
@@ -33,6 +29,18 @@ public class Paper {
         RandomizedTest.reasonableParameterValues();
         // 6.2 Using Real-World Data
         WikipediaTest.main();
+
+        // does not always work (depends on the hardware):
+        // 4.1 Parameters
+        RandomizedTest.verifyParameters();
+
+        // slow:
+
+        // 4.5 Evaluation Algorithm
+        TimeAndSpaceEstimator.listEvalulationTimes();
+        // 4.1 Parameters
+        TimeAndSpaceEstimator.calcBestSizes();
+        RandomizedTest.verifyParametersBestSize();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();
 

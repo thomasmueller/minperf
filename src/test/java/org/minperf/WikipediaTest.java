@@ -6,7 +6,6 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.minperf.universal.UniversalHash;
 import org.minperf.utils.Text;
 
 /**
@@ -103,16 +102,9 @@ public class WikipediaTest {
     }
 
     private static void test(ArrayList<Text> list, int leafSize, int loadFactor) {
-        UniversalHash<Text> hash = new UniversalHash<Text>() {
-
-            @Override
-            public int universalHash(Text o, long index) {
-                return o.hashCode(index);
-            }
-
-        };
         long time = System.currentTimeMillis();
-        byte[] desc = RecSplitBuilder.newInstance(hash).
+        byte[] desc = RecSplitBuilder.
+                newInstance(new Text.UniversalTextHash()).
                 leafSize(leafSize).
                 loadFactor(loadFactor).
                 generate(list).toByteArray();
@@ -126,16 +118,9 @@ public class WikipediaTest {
     }
 
     private static void test(HashSet<Text> set, int leafSize, int loadFactor) {
-        UniversalHash<Text> hash = new UniversalHash<Text>() {
-
-            @Override
-            public int universalHash(Text o, long index) {
-                return o.hashCode(index);
-            }
-
-        };
         long time = System.currentTimeMillis();
-        byte[] desc = RecSplitBuilder.newInstance(hash).
+        byte[] desc = RecSplitBuilder.
+                newInstance(new Text.UniversalTextHash()).
                 leafSize(leafSize).
                 loadFactor(loadFactor).
                 generate(set).toByteArray();
