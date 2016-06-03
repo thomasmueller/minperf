@@ -58,7 +58,7 @@ public class RecSplitEvaluator<T> {
         if (bucketCount == 1) {
             bucket = 0;
         } else {
-            bucket = Settings.scale(hashCode, bucketCount);
+            bucket = Settings.scaleLong(hashCode, bucketCount);
         }
         int add, start;
         int pos;

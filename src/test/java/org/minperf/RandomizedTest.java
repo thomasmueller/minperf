@@ -5,6 +5,8 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -33,6 +35,60 @@ public class RandomizedTest {
         for (int i = 0; i <= 5; i++) {
             HEX_DECODE[i + 'a'] = HEX_DECODE[i + 'A'] = i + 10;
         }
+    }
+
+    public static void printGenerationTimeVersusSpace() {
+        System.out.println("B Generation Time Versus Space");
+        int size = 10000;
+        System.out.println("size: " + size);
+        ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
+        outer:
+        for (int leafSize = 2; leafSize <= 20; leafSize++) {
+            int minLoadFactor = 16;
+            for (int loadFactor = minLoadFactor; loadFactor < 8 * 1024; loadFactor *= 2) {
+                System.out.println("leafSize " + leafSize + " " + loadFactor);
+                FunctionInfo info = test(leafSize, loadFactor, size, false);
+                if (info.generateNanos >= 1000000) {
+                    if (loadFactor == minLoadFactor) {
+                        // done
+                        break outer;
+                    }
+                    // next leaf size
+                    break;
+                }
+                if (info.bitsPerKey < 2.4) {
+                    list.add(info);
+                }
+            }
+        }
+        Collections.sort(list, new Comparator<FunctionInfo>() {
+
+            @Override
+            public int compare(FunctionInfo o1, FunctionInfo o2) {
+                int comp = Double.compare(o1.generateNanos, o2.generateNanos);
+                if (comp == 0) {
+                    comp = Double.compare(o1.bitsPerKey, o2.bitsPerKey);
+                }
+                return comp;
+            }
+
+        });
+        FunctionInfo last = null;
+        int minLoadFactor = Integer.MAX_VALUE, maxLoadFactor = 0;
+        int minLeafSize = Integer.MAX_VALUE, maxLeafSize = 0;
+        for (FunctionInfo info : list) {
+            if (last != null && info.bitsPerKey > last.bitsPerKey) {
+                continue;
+            }
+            System.out.println("        (" + info.bitsPerKey + ", " + info.generateNanos + ")");
+            minLoadFactor = Math.min(minLoadFactor, info.loadFactor);
+            maxLoadFactor = Math.max(maxLoadFactor, info.loadFactor);
+            minLeafSize = Math.min(minLeafSize, info.leafSize);
+            maxLeafSize = Math.max(maxLeafSize, info.leafSize);
+            last = info;
+        }
+        System.out.println("for loadFactor between " + minLoadFactor + " and " + maxLoadFactor);
+        System.out.println("and leafSize between " + minLeafSize + " and " + maxLeafSize);
     }
 
     public static void runTests() {

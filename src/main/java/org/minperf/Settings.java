@@ -1,6 +1,5 @@
 package org.minperf;
 
-
 /**
  * The settings used to generate the hash function.
  */
@@ -181,7 +180,29 @@ public class Settings {
         return loadFactor;
     }
 
-    public static int scale(long x, int size) {
+    public static int supplementalHash(long hash, long index, int size) {
+        // it would be better to use long,
+        // but with some processors, 32-bit multiplication
+        // seem to be much faster
+        // (about 1200 ms for 32 bit, about 2000 ms for 64 bit)
+        int x = (int) (Long.rotateLeft(hash, (int) index) ^ index);
+        x = ((x >>> 16) ^ x) * 0x45d9f3b;
+        x = ((x >>> 16) ^ x) * 0x45d9f3b;
+        x = (x >>> 16) ^ x;
+        return scaleInt(x, size);
+    }
+
+    public static int supplementalHashLong(long hash, long index, int size) {
+        long x = hash ^ index;
+        // from http://zimbry.blogspot.it/2011/09/better-bit-mixing-improving-on.html
+        // also used in it.unimi.dsi.fastutil
+        x = (x ^ (x >>> 30)) * 0xbf58476d1ce4e5b9L;
+        x = (x ^ (x >>> 27)) * 0x94d049bb133111ebL;
+        x = x ^ (x >>> 31);
+        return scaleLong(x, size);
+    }
+
+    public static int scaleLong(long x, int size) {
         // this is actually not completely uniform,
         // there is a small bias towards smaller numbers
         // possible speedup for the 2^n case:
@@ -190,23 +211,13 @@ public class Settings {
         return (int) ((x & (-1L >>> 1)) % size);
     }
 
-    private static int scale(int x, int size) {
+    private static int scaleInt(int x, int size) {
         // this is actually not completely uniform,
         // there is a small bias towards smaller numbers
         // possible speedup for the 2^n case:
         // return x & (size - 1);
         // division would also be faster
         return (x & (-1 >>> 1)) % size;
-    }
-
-    public static int supplementalHash(long hash, long index, int size) {
-        // it would be better to use long,
-        // but not sure what the best constant would be then
-        int x = (int) (Long.rotateLeft(hash, (int) index) + index);
-        x = ((x >>> 16) ^ x) * 0x45d9f3b;
-        x = ((x >>> 16) ^ x) * 0x45d9f3b;
-        x = (x >>> 16) ^ x;
-        return scale(x, size);
     }
 
 }

@@ -111,7 +111,7 @@ public class Generator<T> {
                 b = 0;
             } else {
                 long h = hash.universalHash(t, 0);
-                b = Settings.scale(h, bucketCount);
+                b = Settings.scaleLong(h, bucketCount);
             }
             sizes[b]++;
             if (sizes[b] > maxBucketSize) {
