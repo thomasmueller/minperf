@@ -55,7 +55,7 @@ public class StringHash implements UniversalHash<String> {
                     m |= ((long) b[off + i] & 255) << (8 * i);
                 }
                 if (i < 8) {
-                    m |= ((long) b.length) << 56;
+                    m |= ((long) end - start) << 56;
                 }
                 v3 ^= m;
                 repeat = 2;
