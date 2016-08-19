@@ -134,7 +134,7 @@ public class PerformanceTest {
         }
     }
 
-    static HashSet<Long> createSet(int size, int seed) {
+    public static HashSet<Long> createSet(int size, int seed) {
         Random r = new Random(seed);
         HashSet<Long> set = new HashSet<Long>(size);
         while (set.size() < size) {
