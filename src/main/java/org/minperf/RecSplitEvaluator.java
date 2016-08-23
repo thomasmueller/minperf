@@ -51,6 +51,10 @@ public class RecSplitEvaluator<T> {
         headerBits = tableStart + tableBits;
     }
 
+    public int getTableBitCount() {
+        return headerBits - tableStart;
+    }
+
     public int evaluate(T obj) {
         long hashCode;
         int bucket;

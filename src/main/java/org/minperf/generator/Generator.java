@@ -17,9 +17,9 @@ public class Generator<T> {
 
     static final int PARALLELISM = Runtime.getRuntime().availableProcessors();
 
-    final Settings settings;
-    final UniversalHash<T> hash;
-    final Processor<T> processor;
+    protected final Settings settings;
+    protected final UniversalHash<T> hash;
+    protected final Processor<T> processor;
 
     public Generator(UniversalHash<T> hash, Settings settings, boolean multiThreaded) {
         this.settings = settings;
@@ -29,6 +29,18 @@ public class Generator<T> {
         } else {
             processor = new SingleThreadedProcessor<T>(this);
         }
+    }
+
+    public BitBuffer generate(Collection<T> collection) {
+        int size = collection.size();
+        int bucketCount = (size + (settings.getLoadFactor() - 1)) /
+                settings.getLoadFactor();
+        BitBuffer all = new BitBuffer(size * 4 + 100);
+        all.writeEliasDelta(size + 1);
+        if (size > 1) {
+            generateBuckets(collection, size, bucketCount, all);
+        }
+        return all;
     }
 
     @SuppressWarnings("unchecked")
@@ -81,18 +93,6 @@ public class Generator<T> {
         }
         splitEvenly(data, hashes, index, data2, hashes2);
         p.split(writeK, writeIndex, index, data2, hashes2);
-    }
-
-    public BitBuffer generate(Collection<T> collection) {
-        int size = collection.size();
-        int bucketCount = (size + (settings.getLoadFactor() - 1)) /
-                settings.getLoadFactor();
-        BitBuffer all = new BitBuffer(size * 4 + 100);
-        all.writeEliasDelta(size + 1);
-        if (size > 1) {
-            generateBuckets(collection, size, bucketCount, all);
-        }
-        return all;
     }
 
     private void generateBuckets(Collection<T> collection, long size, int bucketCount,
@@ -169,6 +169,7 @@ public class Generator<T> {
                 } else {
                     int expectedStart = (int) (dataBits * i / bucketCount);
                     int offsetStart = startList[i] - expectedStart;
+                    // use the same maxOffset here
                     maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetStart));
                 }
             }
@@ -219,7 +220,7 @@ public class Generator<T> {
         }
     }
 
-    private void generate(final T[][] lists,
+    public void generate(final T[][] lists,
             final long[][] hashLists,
             final ArrayList<BitBuffer> outList) {
         processor.process(lists, hashLists, outList);
