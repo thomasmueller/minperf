@@ -9,7 +9,7 @@ import org.minperf.BitBuffer;
  *
  * @param <T> the type
  */
-class SingleThreadedProcessor<T> implements Processor<T> {
+public class SingleThreadedProcessor<T> implements Processor<T> {
 
     BitBuffer out;
     private final Generator<T> generator;
@@ -34,10 +34,10 @@ class SingleThreadedProcessor<T> implements Processor<T> {
     }
 
     @Override
-    public void split(int shift, long index, long startIndex, T[][] data2, long[][] hashes2) {
+    public void split(int shift, long index, long startIndex, T[][] data, long[][] hashes) {
         out.writeGolombRice(shift, index);
-        for (int i = 0; i < data2.length; i++) {
-            generator.generate(data2[i], hashes2[i], startIndex, this);
+        for (int i = 0; i < data.length; i++) {
+            generator.generate(data[i], hashes[i], startIndex, this);
         }
     }
 

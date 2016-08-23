@@ -11,7 +11,7 @@ import org.minperf.BitBuffer;
  *
  * @param <T> the type
  */
-class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> {
+public class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> {
 
     private static ForkJoinPool pool;
 
@@ -65,12 +65,12 @@ class MultiThreadedProcessor<T> extends RecursiveAction implements Processor<T> 
     }
 
     @Override
-    public void split(int shift, long index, long startIndex, T[][] data2, long[][] hashes2) {
-        int split = data2.length;
+    public void split(int shift, long index, long startIndex, T[][] data, long[][] hashes) {
+        int split = data.length;
         @SuppressWarnings("unchecked")
         MultiThreadedProcessor<T>[] list = new MultiThreadedProcessor[split];
         for (int i = 0; i < split; i++) {
-            list[i] = new MultiThreadedProcessor<T>(generator, data2[i], hashes2[i],
+            list[i] = new MultiThreadedProcessor<T>(generator, data[i], hashes[i],
                     startIndex);
         }
         invokeAll(list);
