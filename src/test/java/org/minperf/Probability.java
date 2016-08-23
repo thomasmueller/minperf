@@ -11,7 +11,7 @@ import java.util.Random;
  * Probability methods.
  */
 public class Probability {
-    
+
     private static final HashMap<Long, BigInteger> FACTORIALS = new HashMap<Long, BigInteger>();
 
     public static void bucketTooLarge() {
@@ -27,7 +27,7 @@ public class Probability {
         // "the probability that the maximum list length is t, is at most ne^t/t^t."
         System.out.println("4.7 Probabilities");
         System.out.println("Bucket Too Large");
-/*        
+/*
         double minP = Math.pow(10, -15);
         for (int loadFactor = 1; loadFactor < 16 * 1024; loadFactor *= 2) {
             int l = 1;
@@ -68,7 +68,7 @@ public class Probability {
             System.out.println("        (" + loadFactor + ", " + load + ")");
         }
     }
-    
+
     private static int testBallsIntoBins(int mBalls, int nBins) {
         int tests = 10000000 / mBalls;
         if (tests < 1) {
@@ -86,6 +86,19 @@ public class Probability {
         return max;
     }
 
+    public static int getPoisson(Random r, double lambda) {
+        // http://stackoverflow.com/questions/1241555/algorithm-to-generate-poisson-and-binomial-random-numbers
+        // a faster way is described here: http://www.johndcook.com/blog/2010/06/14/generating-poisson-random-values/
+        double limit = Math.exp(-lambda);
+        double p = 1.0;
+        int k = 0;
+        do {
+            k++;
+            p *= r.nextDouble();
+        } while (p > limit);
+        return k - 1;
+    }
+
     public static void asymmetricCase() {
         System.out.println("4.7 Probabilities");
         System.out.println("Asymmetric Split");
@@ -98,11 +111,11 @@ public class Probability {
         }
     }
 
-/*    
+/*
     private static double poissonLarger(int averageNumberOfEventsPerInterval,
             int eventsInIntervalOrMore) {
-        // Wikipedia: Bounds for the tail probabilities of a Poisson random variable  X 
-        // \sim \operatorname{Pois}(\lambda) can be derived 
+        // Wikipedia: Bounds for the tail probabilities of a Poisson random variable  X
+        // \sim \operatorname{Pois}(\lambda) can be derived
         // using a Chernoff bound argument
         int a = averageNumberOfEventsPerInterval;
         int x = eventsInIntervalOrMore;
@@ -118,11 +131,11 @@ public class Probability {
         int k = eventsInInterval;
         return Math.pow(a, k) * Math.exp(-a) / factorial(k).doubleValue();
     }
-    
+
     /**
      * Probability, with a certain bucket count, that the bucket is of size
      * bucketSize, if size entries were added.
-     * 
+     *
      * @param bucketCount the bucket count
      * @param size the number of entries
      * @param bucketSize the bucket size
@@ -131,7 +144,7 @@ public class Probability {
     static double calcProbabilityOfBucketSize(int bucketCount, int size, int bucketSize) {
         return estProb(1.0 / bucketCount, size, bucketSize);
     }
-    
+
     static double estProbabilityOfBucketSize(int bucketCount, int size, int bucketSize) {
         // Gonnet, page 10, separate chaining
         double k = bucketSize;
@@ -141,18 +154,18 @@ public class Probability {
         return Math.exp(-a) * Math.pow(a, k) /
                 factorial((long) k).doubleValue();
     }
-    
+
     // Binomial Probability Formula
     private static double estProb(double prob, int trials, int successes) {
-        // Probability formula for Bernoulli trials. 
+        // Probability formula for Bernoulli trials.
         // The probability of achieving exactly a number of successes in a number of trials.
         double comb = Probability.calcCombinations(trials, successes);
         return comb *
                 Math.pow(prob, successes) * Math.pow(1. - prob, trials - successes);
     }
-    
+
     static double calcCombinations(int n, int k) {
-        BigInteger nf = factorial(n); 
+        BigInteger nf = factorial(n);
         BigInteger kf = factorial(k);
         BigInteger nmkf = factorial(n - k);
         BigInteger u = kf.multiply(nmkf);
@@ -164,14 +177,14 @@ public class Probability {
 
     static double probabilitySplitIntoMSubsetsOfSizeN(int m, int n) {
         BigInteger mm = BigInteger.valueOf(m);
-        BigInteger mnf = factorial(n * m); 
-        BigInteger nf = factorial(n); 
+        BigInteger mnf = factorial(n * m);
+        BigInteger nf = factorial(n);
         BigInteger u = nf.pow(m).multiply(mm.pow(m * n));
         BigDecimal r = new BigDecimal(mnf).divide(
                 new BigDecimal(u), 100, BigDecimal.ROUND_HALF_UP);
         return r.doubleValue();
     }
-    
+
     private static BigInteger factorial(long n) {
         BigInteger f = FACTORIALS.get(n);
         if (f == null) {
