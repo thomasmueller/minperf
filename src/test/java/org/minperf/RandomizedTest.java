@@ -372,7 +372,7 @@ public class RandomizedTest {
         RecSplitEvaluator<Long> eval =
                 RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
                 buildEvaluator(new BitBuffer(data));
-        info.headerBitsPerKey = eval.getTableBitCount() / size;
+        info.headerBitsPerKey = (double) eval.getTableBitCount() / size;
         if (evaluate) {
             info.evaluateNanos = (double) evaluateNanos / size;
         }
@@ -380,7 +380,7 @@ public class RandomizedTest {
         return info;
     }
 
-    static HashSet<Long> createSet(int size, int seed) {
+    public static HashSet<Long> createSet(int size, int seed) {
         Random r = new Random(seed);
         HashSet<Long> set = new HashSet<Long>(size);
         while (set.size() < size) {
