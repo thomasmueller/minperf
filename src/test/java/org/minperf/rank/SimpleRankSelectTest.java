@@ -1,6 +1,7 @@
 package org.minperf.rank;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -82,8 +83,11 @@ public class SimpleRankSelectTest {
         for (int j = 0; j < size; j++) {
             assertEquals(x, rank.rank(j));
             if (set.get(j)) {
+                assertTrue(rank.get(j));
                 assertEquals(j, rank.select(x));
                 x++;
+            } else {
+                assertFalse(rank.get(j));
             }
         }
     }
@@ -102,9 +106,13 @@ public class SimpleRankSelectTest {
     }
 
     private static SimpleRankSelect reopen(SimpleRankSelect rank, BitBuffer buffer) {
+        int bitsUsed = buffer.position();
         int size = rank.getSize();
-        buffer.seek(0);
-        SimpleRankSelect result = SimpleRankSelect.load(buffer);
+        BitBuffer b2 = new BitBuffer(bitsUsed);
+        b2.write(buffer);
+        b2.seek(0);
+        SimpleRankSelect result = SimpleRankSelect.load(b2);
+        assertEquals(bitsUsed, b2.position());
         assertEquals(size, rank.getSize());
         return result;
     }

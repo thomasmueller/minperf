@@ -26,7 +26,7 @@ public class CuckooLongKeyHashSet {
         }
     }
 
-    private int index(long key, int id) {
+    public int index(long key, int id) {
         int offset;
         int x;
         if (id == 0) {
@@ -49,7 +49,7 @@ public class CuckooLongKeyHashSet {
         return false;
     }
 
-    public int getIndex(long key) {
+    public int index(long key) {
         for (int i = 0; i < 2; i++) {
             int h = index(key, i);
             long k = entries[h];
@@ -58,6 +58,10 @@ public class CuckooLongKeyHashSet {
             }
         }
         return -1;
+    }
+
+    public int arrayLength() {
+        return entries.length;
     }
 
     private boolean tryAddAll(Set<Long> set) {

@@ -107,7 +107,23 @@ public class SimpleRankSelect {
      */
     public static SimpleRankSelect load(BitBuffer buffer) {
         int size = (int) (buffer.readEliasDelta() - 1);
-        return new SimpleRankSelect(buffer, size);
+        SimpleRankSelect result = new SimpleRankSelect(buffer, size);
+        buffer.seek(result.dataPos + size);
+        return result;
+    }
+
+    /**
+     * Get the bit at position x.
+     *
+     * @param x the position
+     * @return true if the bit is set
+     */
+    public boolean get(long x) {
+        if (x >= size) {
+            // read past the end
+            return false;
+        }
+        return buffer.readNumber(dataPos + (int) x, 1) == 1L;
     }
 
     /**

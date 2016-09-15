@@ -86,10 +86,10 @@ public class CuckooHashTest {
         HashSet<Long> set = PerformanceTest.createSet(size, 1);
         CuckooLongKeyHashSet ch = new CuckooLongKeyHashSet(set);
         for (long x : set) {
-            assertTrue(ch.getIndex(x) >= 0);
+            assertTrue(ch.index(x) >= 0);
             assertTrue(ch.contains(x));
             if (!set.contains(x + 1)) {
-                assertTrue(ch.getIndex(x + 1) < 0);
+                assertTrue(ch.index(x + 1) < 0);
                 assertFalse(ch.contains(x + 1));
             }
         }
