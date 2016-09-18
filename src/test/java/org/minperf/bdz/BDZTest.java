@@ -1,5 +1,6 @@
 package org.minperf.bdz;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -32,10 +33,12 @@ public class BDZTest {
         HashSet<Long> set = RandomizedTest.createSet(size, 1);
         UniversalHash<Long> hash = new LongHash();
         BitBuffer data = BDZ.generate(hash, set);
+        int bitCount = data.position();
         System.out.println("size " + size + " bits/key: " +
-                (double) data.position() / size);
+                (double) bitCount / size);
         data.seek(0);
         BDZ<Long> bdz = BDZ.load(hash, data);
+        assertEquals(bitCount, data.position());
         BitSet test = new BitSet();
         for (long x : set) {
             int i = bdz.get(x);

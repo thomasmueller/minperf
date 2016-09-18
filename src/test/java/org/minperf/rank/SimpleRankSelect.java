@@ -188,4 +188,9 @@ public class SimpleRankSelect {
         return size;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " size " + size;
+    }
+
 }

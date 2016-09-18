@@ -66,4 +66,9 @@ public class EliasFanoMonotoneList {
         return (high << lowBitCount) + low;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " lowBitCount " + lowBitCount + " select " + select;
+    }
+
 }

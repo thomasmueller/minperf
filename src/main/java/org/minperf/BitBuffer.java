@@ -106,7 +106,7 @@ public class BitBuffer {
         return (data[pos >>> 6] >>> (63 - (pos++ & 63))) & 1;
     }
 
-    int readUntilZero(int pos) {
+    public int readUntilZero(int pos) {
         int remainingBits = 64 - (pos & 63);
         int index = pos >>> 6;
         long x = data[index] << (64 - remainingBits);

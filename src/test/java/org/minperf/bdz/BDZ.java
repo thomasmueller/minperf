@@ -2,6 +2,7 @@ package org.minperf.bdz;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -48,11 +49,12 @@ public class BDZ<T> {
     private BDZ(UniversalHash<T> hash, BitBuffer data) {
         this.hash = hash;
         this.data = data;
-        size = (int) data.readEliasDelta() - 1;
+        this.size = (int) data.readEliasDelta() - 1;
         this.arrayLength = getArrayLength(size);
-        hashIndex = (int) data.readEliasDelta() - 1;
-        rank = SimpleRankSelect.load(data);
-        startPos = data.position();
+        this.hashIndex = (int) data.readEliasDelta() - 1;
+        this.rank = SimpleRankSelect.load(data);
+        this.startPos = data.position();
+        data.seek(startPos + size * BITS_PER_ENTRY);
     }
 
     public int get(T x) {
@@ -74,7 +76,7 @@ public class BDZ<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> BitBuffer generate(UniversalHash<T> hash, HashSet<T> set) {
+    public static <T> BitBuffer generate(UniversalHash<T> hash, Collection<T> set) {
         int size = set.size();
         int arrayLength = getArrayLength(size);
         BitBuffer data = new BitBuffer(100 + arrayLength * (BITS_PER_ENTRY  + 2));
@@ -177,6 +179,10 @@ public class BDZ<T> {
         return data;
     }
 
+    public int getSize() {
+        return size;
+    }
+
     private static int getArrayLength(int size) {
         return HASHES + FACTOR_TIMES_100 * size / 100;
     }
@@ -187,6 +193,11 @@ public class BDZ<T> {
         r = Settings.scaleLong(r, arrayLength / HASHES);
         r = r + index * arrayLength / HASHES;
         return (int) r;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " size " + size + " hashIndex " + hashIndex;
     }
 
 }

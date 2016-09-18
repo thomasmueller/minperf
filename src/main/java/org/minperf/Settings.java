@@ -79,10 +79,12 @@ public class Settings {
     private final int[] rice = new int[CACHE_SPLITS];
 
     /**
+     * Constructor for settings.
+     *
      * @param leafSize
      * @param loadFactor the load factor, at most 65536
      */
-    Settings(int leafSize, int loadFactor) {
+    public Settings(int leafSize, int loadFactor) {
         if (leafSize < 1 || leafSize > 25) {
             throw new IllegalArgumentException("leafSize out of range: " + leafSize);
         }
