@@ -5,7 +5,7 @@ import java.util.BitSet;
 import org.minperf.BitBuffer;
 
 /**
- * A simple rank+select data structure implementation for list of bits.
+ * A simple rank+select data structure implementation for a list of bits.
  * <p>
  * Rank(x) gets the number of bits set to 1, before position x (positions
  * starting at 0). It takes constant time in the RAM model, that means, reads a

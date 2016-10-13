@@ -3,12 +3,12 @@ package org.minperf.eliasFano;
 import java.util.BitSet;
 
 import org.minperf.BitBuffer;
-import org.minperf.rank.SimpleRankSelect;
+import org.minperf.rank.SimpleSelect;
 
 /**
  * A list of monotone increasing values. Each entry needs 2 + log(gap) bits,
  * where gap is the average gap between entries, plus the overhead for the
- * "select" structure. A lookup needs one "select" lookup, and is otherwise
+ * "select" structure. A lookup needs one "select" call, and is otherwise
  * constant.
  */
 public class EliasFanoMonotoneList {
@@ -16,9 +16,9 @@ public class EliasFanoMonotoneList {
     private final BitBuffer buffer;
     private final int start;
     private final int lowBitCount;
-    private final SimpleRankSelect select;
+    private final SimpleSelect select;
 
-    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, SimpleRankSelect select) {
+    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, SimpleSelect select) {
         this.buffer = buffer;
         this.start = start;
         this.lowBitCount = lowBitCount;
@@ -47,7 +47,7 @@ public class EliasFanoMonotoneList {
         for (int i = 0; i < len; i++) {
             buffer.writeNumber(data[i] & mask, lowBitCount);
         }
-        SimpleRankSelect select = SimpleRankSelect.generate(set, buffer);
+        SimpleSelect select = SimpleSelect.generate(set, buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
@@ -56,7 +56,7 @@ public class EliasFanoMonotoneList {
         int lowBitCount = (int) (buffer.readEliasDelta() - 1);
         int start = buffer.position();
         buffer.seek(start + len * lowBitCount);
-        SimpleRankSelect select = SimpleRankSelect.load(buffer);
+        SimpleSelect select = SimpleSelect.load(buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
