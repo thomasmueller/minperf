@@ -19,14 +19,14 @@ import org.minperf.universal.UniversalHash;
 public class BDZTest {
 
     public static void main(String... args) {
-        new BDZTest().test();
+        for (int size = 10; size < 10000000; size *= 10) {
+            test(size);
+        }
     }
 
     @Test
     public void test() {
-        for (int size = 10; size < 10000000; size *= 10) {
-            test(size);
-        }
+        test(100000);
     }
 
     private static void test(int size) {

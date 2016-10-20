@@ -8,7 +8,7 @@ import java.util.LinkedList;
 
 import org.minperf.BitBuffer;
 import org.minperf.Settings;
-import org.minperf.rank.SimpleRankSelect;
+import org.minperf.rank.VerySimpleRank;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -44,7 +44,7 @@ public class BDZ<T> {
     private final int arrayLength;
     private final int size;
     private final int startPos;
-    private final SimpleRankSelect rank;
+    private final VerySimpleRank rank;
 
     private BDZ(UniversalHash<T> hash, BitBuffer data) {
         this.hash = hash;
@@ -52,7 +52,7 @@ public class BDZ<T> {
         this.size = (int) data.readEliasDelta() - 1;
         this.arrayLength = getArrayLength(size);
         this.hashIndex = (int) data.readEliasDelta() - 1;
-        this.rank = SimpleRankSelect.load(data);
+        this.rank = VerySimpleRank.load(data);
         this.startPos = data.position();
         data.seek(startPos + size * BITS_PER_ENTRY);
     }
@@ -168,7 +168,7 @@ public class BDZ<T> {
             int result = (HASHES + target - (sum % HASHES)) % HASHES;
             g[change] = result;
         }
-        SimpleRankSelect.generate(used, data);
+        VerySimpleRank.generate(used, data);
         for (int i = 0; i < m; i++) {
             if (used.get(i)) {
                 data.writeNumber(g[i], BITS_PER_ENTRY);

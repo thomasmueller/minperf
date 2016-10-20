@@ -1,4 +1,4 @@
-package org.minperf.rank;
+package org.minperf.select;
 
 import static org.junit.Assert.assertEquals;
 
@@ -7,11 +7,12 @@ import java.util.Random;
 
 import org.junit.Test;
 import org.minperf.BitBuffer;
+import org.minperf.rank.VerySimpleRank;
 
 /**
  * Test the simple select implementation.
  */
-public class SimpleSelectTest {
+public class VerySimpleSelectTest {
 
     public static void main(String... args) {
         System.out.println("FastSelect performance test");
@@ -32,10 +33,10 @@ public class SimpleSelectTest {
                 if (Long.bitCount(i) < n + 1) {
                     continue;
                 }
-                int a = SimpleSelect.selectBitSlow(i, n);
-                int b = SimpleSelect.selectBitLong(i, n);
-                int c = SimpleSelect.selectBit(i, n);
-                int d = SimpleSelect.selectBitReverse(Integer.reverse(i), n);
+                int a = VerySimpleSelect.selectBitSlow(i, n);
+                int b = VerySimpleSelect.selectBitLong(i, n);
+                int c = VerySimpleSelect.selectBit(i, n);
+                int d = VerySimpleSelect.selectBitReverse(Integer.reverse(i), n);
                 assertEquals(a, b);
                 assertEquals(a, c);
                 assertEquals(a, d);
@@ -45,12 +46,12 @@ public class SimpleSelectTest {
                 if (Integer.bitCount(i) < n + 1) {
                     continue;
                 }
-                int a = SimpleSelect.selectBitSlow(x, n);
-                int b = SimpleSelect.selectBitLong(x & 0xffffffffL, n);
-                int c = SimpleSelect.selectBitLongReverse(
+                int a = VerySimpleSelect.selectBitSlow(x, n);
+                int b = VerySimpleSelect.selectBitLong(x & 0xffffffffL, n);
+                int c = VerySimpleSelect.selectBitLongReverse(
                         Long.reverse(x & 0xffffffffL), n);
-                int d = SimpleSelect.selectBit(x, n);
-                int e = SimpleSelect.selectBitReverse(Integer.reverse(x), n);
+                int d = VerySimpleSelect.selectBit(x, n);
+                int e = VerySimpleSelect.selectBitReverse(Integer.reverse(x), n);
                 assertEquals(a, b);
                 assertEquals(a, c);
                 assertEquals(a, d);
@@ -61,8 +62,8 @@ public class SimpleSelectTest {
                 if (Long.bitCount(x) < n + 1) {
                     continue;
                 }
-                int a = SimpleSelect.selectBitSlow(x, n);
-                int b = SimpleSelect.selectBitLong(x, n);
+                int a = VerySimpleSelect.selectBitSlow(x, n);
+                int b = VerySimpleSelect.selectBitLong(x, n);
                 assertEquals(a, b);
             }
         }
@@ -81,7 +82,7 @@ public class SimpleSelectTest {
         long time = System.currentTimeMillis();
         for (int test = 0; test < tests; test++) {
             for (int i = 0; i < 1024 * 1024; i++) {
-                sum += SimpleSelect.selectBit(values[i], list[i]);
+                sum += VerySimpleSelect.selectBit(values[i], list[i]);
             }
         }
         time = System.currentTimeMillis() - time;
@@ -100,18 +101,18 @@ public class SimpleSelectTest {
                 set.set(x);
             }
             BitBuffer buffer = new BitBuffer(10 * set.size());
-            SimpleSelect select = SimpleSelect.generate(set, buffer);
+            VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
             int p1 = buffer.position();
             buffer.seek(0);
-            select = SimpleSelect.load(buffer);
+            select = VerySimpleSelect.load(buffer);
             int p2 = buffer.position();
             assertEquals(p1, p2);
 
             BitBuffer buffer2 = new BitBuffer(10 * set.size());
-            SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer2);
+            VerySimpleRank rank = VerySimpleRank.generate(set, buffer2);
             p1 = buffer.position();
             buffer2.seek(0);
-            rank = SimpleRankSelect.load(buffer2);
+            rank = VerySimpleRank.load(buffer2);
             p2 = buffer.position();
             assertEquals(p1, p2);
 
@@ -123,6 +124,14 @@ public class SimpleSelectTest {
                     assertEquals(i, x);
                     j++;
                 }
+            }
+            int cardinality = set.cardinality();
+            for (int j = 0; j < cardinality - 1; j++) {
+                int x1 = (int) select.select(j);
+                int x2 = (int) select.select(j + 1);
+                long x12 = select.selectPair(j);
+                assertEquals(x1, x12 >>> 32);
+                assertEquals(x2, (int) x12);
             }
 
         }
@@ -154,7 +163,7 @@ public class SimpleSelectTest {
         }
         // System.out.println("set: " + set);
         BitBuffer buffer = new BitBuffer(10 * set.size());
-        SimpleSelect select = SimpleSelect.generate(set, buffer);
+        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
         int bitCount = buffer.position();
         System.out.println("bits/key fast: " + ((double) bitCount / size));
         long time;
@@ -181,7 +190,7 @@ public class SimpleSelectTest {
         System.out.println("time: " + (time / 10 / set.length()));
 
         buffer = new BitBuffer(10 * set.size());
-        SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer);
+        VerySimpleRank rank = VerySimpleRank.generate(set, buffer);
         bitCount = buffer.position();
         System.out.println("bits/key rank: " + ((double) bitCount / size));
         time = System.nanoTime();

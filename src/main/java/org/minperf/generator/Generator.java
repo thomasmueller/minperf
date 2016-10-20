@@ -17,25 +17,21 @@ public class Generator<T> {
 
     static final int PARALLELISM = Runtime.getRuntime().availableProcessors();
 
+    public final UniversalHash<T> hash;
+    public final Processor<T> processor;
     protected final Settings settings;
-    protected final UniversalHash<T> hash;
-    protected final Processor<T> processor;
 
-    public Generator(UniversalHash<T> hash, Settings settings, boolean multiThreaded) {
+    public Generator(UniversalHash<T> hash, Settings settings) {
         this.settings = settings;
         this.hash = hash;
-        if (multiThreaded) {
-            processor = new MultiThreadedProcessor<T>(this);
-        } else {
-            processor = new SingleThreadedProcessor<T>(this);
-        }
+        processor = new Processor<T>(this);
     }
 
     public BitBuffer generate(Collection<T> collection) {
         int size = collection.size();
         int bucketCount = (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
-        BitBuffer all = new BitBuffer(size * 4 + 100);
+        BitBuffer all = new BitBuffer(size * 10 + 100);
         all.writeEliasDelta(size + 1);
         if (size > 1) {
             generateBuckets(collection, size, bucketCount, all);
@@ -44,7 +40,7 @@ public class Generator<T> {
     }
 
     @SuppressWarnings("unchecked")
-    void generate(T[] data, long[] hashes, long startIndex, Processor<T> p) {
+    public void generate(T[] data, long[] hashes, long startIndex, Processor<T> p) {
         int size = data.length;
         if (size < 2) {
             return;

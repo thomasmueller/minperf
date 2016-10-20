@@ -31,7 +31,7 @@ public class BitBuffer {
      *
      * @param buffer the buffer
      */
-    BitBuffer(BitBuffer buffer) {
+    public BitBuffer(BitBuffer buffer) {
         this.data = buffer.data;
    }
 
@@ -143,6 +143,11 @@ public class BitBuffer {
         for (int i = shift - 1; i >= 0; i--) {
             writeBit((value >>> i) & 1);
         }
+    }
+
+    public long readGolombRice(int pos, int shift) {
+        int q = readUntilZero(pos);
+        return (q << shift) | readNumber(pos + q + 1, shift);
     }
 
     public long readGolombRice(int shift) {

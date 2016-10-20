@@ -10,28 +10,29 @@ import org.minperf.universal.UniversalHash;
  */
 public class RecSplitEvaluator<T> {
 
-    private final Settings settings;
-    private final UniversalHash<T> hash;
+    protected final Settings settings;
+    protected final UniversalHash<T> hash;
+    protected final BitBuffer buffer;
+    protected final long size;
+    protected final int bucketCount;
 
-    private final BitBuffer buffer;
-    private final long size;
-    private final long dataBits;
-    private final int bucketCount;
-    private final int tableStart;
-    private final int bitsPerEntry;
-    private final int bitsPerEntry2;
-    private final int headerBits;
+    private long dataBits;
+    private int tableStart;
+    private int bitsPerEntry;
+    private int bitsPerEntry2;
+    private int headerBits;
 
-    RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash,
+    public RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash,
             Settings settings) {
         this.settings = settings;
         this.hash = hash;
         this.buffer = buffer;
-
-        buffer.seek(0);
-        size = buffer.readEliasDelta() - 1;
-        bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
+        this.size = (int) (buffer.readEliasDelta() - 1);
+        this.bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
+    }
+
+    public void init() {
         if (bucketCount == 1) {
             bitsPerEntry = 0;
             bitsPerEntry2 = 0;

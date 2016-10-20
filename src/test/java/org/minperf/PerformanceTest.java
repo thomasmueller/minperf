@@ -82,7 +82,7 @@ public class PerformanceTest {
         long start = System.nanoTime();
         byte[] data = RecSplitBuilder.newInstance(hash).
                 leafSize(leafSize).loadFactor(loadFactor).
-                multiThreaded(true).generate(set).toByteArray();
+                generate(set).toByteArray();
         long time = System.nanoTime() - start;
 
         int bits = data.length * 8;

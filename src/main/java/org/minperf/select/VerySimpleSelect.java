@@ -1,4 +1,4 @@
-package org.minperf.rank;
+package org.minperf.select;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -12,9 +12,9 @@ import org.minperf.BitBuffer;
  * <p>
  * The select operation is fast and space usage is quite low, but there is no
  * strict guarantee that space usage is O(n) and the select operation is
- * constant time, in the mathematical sense.
+ * constant time in the RAM model, in the mathematical sense.
  */
-public class SimpleSelect {
+public class VerySimpleSelect {
 
     public static final byte[] SELECT_BIT_IN_BYTE;
     public static final byte[] SELECT_BIT_IN_BYTE_REVERSE;
@@ -47,7 +47,7 @@ public class SimpleSelect {
     private final int offsetPos;
     private final int dataPos;
 
-    private SimpleSelect(BitBuffer buffer) {
+    private VerySimpleSelect(BitBuffer buffer) {
         this.buffer = buffer;
         this.size = (int) (buffer.readEliasDelta() - 1);
         this.cardinality = (int) (buffer.readEliasDelta() - 1);
@@ -67,7 +67,7 @@ public class SimpleSelect {
      * @param buffer the buffer
      * @return the generated object
      */
-    public static SimpleSelect generate(BitSet set, BitBuffer buffer) {
+    public static VerySimpleSelect generate(BitSet set, BitBuffer buffer) {
         int start = buffer.position();
         int size = set.length() + 1;
         buffer.writeEliasDelta(size + 1);
@@ -108,7 +108,7 @@ public class SimpleSelect {
             buffer.writeBit(set.get(i) ? 1 : 0);
         }
         buffer.seek(start);
-        return new SimpleSelect(buffer);
+        return new VerySimpleSelect(buffer);
     }
 
     private static long getScaleFactor(int multiply, int divide) {
@@ -121,8 +121,8 @@ public class SimpleSelect {
      * @param buffer the buffer
      * @return the loaded object
      */
-    public static SimpleSelect load(BitBuffer buffer) {
-        return new SimpleSelect(buffer);
+    public static VerySimpleSelect load(BitBuffer buffer) {
+        return new VerySimpleSelect(buffer);
     }
 
     /**
@@ -142,6 +142,40 @@ public class SimpleSelect {
             int bitCount = Integer.bitCount(data);
             if (remaining < bitCount) {
                 return result + selectBitReverse(data, remaining);
+            }
+            result += 32;
+            remaining -= bitCount;
+        }
+    }
+
+    public long selectPair(long x) {
+        int block = (int) (x >>> BITS_PER_BLOCK_SHIFT);
+        int expected = (int) ((block * blockCountScale) >>> 32);
+        long read = buffer.readNumber(offsetPos + block * bitCount, bitCount);
+        long result = expected + read - added;
+        int remaining = (int) (x - ((long) block << BITS_PER_BLOCK_SHIFT));
+        while (true) {
+            int data = (int) buffer.readNumber((int) result + dataPos, 32);
+            int bitCount = Integer.bitCount(data);
+            if (remaining < bitCount) {
+                int bit1 = selectBitReverse(data, remaining);
+                int bit2;
+                if (bit1 != 31 && data << (bit1 + 1) != 0) {
+                    data <<= bit1 + 1;
+                    bit1 += result;
+                    bit2 = bit1 + 1 + selectBitReverse(data, 0);
+                } else {
+                    bit1 += result;
+                    while (true) {
+                        result += 32;
+                        data = (int) buffer.readNumber((int) result + dataPos, 32);
+                        if (Integer.bitCount(data) >= 1) {
+                            bit2 = (int) result + selectBitReverse(data, 0);
+                            break;
+                        }
+                    }
+                }
+                return ((long) bit1 << 32) | bit2;
             }
             result += 32;
             remaining -= bitCount;

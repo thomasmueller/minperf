@@ -1,9 +1,8 @@
-package org.minperf.hybrid;
+package org.minperf;
 
-import org.minperf.BitBuffer;
-import org.minperf.Settings;
 import org.minperf.bdz.BDZ;
 import org.minperf.eliasFano.EliasFanoMonotoneList;
+import org.minperf.generator.HybridGenerator;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -11,42 +10,40 @@ import org.minperf.universal.UniversalHash;
  *
  * @param <T> the data type
  */
-public class HybridEvaluator<T> {
+public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
 
-    private final UniversalHash<T> hash;
-    private final Settings settings;
-    private final BitBuffer buffer;
-    private final int size;
-    private final int bucketCount;
-    private final int startAlternativeBits;
-    private final BDZ<T> bdz;
+    private final int minStartDiff;
     private final EliasFanoMonotoneList startList;
+    private final int minOffsetDiff;
     private final EliasFanoMonotoneList offsetList;
     private final int startBuckets;
-    private final int mainOffset;
+    private final int maxBits;
+    private final boolean alternativeHashOption;
 
-    public HybridEvaluator(UniversalHash<T> hash, Settings settings, BitBuffer buffer) {
-        this.hash = hash;
-        this.settings = settings;
-        this.buffer = buffer;
-        this.size = (int) (buffer.readEliasDelta() - 1);
-        this.bucketCount = (size + (settings.getLoadFactor() - 1)) /
-                settings.getLoadFactor();
-        this.startAlternativeBits = buffer.position();
-        buffer.seek(startAlternativeBits + bucketCount);
-        this.bdz = BDZ.load(hash, buffer);
-        this.mainOffset = bdz.getSize();
-        this.startList = EliasFanoMonotoneList.load(buffer);
+    public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings) {
+        super(buffer, hash, settings);
+        this.alternativeHashOption = buffer.readBit() != 0;
+        this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
         this.offsetList = EliasFanoMonotoneList.load(buffer);
+        this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
+        this.startList = EliasFanoMonotoneList.load(buffer);
         this.startBuckets = buffer.position();
+        if (bucketCount > 0) {
+            int averageBucketSize = (int) size / bucketCount;
+            int maxBucketSize = averageBucketSize * HybridGenerator.MAX_FILL;
+            this.maxBits = maxBucketSize * HybridGenerator.MAX_BITS_PER_ENTRY;
+        } else {
+            this.maxBits = 0;
+        }
     }
 
     @Override
-    public String toString() {
-        return "size " + size + " additional " + bdz.getSize();
+    public void init() {
+        // TODO only needed because this is a superclass
     }
 
-    public int get(T obj) {
+    @Override
+    public int evaluate(T obj) {
         int b;
         long hashCode = hash.universalHash(obj, 0);
         if (bucketCount == 1) {
@@ -55,20 +52,37 @@ public class HybridEvaluator<T> {
             long h = hash.universalHash(obj, 0);
             b = Settings.scaleLong(h, bucketCount);
         }
-        if (buffer.readNumber(startAlternativeBits + b, 1) == 0) {
-            return bdz.get(obj);
-        }
-        int offset = mainOffset;
-        int o = offsetList.get(b);
+        int offset = 0;
+
+        long offsetPair = offsetList.getPair(b);
+        int o = (int) (offsetPair >>> 32) + b * minOffsetDiff;
         offset += o;
-        int bucketSize;
-        if (b == bucketCount - 1) {
-            bucketSize = size - mainOffset - o;
+        int offsetNext = ((int) offsetPair) + (b + 1) * minOffsetDiff;
+        int bucketSize = offsetNext - o;
+        int startPos;
+        if (alternativeHashOption) {
+            long startPair = startList.getPair(b);
+            int start = (int) (startPair >>> 32);
+            int startNext = (int) startPair;
+            startPos = startBuckets +
+                    HybridGenerator.scaleSize(offset) +
+                    start + b * minStartDiff;
+            int startNextPos = startBuckets +
+                    HybridGenerator.scaleSize(offsetNext) +
+                    startNext + (b + 1) *
+                    minStartDiff;
+            int bitCount = startNextPos - startPos;
+            if (bitCount > maxBits) {
+                BitBuffer b2 = new BitBuffer(buffer);
+                b2.seek(startPos);
+                return offset + BDZ.load(hash, b2).get(obj);
+            }
         } else {
-            bucketSize = offsetList.get(b + 1) - o;
+            startPos = startBuckets +
+                    HybridGenerator.scaleSize(offset) +
+                    startList.get(b) + b * minStartDiff;
         }
-        int pos = startBuckets + startList.get(b);
-        return evaluate(pos, obj, hashCode, 0, offset, bucketSize);
+        return evaluate(startPos, obj, hashCode, 0, offset, bucketSize);
     }
 
     private int skip(int pos, int size) {

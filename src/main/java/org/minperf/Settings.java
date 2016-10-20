@@ -22,10 +22,11 @@ public class Settings {
     public static final boolean COMPLEX_BUCKET_HEADER = false;
 
     /**
-     * Could be increased to reduce the number of universal hash function calls,
-     * which also speeds up evaluation time.
+     * The number of supplemental hash functions per universal hash is 2 ^ this
+     * number. Could be increased to reduce the number of universal hash
+     * function calls, which also speeds up evaluation time.
      */
-    private static final int SUPPLEMENTAL_HASH_SHIFT = 18;
+    public static final int SUPPLEMENTAL_HASH_SHIFT = 18;
 
     /**
      * The number of times the same universal hash is mixed using the
@@ -34,10 +35,10 @@ public class Settings {
     private static final long SUPPLEMENTAL_HASH_CALLS = 1 << SUPPLEMENTAL_HASH_SHIFT;
 
     /**
-     * The estimated space used for leaves of size = array index, in bits for
-     * 1000 entries.
+     * The estimated space in bits for 1000 entries, where leafSize is the array
+     * index.
      */
-    private static final int[] ESTIMATED_SPACE = { 0, 3571, 2574, 2322, 2124,
+    private static final int[] ESTIMATED_SPACE = { 10000, 3571, 2574, 2322, 2124,
             1920, 1848, 1785, 1717, 1692, 1635, 1620, 1608, 1587, 1581, 1564,
             1554, 1552, 1543, 1534, 1528, 1524, 1522, 1517, 1517, 1495 };
 
@@ -129,6 +130,10 @@ public class Settings {
 
     public long getEstimatedBits(long size) {
         return ESTIMATED_SPACE[leafSize] * size / 1000;
+    }
+
+    public long getEstimatedEntryCount(long bitCount) {
+        return bitCount * 1000 / ESTIMATED_SPACE[leafSize];
     }
 
     public int getSplit(int size) {

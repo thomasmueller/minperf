@@ -252,8 +252,12 @@ public class BitCodes {
             assertEquals(len, BitBuffer.getGolombRiceSize(shift, val) +
                     BitBuffer.getGolombRiceSize(1, 10));
             buff = new BitBuffer(buff.toByteArray());
+            int p = buff.position();
             assertEquals(val, buff.readGolombRice(shift));
+            assertEquals(val, buff.readGolombRice(p, shift));
+            p = buff.position();
             assertEquals(10, buff.readGolombRice(1));
+            assertEquals(10, buff.readGolombRice(p, 1));
         }
     }
 

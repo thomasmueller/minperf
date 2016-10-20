@@ -3,7 +3,7 @@ package org.minperf.eliasFano;
 import java.util.BitSet;
 
 import org.minperf.BitBuffer;
-import org.minperf.rank.SimpleSelect;
+import org.minperf.select.VerySimpleSelect;
 
 /**
  * A list of monotone increasing values. Each entry needs 2 + log(gap) bits,
@@ -16,9 +16,9 @@ public class EliasFanoMonotoneList {
     private final BitBuffer buffer;
     private final int start;
     private final int lowBitCount;
-    private final SimpleSelect select;
+    private final VerySimpleSelect select;
 
-    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, SimpleSelect select) {
+    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, VerySimpleSelect select) {
         this.buffer = buffer;
         this.start = start;
         this.lowBitCount = lowBitCount;
@@ -30,7 +30,7 @@ public class EliasFanoMonotoneList {
         // verify it is monotone
         for (int i = 1; i < len; i++) {
             if (data[i - 1] > data[i]) {
-                throw new AssertionError();
+                throw new IllegalArgumentException();
             }
         }
         buffer.writeEliasDelta(len + 1);
@@ -47,7 +47,7 @@ public class EliasFanoMonotoneList {
         for (int i = 0; i < len; i++) {
             buffer.writeNumber(data[i] & mask, lowBitCount);
         }
-        SimpleSelect select = SimpleSelect.generate(set, buffer);
+        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
@@ -56,7 +56,7 @@ public class EliasFanoMonotoneList {
         int lowBitCount = (int) (buffer.readEliasDelta() - 1);
         int start = buffer.position();
         buffer.seek(start + len * lowBitCount);
-        SimpleSelect select = SimpleSelect.load(buffer);
+        VerySimpleSelect select = VerySimpleSelect.load(buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
@@ -66,9 +66,16 @@ public class EliasFanoMonotoneList {
         return (high << lowBitCount) + low;
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + " lowBitCount " + lowBitCount + " select " + select;
+    public long getPair(int i) {
+        long lowPair = buffer.readNumber(start + i * lowBitCount, lowBitCount + lowBitCount);
+        int low1 = (int) (lowPair >>> lowBitCount);
+        int low2 = (int) (lowPair - ((long) low1 << lowBitCount));
+        long highPair = select.selectPair(i);
+        int high1 = (int) (highPair >>> 32) - i;
+        int high2 = (int) highPair - i - 1;
+        int result1 = (high1 << lowBitCount) + low1;
+        int result2 = (high2 << lowBitCount) + low2;
+        return ((long) result1 << 32) | result2;
     }
 
 }

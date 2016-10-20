@@ -13,11 +13,21 @@ import org.minperf.BitBuffer;
 public class EliasFanoMonotoneListTest {
 
     public static void main(String... args) {
-        new EliasFanoMonotoneListTest().test();
+        new EliasFanoMonotoneListTest().testSaving();
     }
 
     @Test
     public void test() {
+        for (int bucketSize = 8; bucketSize < 256; bucketSize *= 2) {
+            for (int size = 100; size <= 100000; size *= 10) {
+                if (size >= bucketSize) {
+                    test(bucketSize, size);
+                }
+            }
+        }
+    }
+
+    public void testSaving() {
         for (int bucketSize = 8; bucketSize < 256; bucketSize *= 2) {
             for (int size = 100; size <= 100000000; size *= 10) {
                 if (size >= bucketSize) {
@@ -58,6 +68,12 @@ public class EliasFanoMonotoneListTest {
         list = EliasFanoMonotoneList.load(buffer);
         for (int i = 0; i < bucketCount; i++) {
             assertEquals(posList2[i], list.get(i));
+        }
+        for (int i = 0; i < bucketCount - 1; i++) {
+            int a = list.get(i);
+            int b = list.get(i + 1);
+            long ab = list.getPair(i);
+            assertEquals(((long) a << 32) + b, ab);
         }
     }
 

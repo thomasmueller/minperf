@@ -11,8 +11,8 @@ public class Paper {
     public static void main(String... args) {
 
         // B Generation Time Versus Space
-        RandomizedTest.printEvaluationTimeVersusSpace();
-        RandomizedTest.printGenerationTimeVersusSpace();
+//        RandomizedTest.printEvaluationTimeVersusSpace();
+//        RandomizedTest.printGenerationTimeVersusSpace();
 
         // does not always work (depends on the hardware):
         // 4.1 Parameters

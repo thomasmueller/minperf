@@ -8,8 +8,13 @@ import java.util.HashSet;
 
 import org.junit.Test;
 import org.minperf.BitBuffer;
+import org.minperf.HybridEvaluator;
 import org.minperf.RandomizedTest;
+import org.minperf.RecSplitBuilder;
+import org.minperf.RecSplitEvaluator;
 import org.minperf.Settings;
+import org.minperf.generator.Generator;
+import org.minperf.generator.HybridGenerator;
 import org.minperf.universal.LongHash;
 import org.minperf.universal.UniversalHash;
 
@@ -19,35 +24,76 @@ import org.minperf.universal.UniversalHash;
 public class HybridTest {
 
     public static void main(String... args) {
-        new HybridTest().test();
+        for (int size = 10000; size < 10000000; size *= 10) {
+            test(size);
+        }
     }
 
     @Test
     public void test() {
-        for (int size = 10; size < 10000000; size *= 10) {
-            test(size);
-        }
+        test(10000);
     }
 
     private static void test(int size) {
         HashSet<Long> set = RandomizedTest.createSet(size, 1);
         UniversalHash<Long> hash = new LongHash();
-        Settings settings = new Settings(11, 1024);
-        HybridGenerator<Long> generator = new HybridGenerator<Long>(hash, settings, true);
-        BitBuffer buffer = generator.generate(set);
-        int bitCount = buffer.position();
-        System.out.println("size " + size + " bits/key: " +
-                (double) bitCount / size);
-        buffer.seek(0);
-        HybridEvaluator<Long> evaluator = new HybridEvaluator<Long>(hash, settings, buffer);
-        System.out.println(evaluator);
-        BitSet test = new BitSet();
-        for (long x : set) {
-            int i = evaluator.get(x);
-            assertTrue(i >= 0 && i < size);
-            assertFalse(test.get(i));
-            test.set(i);
+
+        int leafSize = 10;
+
+        for (int loadFactor = 32; loadFactor >= 8; loadFactor -= 4) {
+
+            Settings settings = new Settings(leafSize, loadFactor);
+            Generator<Long> generator;
+
+            generator = new HybridGenerator<Long>(hash, settings);
+            BitBuffer buffer0 = generator.generate(set);
+            int bitCount0 = buffer0.position();
+
+            BitBuffer buffer2 = RecSplitBuilder.newInstance(hash)
+                    .leafSize(leafSize).loadFactor(loadFactor).generate(set);
+            int bitCount2 = buffer2.position();
+
+            System.out.println("size " + size + " loadFactor " + loadFactor +
+                    " hybrid " + (double) bitCount0 / size +
+                    " old " + +(double) bitCount2 /
+                    size);
+
+            buffer2.seek(0);
+            RecSplitEvaluator<Long> evaluatorOld = RecSplitBuilder.newInstance(hash)
+                    .leafSize(leafSize).loadFactor(loadFactor).buildEvaluator(buffer2);
+            long time = System.nanoTime();
+            int sum = 0;
+            for (int i = 0; i < 10; i++) {
+                for (long x : set) {
+                    sum += evaluatorOld.evaluate(x);
+                }
+            }
+            time = System.nanoTime() - time;
+            System.out.println(time / 10 / size + " ns Old dummy " + sum);
+
+            buffer0.seek(0);
+            HybridEvaluator<Long> evaluator = new HybridEvaluator<Long>(buffer0, hash, settings);
+
+            BitSet test = new BitSet();
+            for (long x : set) {
+                int i = evaluator.evaluate(x);
+                assertTrue(i >= 0 && i < size);
+                assertFalse(test.get(i));
+                test.set(i);
+            }
+
+            time = System.nanoTime();
+            sum = 0;
+            for (int i = 0; i < 10; i++) {
+                for (long x : set) {
+                    sum += evaluator.evaluate(x);
+                }
+            }
+            time = System.nanoTime() - time;
+            System.out.println(time / 10 / size + " ns Hybrid dummy " + sum);
+
         }
+
     }
 
 }

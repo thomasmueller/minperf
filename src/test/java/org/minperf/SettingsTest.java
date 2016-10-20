@@ -81,11 +81,12 @@ public class SettingsTest {
 
     @Test
     public void verifyUniversalHashIndex() {
-        for (int i = 0; i < 1024 * 1024; i++) {
+        long div = 1 << Settings.SUPPLEMENTAL_HASH_SHIFT;
+        for (long i = div - 100; i <= div + 100; i++) {
             long index = Settings.getUniversalHashIndex(i);
-            assertEquals("i: " + i, i / 1024, index);
+            assertEquals("i: " + i, i / div, index);
             boolean needNew = Settings.needNewUniversalHashIndex(index);
-            assertEquals(index % 1024 == 0, needNew);
+            assertEquals(index % div == 0, needNew);
         }
     }
 

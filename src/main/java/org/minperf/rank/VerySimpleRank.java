@@ -14,7 +14,7 @@ import org.minperf.BitBuffer;
  * Select(x) gets the position of the xth 1 bit (positions starting at 0). It
  * takes logarithmic time (using binary search on rank).
  */
-public class SimpleRankSelect {
+public class VerySimpleRank {
 
     private final BitBuffer buffer;
     private final int size;
@@ -30,7 +30,7 @@ public class SimpleRankSelect {
     private final int blockEntrySize;
     private final int dataPos;
 
-    private SimpleRankSelect(BitBuffer buffer, int size) {
+    private VerySimpleRank(BitBuffer buffer, int size) {
         this.buffer = buffer;
         this.size = size;
         superBlockPos = buffer.position();
@@ -55,10 +55,10 @@ public class SimpleRankSelect {
      * @param buffer the buffer
      * @return the generated object
      */
-    public static SimpleRankSelect generate(BitSet set, BitBuffer buffer) {
+    public static VerySimpleRank generate(BitSet set, BitBuffer buffer) {
         int size = set.length() + 1;
         buffer.writeEliasDelta(size + 1);
-        SimpleRankSelect rank = new SimpleRankSelect(buffer, size);
+        VerySimpleRank rank = new VerySimpleRank(buffer, size);
         int[] superBlocks = new int[rank.superBlockCount];
         int count = 0;
         long last = 0;
@@ -105,9 +105,9 @@ public class SimpleRankSelect {
      * @param buffer the buffer
      * @return the loaded object
      */
-    public static SimpleRankSelect load(BitBuffer buffer) {
+    public static VerySimpleRank load(BitBuffer buffer) {
         int size = (int) (buffer.readEliasDelta() - 1);
-        SimpleRankSelect result = new SimpleRankSelect(buffer, size);
+        VerySimpleRank result = new VerySimpleRank(buffer, size);
         buffer.seek(result.dataPos + size);
         return result;
     }

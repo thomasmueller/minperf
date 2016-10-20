@@ -1,15 +1,39 @@
 package org.minperf.generator;
 
 import java.util.ArrayList;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 
 import org.minperf.BitBuffer;
 
 /**
- * A processor to generate the hash table.
+ * A multi-threaded processor.
  *
  * @param <T> the type
  */
-public interface Processor<T> {
+public class Processor<T> extends RecursiveAction {
+
+    private static ForkJoinPool pool;
+
+    private static final long serialVersionUID = 1L;
+    public BitBuffer out;
+    final Generator<T> generator;
+    private T[] data;
+    private long[] hashes;
+    private long startIndex;
+
+    public Processor(Generator<T> generator, T[] data, long[] hashes, long startIndex) {
+        this.generator = generator;
+        this.data = data;
+        this.hashes = hashes;
+        this.startIndex = startIndex;
+    }
+
+    public Processor(Generator<T> recSplitGenerator) {
+        // TODO pool is static
+        pool = new ForkJoinPool(Generator.PARALLELISM);
+        generator = recSplitGenerator;
+    }
 
     /**
      * Process multiple buckets.
@@ -18,7 +42,27 @@ public interface Processor<T> {
      * @param hashLists the hashes of the previous step
      * @param outList the target list
      */
-    void process(T[][] lists, long[][] hashLists, ArrayList<BitBuffer> outList);
+    public void process(final T[][] lists, final long[][] hashLists, final ArrayList<BitBuffer> outList) {
+        pool.invoke(new RecursiveAction() {
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected void compute() {
+                final int bucketCount = lists.length;
+                @SuppressWarnings("unchecked")
+                Processor<T>[] list = new Processor[bucketCount];
+                for (int i = 0; i < bucketCount; i++) {
+                    list[i] = new Processor<T>(generator, lists[i], hashLists[i], 0);
+                }
+                invokeAll(list);
+                for (int i = 0; i < bucketCount; i++) {
+                    Processor<T> p = list[i];
+                    outList.add(p.out);
+                }
+            }
+        });
+    }
 
     /**
      * Write a leaf.
@@ -26,7 +70,11 @@ public interface Processor<T> {
      * @param shift the Rice parameter k
      * @param index the index
      */
-    void writeLeaf(int shift, long index);
+    public void writeLeaf(int shift, long index) {
+        int bits = BitBuffer.getGolombRiceSize(shift, index);
+        out = new BitBuffer(bits);
+        out.writeGolombRice(shift, index);
+    }
 
     /**
      * Split a set.
@@ -37,7 +85,44 @@ public interface Processor<T> {
      * @param data the data
      * @param hashes the hashes of the previous step
      */
-    void split(int shift, long index, long startIndex, T[][] data, long[][] hashes);
+    public void split(int shift, long index, long startIndex, T[][] data, long[][] hashes) {
+        int split = data.length;
+        @SuppressWarnings("unchecked")
+        Processor<T>[] list = new Processor[split];
+        for (int i = 0; i < split; i++) {
+            list[i] = new Processor<T>(generator, data[i], hashes[i],
+                    startIndex);
+        }
+        invokeAll(list);
+        int bits = BitBuffer.getGolombRiceSize(shift, index);
+        for (Processor<T> p : list) {
+            if (p.out != null) {
+                bits += p.out.position();
+            }
+        }
+        out = new BitBuffer(bits);
+        out.writeGolombRice(shift, index);
+        for (Processor<T> p : list) {
+            if (p.out != null) {
+                out.write(p.out);
+            }
+            p.clean();
+        }
+    }
 
-    void dispose();
+    private void clean() {
+        this.out = null;
+        this.data = null;
+        this.hashes = null;
+    }
+
+    @Override
+    public void compute() {
+        generator.generate(data, hashes, startIndex, this);
+    }
+
+    public void dispose() {
+        pool.shutdown();
+    }
+
 }

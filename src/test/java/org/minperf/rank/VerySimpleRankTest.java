@@ -14,10 +14,10 @@ import org.minperf.BitBuffer;
 /**
  * Test the simple rank/select implementation.
  */
-public class SimpleRankSelectTest {
+public class VerySimpleRankTest {
 
     public static void main(String... args) {
-        new SimpleRankSelectTest().test();
+        new VerySimpleRankTest().test();
     }
 
     @Test
@@ -27,7 +27,7 @@ public class SimpleRankSelectTest {
             BitBuffer buffer = new BitBuffer(8000);
             BitSet set = new BitSet(i + 1);
             set.set(0, i);
-            SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer);
+            VerySimpleRank rank = VerySimpleRank.generate(set, buffer);
             maxOverhead = Math.max(maxOverhead, rank.getOverhead());
             int read = rank.getReadBits();
             double readFactor = read / (Math.log(i) / Math.log(2));
@@ -54,7 +54,7 @@ public class SimpleRankSelectTest {
         BitSet set = new BitSet();
         set.set(0, size, false);
         BitBuffer buffer = new BitBuffer(100 + size * 2);
-        SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer);
+        VerySimpleRank rank = VerySimpleRank.generate(set, buffer);
         rank = reopen(rank, buffer);
         assertEquals(0, rank.rank(0));
         for (int j = 0; j < size; j++) {
@@ -76,7 +76,7 @@ public class SimpleRankSelectTest {
             }
         }
         BitBuffer buffer = new BitBuffer(100 + size * 2);
-        SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer);
+        VerySimpleRank rank = VerySimpleRank.generate(set, buffer);
         rank = reopen(rank, buffer);
         assertEquals(0, rank.rank(0));
         int x = 0;
@@ -96,7 +96,7 @@ public class SimpleRankSelectTest {
         BitSet set = new BitSet();
         set.set(0, size, true);
         BitBuffer buffer = new BitBuffer(100 + size * 2);
-        SimpleRankSelect rank = SimpleRankSelect.generate(set, buffer);
+        VerySimpleRank rank = VerySimpleRank.generate(set, buffer);
         rank = reopen(rank, buffer);
         assertEquals(0, rank.rank(0));
         for (int j = 1; j < size; j++) {
@@ -105,13 +105,13 @@ public class SimpleRankSelectTest {
         }
     }
 
-    private static SimpleRankSelect reopen(SimpleRankSelect rank, BitBuffer buffer) {
+    private static VerySimpleRank reopen(VerySimpleRank rank, BitBuffer buffer) {
         int bitsUsed = buffer.position();
         int size = rank.getSize();
         BitBuffer b2 = new BitBuffer(bitsUsed);
         b2.write(buffer);
         b2.seek(0);
-        SimpleRankSelect result = SimpleRankSelect.load(b2);
+        VerySimpleRank result = VerySimpleRank.load(b2);
         assertEquals(bitsUsed, b2.position());
         assertEquals(size, rank.getSize());
         return result;

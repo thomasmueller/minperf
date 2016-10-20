@@ -11,6 +11,10 @@ import org.minperf.universal.UniversalHash;
 public class Graphics {
 
     public static void generateSampleTikz() {
+        // TODO
+    }
+
+    public static void generateSampleTikzOld() {
         StringBuilder bits = new StringBuilder();
         System.out.println("4.4 Data Format");
         int leafSize = 6;

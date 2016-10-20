@@ -19,8 +19,6 @@ import org.minperf.universal.UniversalHash;
  */
 public class RandomizedTest {
 
-    private static final boolean MULTI_THREADED = true;
-
     private static final char[] HEX = "0123456789abcdef".toCharArray();
     private static final int[] HEX_DECODE = new int['f' + 1];
 
@@ -182,6 +180,9 @@ public class RandomizedTest {
         // size 100000
         // CHD: generated in 1.52 seconds, 2.257 bits/key, eval 219 nanoseconds/key
         // GOV: generated in 0.32 seconds, 2.324 bits/key, eval 207 nanoseconds/key
+        // size 1000000
+        // CHD:
+        // GOV:
         RandomizedTest.test(8, 1024, 8 * 1024, true);
         for (int i = 0; i < 5; i++) {
             if (verifyOneTest()) {
@@ -210,8 +211,8 @@ public class RandomizedTest {
 
     private static boolean verifyOneTest() {
         int size = 100_000;
-        int leafSize = 10;
-        int loadFactor = 55;
+        int leafSize = 11;
+        int loadFactor = 12;
         for (int j = 0; j < 5; j++) {
             System.gc();
         }
@@ -222,7 +223,7 @@ public class RandomizedTest {
                 " seconds to generate");
         System.out.println("  " + info.evaluateNanos +
                 " nanoseconds to evaluate");
-        if (info.bitsPerKey < 1.94 &&
+        if (info.bitsPerKey < 2.25 &&
                 info.generateNanos * size / 1_000_000_000 < 0.5 &&
                 info.evaluateNanos < 250) {
             // all tests passed
@@ -353,8 +354,9 @@ public class RandomizedTest {
         UniversalHash<Long> hash = new LongHash();
         long generateNanos = System.nanoTime();
         BitBuffer buff;
-        buff = RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
-                multiThreaded(MULTI_THREADED).generate(set);
+        buff = RecSplitBuilder.newInstance(hash).
+                leafSize(leafSize).loadFactor(loadFactor).
+                generate(set);
         int bits = buff.position();
         byte[] data = buff.toByteArray();
         generateNanos = System.nanoTime() - generateNanos;
