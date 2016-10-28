@@ -53,7 +53,7 @@ public class VerySimpleSelect {
         this.cardinality = (int) (buffer.readEliasDelta() - 1);
         this.blockCount = (cardinality + BITS_PER_BLOCK - 1) / BITS_PER_BLOCK;
         this.blockCountScale = getScaleFactor(size, blockCount);
-        this.added = (int) (buffer.readEliasDelta() - 1);
+        this.added = (int) BitBuffer.unfoldSigned(buffer.readEliasDelta() - 1);
         this.bitCount = (int) (buffer.readEliasDelta() - 1);
         this.offsetPos = buffer.position();
         this.dataPos = offsetPos + bitCount * blockCount;
@@ -92,13 +92,16 @@ public class VerySimpleSelect {
             list.set(i, diff);
             minDiff = Math.min(minDiff, diff);
         }
-        int max = Integer.MIN_VALUE;
+        if (list.size() == 0) {
+            minDiff = 0;
+        }
+        buffer.writeEliasDelta(BitBuffer.foldSigned(-minDiff) + 1);
+        int max = 0;
         for (int i = 0; i < list.size(); i++) {
             int x = list.get(i) - minDiff;
             max = Math.max(max, x);
             list.set(i, x);
         }
-        buffer.writeEliasDelta(-minDiff + 1);
         int bitCount = 32 - Integer.numberOfLeadingZeros(max);
         buffer.writeEliasDelta(bitCount + 1);
         for (int i = 0; i < list.size(); i++) {
@@ -163,16 +166,17 @@ public class VerySimpleSelect {
                 if (bit1 != 31 && data << (bit1 + 1) != 0) {
                     data <<= bit1 + 1;
                     bit1 += result;
-                    bit2 = bit1 + 1 + selectBitReverse(data, 0);
+                    bit2 = bit1 + 1 + Integer.numberOfLeadingZeros(data);
                 } else {
                     bit1 += result;
+                    bit2 = bit1 + 1;
                     while (true) {
-                        result += 32;
-                        data = (int) buffer.readNumber((int) result + dataPos, 32);
-                        if (Integer.bitCount(data) >= 1) {
-                            bit2 = (int) result + selectBitReverse(data, 0);
+                        data = (int) buffer.readNumber(bit2 + dataPos, 32);
+                        if (data != 0) {
+                            bit2 += Integer.numberOfLeadingZeros(data);
                             break;
                         }
+                        bit2 += 32;
                     }
                 }
                 return ((long) bit1 << 32) | bit2;

@@ -21,6 +21,30 @@ public class SettingsTest {
         generateRiceSplit2();
     }
 
+    @Test
+    public void testScale() {
+        for (int split = 2; split < 32; split++) {
+            int maxZero = Integer.MAX_VALUE / split;
+            assertEquals(0, Settings.scaleSmallSize(0, split));
+            assertEquals(0, Settings.scaleSmallSize(maxZero / 2, split));
+            assertEquals(0, Settings.scaleSmallSize(maxZero, split));
+            assertEquals(1, Settings.scaleSmallSize(maxZero + 2, split));
+            int max = Integer.MAX_VALUE;
+            assertEquals(split - 1, Settings.scaleSmallSize(max, split));
+            int at = max - maxZero;
+            for (int sub = maxZero; sub > 0; sub = sub == 1 ? 0 : (sub + 1) / 2) {
+                if (Settings.scaleSmallSize(at, split) < split - 1) {
+                    at += sub;
+                } else {
+                    at -= sub;
+                }
+            }
+            int got = max - at;
+            double probability = 100. * got / maxZero;
+            assertTrue(probability >= 99.9999);
+        }
+    }
+
     public static void printSplitRule() {
         System.out.println("4.3 Recursion: Split Rule");
         int x = 14;

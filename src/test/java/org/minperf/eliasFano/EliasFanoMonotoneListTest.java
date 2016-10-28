@@ -19,7 +19,7 @@ public class EliasFanoMonotoneListTest {
     @Test
     public void test() {
         for (int bucketSize = 8; bucketSize < 256; bucketSize *= 2) {
-            for (int size = 100; size <= 100000; size *= 10) {
+            for (int size = 100; size <= 1000000; size *= 10) {
                 if (size >= bucketSize) {
                     test(bucketSize, size);
                 }
@@ -53,19 +53,19 @@ public class EliasFanoMonotoneListTest {
             assertEquals(posList[i], posList2[i] + i * diff);
         }
         BitBuffer buffer = new BitBuffer(10 * size);
-        EliasFanoMonotoneList list = EliasFanoMonotoneList.generate(
-                posList2, buffer);
+        MonotoneList list = MonotoneList.generate(posList2, buffer);
         int bitCount = buffer.position();
         double oldBits = (double) (entryBits * bucketCount) / size;
         double newBits =  (double) bitCount / size;
         System.out.println("bucketSize " + bucketSize + " bucketCount " + bucketCount
-                + " old " + oldBits + " new " + newBits
+                + " old " + oldBits + " (" + entryBits + "*" + bucketCount + ") new " + newBits
                 + " saving " + (oldBits - newBits));
         for (int i = 0; i < bucketCount; i++) {
-            assertEquals(posList2[i], list.get(i));
+            assertEquals("i: " + i, posList2[i], list.get(i));
         }
         buffer.seek(0);
-        list = EliasFanoMonotoneList.load(buffer);
+        list = MonotoneList.load(buffer);
+        assertEquals(bitCount, buffer.position());
         for (int i = 0; i < bucketCount; i++) {
             assertEquals(posList2[i], list.get(i));
         }
@@ -74,6 +74,18 @@ public class EliasFanoMonotoneListTest {
             int b = list.get(i + 1);
             long ab = list.getPair(i);
             assertEquals(((long) a << 32) + b, ab);
+        }
+        int dummy = 0;
+        long time = System.nanoTime();
+        for (int test = 0; test < 100; test++) {
+            for (int i = 0; i < bucketCount - 1; i++) {
+                int a = list.get(i);
+                dummy += a;
+            }
+        }
+        time = System.nanoTime() - time;
+        if (bucketCount > 1) {
+            System.out.println("Time: " + time / 1000000 + " ms; " + time / 100 / (bucketCount - 1) + " ns/key dummy " + dummy);
         }
     }
 

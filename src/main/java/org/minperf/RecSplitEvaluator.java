@@ -52,10 +52,6 @@ public class RecSplitEvaluator<T> {
         headerBits = tableStart + tableBits;
     }
 
-    public int getTableBitCount() {
-        return headerBits - tableStart;
-    }
-
     public int evaluate(T obj) {
         long hashCode;
         int bucket;
@@ -144,7 +140,8 @@ public class RecSplitEvaluator<T> {
                 hashCode = hash.universalHash(obj, x);
             }
             if (size <= settings.getLeafSize()) {
-                int h = Settings.supplementalHash(hashCode, index, size);
+                int h = Settings.supplementalHash(hashCode, index);
+                h = Settings.scaleSmallSize(h, size);
                 return add + h;
             }
             int split = settings.getSplit(size);
@@ -157,8 +154,9 @@ public class RecSplitEvaluator<T> {
                 firstPart = size / split;
                 otherPart = firstPart;
             }
+            int h = Settings.supplementalHash(hashCode, index);
             if (firstPart != otherPart) {
-                int h = Settings.supplementalHash(hashCode, index, size);
+                h = Settings.scaleInt(h, size);
                 if (h < firstPart) {
                     size = firstPart;
                     continue;
@@ -168,7 +166,7 @@ public class RecSplitEvaluator<T> {
                 size = otherPart;
                 continue;
             }
-            int h = Settings.supplementalHash(hashCode, index, split);
+            h = Settings.scaleSmallSize(h, split);
             for (int i = 0; i < h; i++) {
                 pos = skip(pos, firstPart);
                 add += firstPart;

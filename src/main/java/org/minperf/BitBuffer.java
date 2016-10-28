@@ -57,6 +57,10 @@ public class BitBuffer {
         return x;
     }
 
+    public long readLong() {
+        return (readNumber(32) << 32) | readNumber(32);
+    }
+
     public long readNumber(int pos, int bitCount) {
         if (bitCount == 0) {
             return 0;
@@ -174,6 +178,9 @@ public class BitBuffer {
     }
 
     public void writeEliasDelta(long value) {
+        if (value <= 0) {
+            throw new IllegalArgumentException();
+        }
         int q = 64 - Long.numberOfLeadingZeros(value);
         int qq = 31 - Integer.numberOfLeadingZeros(q);
         for (int i = 0; i < qq; i++) {

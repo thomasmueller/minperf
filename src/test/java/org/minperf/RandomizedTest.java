@@ -34,6 +34,117 @@ public class RandomizedTest {
         }
     }
 
+    public static void printTimeVersusSpace() {
+        System.out.println("A Time Versus Space");
+        final double evaluateWeight = 20;
+        int size = 100000;
+        System.out.println("size: " + size);
+        ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
+        outer:
+        for (int leafSize = 2; leafSize <= 12; leafSize++) {
+            int minLoadFactor = 4;
+            for (int loadFactor = minLoadFactor; loadFactor <= 1024;) {
+                System.out.println("leafSize " + leafSize + " " + loadFactor);
+                FunctionInfo info = test(leafSize, loadFactor, size, true);
+                if (info.evaluateNanos >= 10000) {
+                    if (loadFactor == minLoadFactor) {
+                        // done
+                        break outer;
+                    }
+                    // next leaf size
+                    break;
+                }
+                if (info.bitsPerKey < 4.0) {
+                    list.add(info);
+                }
+                if (loadFactor < 16) {
+                    loadFactor += 2;
+                } else if (loadFactor < 32) {
+                    loadFactor += 4;
+                } else {
+                    loadFactor *= 2;
+                }
+            }
+        }
+        Collections.sort(list, new Comparator<FunctionInfo>() {
+
+            @Override
+            public int compare(FunctionInfo o1, FunctionInfo o2) {
+                double time1 = o1.evaluateNanos * evaluateWeight + o1.generateNanos;
+                double time2 = o2.evaluateNanos * evaluateWeight + o2.generateNanos;
+                int comp = Double.compare(time1, time2);
+                if (comp == 0) {
+                    comp = Double.compare(o1.bitsPerKey, o2.bitsPerKey);
+                }
+                return comp;
+            }
+
+        });
+        FunctionInfo last = null;
+        int minLoadFactor = Integer.MAX_VALUE, maxLoadFactor = 0;
+        int minLeafSize = Integer.MAX_VALUE, maxLeafSize = 0;
+        for (FunctionInfo info : list) {
+            if (last != null && info.bitsPerKey > last.bitsPerKey) {
+                continue;
+            }
+            System.out.println("        (" + info.bitsPerKey + ", " + info.evaluateNanos + ")");
+            minLoadFactor = Math.min(minLoadFactor, info.loadFactor);
+            maxLoadFactor = Math.max(maxLoadFactor, info.loadFactor);
+            minLeafSize = Math.min(minLeafSize, info.leafSize);
+            maxLeafSize = Math.max(maxLeafSize, info.leafSize);
+            last = info;
+        }
+        System.out.println("for loadFactor between " + minLoadFactor + " and " + maxLoadFactor);
+        System.out.println("and leafSize between " + minLeafSize + " and " + maxLeafSize);
+        last = null;
+        System.out.println("bits/key leafSize loadFactor evalTime genTime tableBitsPerKey");
+        for (FunctionInfo info : list) {
+            if (last != null && info.bitsPerKey > last.bitsPerKey) {
+                continue;
+            }
+            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.loadFactor +
+                    " " + info.evaluateNanos + " " + info.generateNanos);
+            last = info;
+        }
+    }
+
+    public static void printEvaluationTimeVersusSpaceMedium() {
+        System.out.println("A Evaluation Time Versus Space");
+        int size = 100000;
+        System.out.println("size: " + size);
+        ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
+        for (int i = 2; i < 22; i++) {
+            int leafSize = (int) Math.round(0.18 * i + 6.83);
+            int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
+            FunctionInfo info = test(leafSize, loadFactor, size / 10, true);
+            System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
+                    info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
+        }
+        int lastLeafSize = 0;
+        for (int i = 2; i < 22; i++) {
+            int leafSize = (int) Math.round(0.18 * i + 6.83);
+            int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
+            test(leafSize, loadFactor, size, true);
+            FunctionInfo info = test(leafSize, loadFactor, size, true);
+            System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
+                    info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
+            if (info.bitsPerKey < 2.5) {
+                if (leafSize > lastLeafSize) {
+                    list.add(info);
+                    lastLeafSize = leafSize;
+                }
+            }
+        }
+        System.out.println("A Evaluation Time Versus Space");
+        for (FunctionInfo info : list) {
+            System.out.println("        (" + info.bitsPerKey + ", " + info.evaluateNanos + ")");
+        }
+        System.out.println("B Generation Time Versus Space");
+        for (FunctionInfo info : list) {
+            System.out.println("        (" + info.bitsPerKey + ", " + info.generateNanos + ")");
+        }
+    }
+
     public static void printEvaluationTimeVersusSpace() {
         System.out.println("A Evaluation Time Versus Space");
         int size = 10000;
@@ -93,7 +204,7 @@ public class RandomizedTest {
                 continue;
             }
             System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.loadFactor +
-                    " " + info.evaluateNanos + " " + info.generateNanos + " " + info.headerBitsPerKey);
+                    " " + info.evaluateNanos + " " + info.generateNanos);
             last = info;
         }
     }
@@ -304,24 +415,22 @@ public class RandomizedTest {
                 RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
                 buildEvaluator(new BitBuffer(description));
         // verify
-        for (int i = 0; i < measureCount; i++) {
-            for (T x : set) {
-                int index = eval.evaluate(x);
-                if (index > set.size() || index < 0) {
-                    Assert.fail("wrong entry: " + x + " " + index +
-                            " leafSize " + leafSize +
-                            " loadFactor " + loadFactor +
-                            " hash " + convertBytesToHex(description));
-                }
-                if (known.get(index)) {
-                    eval.evaluate(x);
-                    Assert.fail("duplicate entry: " + x + " " + index +
-                            " leafSize " + leafSize +
-                            " loadFactor " + loadFactor +
-                            " hash " + convertBytesToHex(description));
-                }
-                known.set(index);
+        for (T x : set) {
+            int index = eval.evaluate(x);
+            if (index > set.size() || index < 0) {
+                Assert.fail("wrong entry: " + x + " " + index +
+                        " leafSize " + leafSize +
+                        " loadFactor " + loadFactor +
+                        " hash " + convertBytesToHex(description));
             }
+            if (known.get(index)) {
+                eval.evaluate(x);
+                Assert.fail("duplicate entry: " + x + " " + index +
+                        " leafSize " + leafSize +
+                        " loadFactor " + loadFactor +
+                        " hash " + convertBytesToHex(description));
+            }
+            known.set(index);
         }
         // measure
         // Profiler prof = new Profiler().startCollecting();
@@ -337,8 +446,8 @@ public class RandomizedTest {
                 }
             }
         }
-        return evaluateNanos = System.nanoTime() - evaluateNanos;
         // System.out.println(prof.getTop(5));
+        return evaluateNanos = (System.nanoTime() - evaluateNanos) / measureCount;
     }
 
     public static FunctionInfo testAndMeasure(int leafSize, int loadFactor, int size) {
@@ -346,7 +455,7 @@ public class RandomizedTest {
     }
 
     public static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate) {
-        return test(leafSize, loadFactor, size, evaluate, 1);
+        return test(leafSize, loadFactor, size, evaluate, 10);
     }
 
     private static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate, int measureCount) {
@@ -371,10 +480,6 @@ public class RandomizedTest {
         info.loadFactor = loadFactor;
         info.bitsPerKey = (double) bits / size;
 
-        RecSplitEvaluator<Long> eval =
-                RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
-                buildEvaluator(new BitBuffer(data));
-        info.headerBitsPerKey = (double) eval.getTableBitCount() / size;
         if (evaluate) {
             info.evaluateNanos = (double) evaluateNanos / size;
         }

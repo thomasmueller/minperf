@@ -30,7 +30,7 @@ public class Processor<T> extends RecursiveAction {
     }
 
     public Processor(Generator<T> recSplitGenerator) {
-        // TODO pool is static
+        // TODO pool is static, not final
         pool = new ForkJoinPool(Generator.PARALLELISM);
         generator = recSplitGenerator;
     }

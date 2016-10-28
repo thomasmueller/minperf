@@ -6,12 +6,11 @@ import org.minperf.BitBuffer;
 import org.minperf.select.VerySimpleSelect;
 
 /**
- * A list of monotone increasing values. Each entry needs 2 + log(gap) bits,
- * where gap is the average gap between entries, plus the overhead for the
- * "select" structure. A lookup needs one "select" call, and is otherwise
- * constant.
+ * Each entry needs 2 + log(gap) bits, where gap is the average gap between
+ * entries, plus the overhead for the "select" structure. A lookup needs one
+ * "select" call, and is otherwise constant.
  */
-public class EliasFanoMonotoneList {
+public class EliasFanoMonotoneList extends MonotoneList {
 
     private final BitBuffer buffer;
     private final int start;
@@ -60,12 +59,14 @@ public class EliasFanoMonotoneList {
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
+    @Override
     public int get(int i) {
         int low = (int) buffer.readNumber(start + i * lowBitCount, lowBitCount);
         int high = (int) select.select(i) - i;
         return (high << lowBitCount) + low;
     }
 
+    @Override
     public long getPair(int i) {
         long lowPair = buffer.readNumber(start + i * lowBitCount, lowBitCount + lowBitCount);
         int low1 = (int) (lowPair >>> lowBitCount);

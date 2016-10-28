@@ -8,7 +8,7 @@ import java.util.concurrent.RecursiveAction;
 import org.minperf.BitBuffer;
 import org.minperf.Settings;
 import org.minperf.bdz.BDZ;
-import org.minperf.eliasFano.EliasFanoMonotoneList;
+import org.minperf.eliasFano.MonotoneList;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -19,10 +19,12 @@ import org.minperf.universal.UniversalHash;
  */
 public class HybridGenerator<T> extends Generator<T> {
 
+    public static final boolean ELIAS_FANO_LIST = true;
+
     public static final int MAX_FILL = 8;
     public static final int MAX_BITS_PER_ENTRY = 8;
 
-    static final ForkJoinPool POOL = new ForkJoinPool();
+    static final ForkJoinPool POOL = new ForkJoinPool(Generator.PARALLELISM);
 
     public HybridGenerator(UniversalHash<T> hash, Settings settings) {
         super(hash, settings);
@@ -80,13 +82,18 @@ public class HybridGenerator<T> extends Generator<T> {
         for (int i = 0; i < bucketCount; i++) {
             buckets.add(new Bucket());
         }
+        long bucketScaleFactor = Settings.scaleFactor(bucketCount);
+        int bucketScaleShift = Settings.scaleShift(bucketCount);
         for (T t : collection) {
             int b;
             if (bucketCount == 1) {
                 b = 0;
             } else {
                 long h = hash.universalHash(t, 0);
-                b = Settings.scaleLong(h, bucketCount);
+                b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                if (b >= bucketCount || b < 0) {
+                    throw new AssertionError();
+                }
             }
             buckets.get(b).add(t);
         }
@@ -117,9 +124,9 @@ public class HybridGenerator<T> extends Generator<T> {
         int minOffsetDiff = shrinkList(offsetList);
         int minStartDiff = shrinkList(startList);
         d.writeEliasDelta(minOffsetDiff + 1);
-        EliasFanoMonotoneList.generate(offsetList, d);
+        MonotoneList.generate(offsetList, d);
         d.writeEliasDelta(minStartDiff + 1);
-        EliasFanoMonotoneList.generate(startList, d);
+        MonotoneList.generate(startList, d);
         if (minStartDiff < 0) {
             throw new AssertionError();
         }

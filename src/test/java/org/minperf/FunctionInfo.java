@@ -11,7 +11,6 @@ public class FunctionInfo {
     int leafSize;
     int loadFactor;
     double bitsPerKey;
-    double headerBitsPerKey;
     double generateNanos;
     double evaluateNanos;
 

@@ -1,7 +1,7 @@
 package org.minperf;
 
 import org.minperf.bdz.BDZ;
-import org.minperf.eliasFano.EliasFanoMonotoneList;
+import org.minperf.eliasFano.MonotoneList;
 import org.minperf.generator.HybridGenerator;
 import org.minperf.universal.UniversalHash;
 
@@ -13,20 +13,23 @@ import org.minperf.universal.UniversalHash;
 public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
 
     private final int minStartDiff;
-    private final EliasFanoMonotoneList startList;
+    private final MonotoneList startList;
     private final int minOffsetDiff;
-    private final EliasFanoMonotoneList offsetList;
+    private final MonotoneList offsetList;
     private final int startBuckets;
     private final int maxBits;
     private final boolean alternativeHashOption;
+    private final long bucketScaleFactor;
+    private final int bucketScaleShift;
+
 
     public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings) {
         super(buffer, hash, settings);
         this.alternativeHashOption = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
-        this.offsetList = EliasFanoMonotoneList.load(buffer);
+        this.offsetList = MonotoneList.load(buffer);
         this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
-        this.startList = EliasFanoMonotoneList.load(buffer);
+        this.startList = MonotoneList.load(buffer);
         this.startBuckets = buffer.position();
         if (bucketCount > 0) {
             int averageBucketSize = (int) size / bucketCount;
@@ -35,6 +38,8 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
         } else {
             this.maxBits = 0;
         }
+        this.bucketScaleFactor = Settings.scaleFactor(bucketCount);
+        this.bucketScaleShift = Settings.scaleShift(bucketCount);
     }
 
     @Override
@@ -49,11 +54,9 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
         if (bucketCount == 1) {
             b = 0;
         } else {
-            long h = hash.universalHash(obj, 0);
-            b = Settings.scaleLong(h, bucketCount);
+            b = Settings.scaleLong(hashCode, bucketScaleFactor, bucketScaleShift);
         }
         int offset = 0;
-
         long offsetPair = offsetList.getPair(b);
         int o = (int) (offsetPair >>> 32) + b * minOffsetDiff;
         offset += o;
@@ -129,7 +132,8 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
                 hashCode = hash.universalHash(obj, x);
             }
             if (size <= settings.getLeafSize()) {
-                int h = Settings.supplementalHash(hashCode, index, size);
+                int h = Settings.supplementalHash(hashCode, index);
+                h = Settings.scaleSmallSize(h, size);
                 return add + h;
             }
             int split = settings.getSplit(size);
@@ -142,8 +146,9 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
                 firstPart = size / split;
                 otherPart = firstPart;
             }
+            int h = Settings.supplementalHash(hashCode, index);
             if (firstPart != otherPart) {
-                int h = Settings.supplementalHash(hashCode, index, size);
+                h = Settings.scaleInt(h, size);
                 if (h < firstPart) {
                     size = firstPart;
                     continue;
@@ -153,7 +158,7 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
                 size = otherPart;
                 continue;
             }
-            int h = Settings.supplementalHash(hashCode, index, split);
+            h = Settings.scaleSmallSize(h, split);
             for (int i = 0; i < h; i++) {
                 pos = skip(pos, firstPart);
                 add += firstPart;

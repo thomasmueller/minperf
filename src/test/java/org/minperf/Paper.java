@@ -11,8 +11,12 @@ public class Paper {
     public static void main(String... args) {
 
         // B Generation Time Versus Space
-//        RandomizedTest.printEvaluationTimeVersusSpace();
-//        RandomizedTest.printGenerationTimeVersusSpace();
+        RandomizedTest.printEvaluationTimeVersusSpaceMedium();
+        // RandomizedTest.printTimeVersusSpace();
+        // RandomizedTest.printTimeVersusSpace();
+
+        RandomizedTest.printEvaluationTimeVersusSpace();
+        RandomizedTest.printGenerationTimeVersusSpace();
 
         // does not always work (depends on the hardware):
         // 4.1 Parameters
@@ -83,7 +87,9 @@ public class Paper {
                       while (count.get() >= 0) {
                           x += r.nextLong();
                           for (int i = 0; i < 1000; i++) {
-                              sum += Settings.supplementalHash(x, i, 100);
+                              int h = Settings.supplementalHash(x, i);
+                              h = Settings.scaleSmallSize(h, 30);
+                              sum += h;
                           }
                           count.incrementAndGet();
                       }

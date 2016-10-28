@@ -91,51 +91,55 @@ public class VerySimpleSelectTest {
 
     @Test
     public void testSelect() {
-        for (int fill = 0; fill <= 100; fill++) {
-            Random r = new Random(fill);
-            BitSet set = new BitSet();
-            int size = 10000;
-            int count = fill * size / 100;
-            for (int i = 0; i < count; i++) {
-                int x = r.nextInt(size);
-                set.set(x);
+        testSelect(1000, 5);
+        for (int size = 1; size <= 100000; size *= 10) {
+            for (int fill = 0; fill <= 100; fill += 5) {
+                testSelect(size, fill);
             }
-            BitBuffer buffer = new BitBuffer(10 * set.size());
-            VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
-            int p1 = buffer.position();
-            buffer.seek(0);
-            select = VerySimpleSelect.load(buffer);
-            int p2 = buffer.position();
-            assertEquals(p1, p2);
-
-            BitBuffer buffer2 = new BitBuffer(10 * set.size());
-            VerySimpleRank rank = VerySimpleRank.generate(set, buffer2);
-            p1 = buffer.position();
-            buffer2.seek(0);
-            rank = VerySimpleRank.load(buffer2);
-            p2 = buffer.position();
-            assertEquals(p1, p2);
-
-            for (int i = 0, j = 0; i < set.length(); i++) {
-                if (set.get(i)) {
-                    int x = (int) select.select(j);
-                    assertEquals(i, x);
-                    x = (int) rank.select(j);
-                    assertEquals(i, x);
-                    j++;
-                }
-            }
-            int cardinality = set.cardinality();
-            for (int j = 0; j < cardinality - 1; j++) {
-                int x1 = (int) select.select(j);
-                int x2 = (int) select.select(j + 1);
-                long x12 = select.selectPair(j);
-                assertEquals(x1, x12 >>> 32);
-                assertEquals(x2, (int) x12);
-            }
-
         }
+    }
 
+    private static void testSelect(int size, int fill) {
+        Random r = new Random(fill);
+        BitSet set = new BitSet();
+        int count = fill * size / 100;
+        for (int i = 0; i < count; i++) {
+            int x = r.nextInt(size);
+            set.set(x);
+        }
+        BitBuffer buffer = new BitBuffer(10 * set.size());
+        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
+        int p1 = buffer.position();
+        buffer.seek(0);
+        select = VerySimpleSelect.load(buffer);
+        int p2 = buffer.position();
+        assertEquals(p1, p2);
+
+        BitBuffer buffer2 = new BitBuffer(10 * set.size());
+        VerySimpleRank rank = VerySimpleRank.generate(set, buffer2);
+        p1 = buffer.position();
+        buffer2.seek(0);
+        rank = VerySimpleRank.load(buffer2);
+        p2 = buffer.position();
+        assertEquals(p1, p2);
+
+        for (int i = 0, j = 0; i < set.length(); i++) {
+            if (set.get(i)) {
+                int x = (int) rank.select(j);
+                assertEquals(i, x);
+                x = (int) select.select(j);
+                assertEquals(i, x);
+                j++;
+            }
+        }
+        int cardinality = set.cardinality();
+        for (int j = 0; j < cardinality - 1; j++) {
+            int x1 = (int) select.select(j);
+            int x2 = (int) select.select(j + 1);
+            long x12 = select.selectPair(j);
+            assertEquals(x1, x12 >>> 32);
+            assertEquals(x2, (int) x12);
+        }
     }
 
     private static void testPerformance() {

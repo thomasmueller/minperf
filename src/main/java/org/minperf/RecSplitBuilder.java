@@ -35,7 +35,7 @@ public class RecSplitBuilder<T> {
     }
 
     public RecSplitBuilder<T> loadFactor(int loadFactor) {
-        if (loadFactor < 8 || loadFactor > 65536) {
+        if (loadFactor < 4 || loadFactor > 64 * 1024) {
             throw new IllegalArgumentException("loadFactor out of range: " + loadFactor);
         }
         this.loadFactor = loadFactor;

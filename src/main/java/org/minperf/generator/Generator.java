@@ -264,9 +264,10 @@ public class Generator<T> {
         if (firstPart != otherPart) {
             int limit = firstPart;
             for (int i = 0; i < size; i++) {
-                long x = hashes[i];
-                int h = Settings.supplementalHash(x, index, size);
-                if (h < limit) {
+                long h = hashes[i];
+                int x = Settings.supplementalHash(h, index);
+                x = Settings.scaleInt(x, size);
+                if (x < limit) {
                     if (--firstPart < 0) {
                         return false;
                     }
@@ -281,9 +282,10 @@ public class Generator<T> {
         int[] count = new int[split];
         Arrays.fill(count, firstPart);
         for (int i = 0; i < size; i++) {
-            long x = hashes[i];
-            int h = Settings.supplementalHash(x, index, split);
-            if (--count[h] < 0) {
+            long h = hashes[i];
+            int x = Settings.supplementalHash(h, index);
+            x = Settings.scaleSmallSize(x, split);
+            if (--count[x] < 0) {
                 return false;
             }
         }
@@ -302,8 +304,9 @@ public class Generator<T> {
             for (int i = 0; i < size; i++) {
                 T t = data[i];
                 long h = hashes[i];
-                int bucket = Settings.supplementalHash(h, index, size);
-                if (bucket < limit) {
+                int x = Settings.supplementalHash(h, index);
+                x = Settings.scaleInt(x, size);
+                if (x < limit) {
                     data2[0][i0] = t;
                     hashes2[0][i0] = h;
                     i0++;
@@ -319,7 +322,8 @@ public class Generator<T> {
         for (int i = 0; i < size; i++) {
             T t = data[i];
             long h = hashes[i];
-            int bucket = Settings.supplementalHash(h, index, split);
+            int x = Settings.supplementalHash(h, index);
+            int bucket = Settings.scaleSmallSize(x, split);
             int p = pos[bucket]++;
             data2[bucket][p] = t;
             hashes2[bucket][p] = h;
@@ -331,7 +335,8 @@ public class Generator<T> {
         int size = hashes.length;
         for (int i = 0; i < size; i++) {
             long x = hashes[i];
-            int h = Settings.supplementalHash(x, index, size);
+            int h = Settings.supplementalHash(x, index);
+            h = Settings.scaleSmallSize(h, size);
             if ((bits & (1 << h)) != 0) {
                 return false;
             }
