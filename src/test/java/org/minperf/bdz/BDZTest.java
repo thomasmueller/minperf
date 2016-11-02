@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.BitSet;
 import java.util.HashSet;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.minperf.BitBuffer;
 import org.minperf.RandomizedTest;
@@ -22,11 +23,43 @@ public class BDZTest {
         for (int size = 10; size < 10000000; size *= 10) {
             test(size);
         }
+        testPerformance(1000000);
     }
 
     @Test
     public void test() {
         test(100000);
+    }
+
+    private static void testPerformance(int size) {
+        HashSet<Long> set = RandomizedTest.createSet(size, 1);
+        UniversalHash<Long> hash = new LongHash();
+        BitBuffer data = BDZ.generate(hash, set);
+        int bitCount = data.position();
+        data.seek(0);
+        BDZ<Long> bdz = BDZ.load(hash, data);
+        assertEquals(bitCount, data.position());
+        BitSet test = new BitSet();
+        for (long x : set) {
+            int i = bdz.evaluate(x);
+            assertTrue(i >= 0 && i < size);
+            assertFalse(test.get(i));
+            test.set(i);
+        }
+        int measureCount = 10;
+        long evaluateNanos = System.nanoTime();
+        for (int i = 0; i < measureCount; i++) {
+            for (Long x : set) {
+                int index = bdz.evaluate(x);
+                if (index > set.size() || index < 0) {
+                    Assert.fail("wrong entry: " + x + " " + index);
+                }
+            }
+        }
+        // System.out.println(prof.getTop(5));
+        evaluateNanos = (System.nanoTime() - evaluateNanos) / measureCount;
+        System.out.println("size " + size + " bits/key: " +
+                (double) bitCount / size + " evaluate " + (evaluateNanos / size) + " ns/key");
     }
 
     private static void test(int size) {
@@ -41,11 +74,12 @@ public class BDZTest {
         assertEquals(bitCount, data.position());
         BitSet test = new BitSet();
         for (long x : set) {
-            int i = bdz.get(x);
+            int i = bdz.evaluate(x);
             assertTrue(i >= 0 && i < size);
             assertFalse(test.get(i));
             test.set(i);
         }
+
     }
 
 }

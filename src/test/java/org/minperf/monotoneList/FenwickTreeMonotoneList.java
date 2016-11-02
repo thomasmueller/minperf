@@ -1,11 +1,11 @@
-package org.minperf.eliasFano;
+package org.minperf.monotoneList;
 
 import org.minperf.BitBuffer;
 
 /**
  * A monotone list that uses a fenwick tree.
  */
-public class FenwickTreeMonotoneList {
+public class FenwickTreeMonotoneList extends MonotoneList {
 
     private final int[] array;
 
@@ -23,8 +23,7 @@ public class FenwickTreeMonotoneList {
         }
         for (int i = 0; i < data.length; i++) {
             if (sum(array, i) != data[i]) {
-                System.out.println("??? " + i + " " + data[i] + " " +
-                        sum(array, i) + " " + sum(array, i - 1));
+                throw new AssertionError();
             }
         }
         return new FenwickTreeMonotoneList(array);
@@ -39,10 +38,6 @@ public class FenwickTreeMonotoneList {
         }
     }
 
-    private static int get(int[] array, int index) {
-        return sum(array, index) - sum(array, index - 1);
-    }
-
     private static int sum(int[] array, int index) {
         int sum = 0;
         index++;
@@ -53,8 +48,14 @@ public class FenwickTreeMonotoneList {
         return sum;
     }
 
+    @Override
     public int get(int i) {
         return sum(array, i);
+    }
+
+    @Override
+    public long getPair(int i) {
+        return (((long) get(i)) << 32) | get(i + 1);
     }
 
 }

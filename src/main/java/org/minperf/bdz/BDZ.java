@@ -57,7 +57,7 @@ public class BDZ<T> {
         data.seek(startPos + size * BITS_PER_ENTRY);
     }
 
-    public int get(T x) {
+    public int evaluate(T x) {
         int sum = 0;
         for (int hi = 0; hi < HASHES; hi++) {
             int h = getHash(x, hash, hashIndex, hi, arrayLength);

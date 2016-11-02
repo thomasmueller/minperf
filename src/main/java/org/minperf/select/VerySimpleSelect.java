@@ -6,15 +6,14 @@ import java.util.BitSet;
 import org.minperf.BitBuffer;
 
 /**
- * A simple select data structure implementation for a list of bits.
- * <p>
- * Select(x) gets the position of the xth 1 bit (positions starting at 0).
+ * A very simple implementation that assumes one bits are somewhat evenly
+ * distributed.
  * <p>
  * The select operation is fast and space usage is quite low, but there is no
  * strict guarantee that space usage is O(n) and the select operation is
  * constant time in the RAM model, in the mathematical sense.
  */
-public class VerySimpleSelect {
+public class VerySimpleSelect extends Select {
 
     public static final byte[] SELECT_BIT_IN_BYTE;
     public static final byte[] SELECT_BIT_IN_BYTE_REVERSE;
@@ -118,22 +117,11 @@ public class VerySimpleSelect {
         return divide == 0 ? 0 : ((long) multiply << 32) / divide + 1;
     }
 
-    /**
-     * Generate a rank/select object from the provided buffer.
-     *
-     * @param buffer the buffer
-     * @return the loaded object
-     */
     public static VerySimpleSelect load(BitBuffer buffer) {
         return new VerySimpleSelect(buffer);
     }
 
-    /**
-     * Get the position of the xth 1 bit.
-     *
-     * @param x the value (starting with 0)
-     * @return the position (0 is the first bit), or -1 if x is too large
-     */
+    @Override
     public long select(long x) {
         int block = (int) (x >>> BITS_PER_BLOCK_SHIFT);
         int expected = (int) ((block * blockCountScale) >>> 32);
@@ -151,6 +139,7 @@ public class VerySimpleSelect {
         }
     }
 
+    @Override
     public long selectPair(long x) {
         int block = (int) (x >>> BITS_PER_BLOCK_SHIFT);
         int expected = (int) ((block * blockCountScale) >>> 32);

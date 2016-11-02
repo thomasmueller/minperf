@@ -120,18 +120,21 @@ public class RandomizedTest {
             System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
                     info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
         }
-        int lastLeafSize = 0;
-        for (int i = 2; i < 22; i++) {
-            int leafSize = (int) Math.round(0.18 * i + 6.83);
-            int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
-            test(leafSize, loadFactor, size, true);
-            FunctionInfo info = test(leafSize, loadFactor, size, true);
-            System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
-                    info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
-            if (info.bitsPerKey < 2.5) {
-                if (leafSize > lastLeafSize) {
+        for (int leafSize = 8; leafSize < 14; leafSize++) {
+            // int leafSize = (int) Math.round(0.18 * i + 6.83);
+            for (int loadFactor : new int[] { 4, 6, 8, 10, 12, 14, 16, 20, 24,
+                    28, 32, 40, 48, 56, 64 }) {
+                // int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
+                test(leafSize, loadFactor, size, true);
+                FunctionInfo info = test(leafSize, loadFactor, size, true);
+                System.out.println("leafSize " + leafSize + " loadFactor " + loadFactor +
+                        " " + info.evaluateNanos + " " + info.generateNanos +
+                        " " + info.bitsPerKey);
+                if (info.bitsPerKey < 2.4 && info.evaluateNanos < 200) {
+                    System.out.println("good***");
+                }
+                if (info.bitsPerKey < 2.4) {
                     list.add(info);
-                    lastLeafSize = leafSize;
                 }
             }
         }

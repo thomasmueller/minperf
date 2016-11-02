@@ -1,4 +1,4 @@
-package org.minperf.eliasFano;
+package org.minperf.monotoneList;
 
 import org.minperf.BitBuffer;
 

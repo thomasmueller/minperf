@@ -1,4 +1,4 @@
-package org.minperf.eliasFano;
+package org.minperf.monotoneList;
 
 import static org.junit.Assert.assertEquals;
 
@@ -10,10 +10,10 @@ import org.minperf.BitBuffer;
 /**
  * Test the EliasFanoMonotoneList.
  */
-public class EliasFanoMonotoneListTest {
+public class MonotoneListTest {
 
     public static void main(String... args) {
-        new EliasFanoMonotoneListTest().testSaving();
+        new MonotoneListTest().testSaving();
     }
 
     @Test

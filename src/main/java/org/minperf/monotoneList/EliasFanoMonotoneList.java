@@ -1,9 +1,9 @@
-package org.minperf.eliasFano;
+package org.minperf.monotoneList;
 
 import java.util.BitSet;
 
 import org.minperf.BitBuffer;
-import org.minperf.select.VerySimpleSelect;
+import org.minperf.select.Select;
 
 /**
  * Each entry needs 2 + log(gap) bits, where gap is the average gap between
@@ -15,9 +15,9 @@ public class EliasFanoMonotoneList extends MonotoneList {
     private final BitBuffer buffer;
     private final int start;
     private final int lowBitCount;
-    private final VerySimpleSelect select;
+    private final Select select;
 
-    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, VerySimpleSelect select) {
+    private EliasFanoMonotoneList(BitBuffer buffer, int start, int lowBitCount, Select select) {
         this.buffer = buffer;
         this.start = start;
         this.lowBitCount = lowBitCount;
@@ -46,7 +46,7 @@ public class EliasFanoMonotoneList extends MonotoneList {
         for (int i = 0; i < len; i++) {
             buffer.writeNumber(data[i] & mask, lowBitCount);
         }
-        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
+        Select select = Select.generate(set, buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
@@ -55,7 +55,7 @@ public class EliasFanoMonotoneList extends MonotoneList {
         int lowBitCount = (int) (buffer.readEliasDelta() - 1);
         int start = buffer.position();
         buffer.seek(start + len * lowBitCount);
-        VerySimpleSelect select = VerySimpleSelect.load(buffer);
+        Select select = Select.load(buffer);
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 

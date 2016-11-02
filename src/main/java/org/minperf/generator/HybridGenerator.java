@@ -8,7 +8,7 @@ import java.util.concurrent.RecursiveAction;
 import org.minperf.BitBuffer;
 import org.minperf.Settings;
 import org.minperf.bdz.BDZ;
-import org.minperf.eliasFano.MonotoneList;
+import org.minperf.monotoneList.MonotoneList;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -18,8 +18,6 @@ import org.minperf.universal.UniversalHash;
  * @param <T> the type
  */
 public class HybridGenerator<T> extends Generator<T> {
-
-    public static final boolean ELIAS_FANO_LIST = true;
 
     public static final int MAX_FILL = 8;
     public static final int MAX_BITS_PER_ENTRY = 8;

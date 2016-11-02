@@ -14,10 +14,10 @@ import org.minperf.BitBuffer;
 /**
  * Test the simple rank/select implementation.
  */
-public class VerySimpleRankTest {
+public class RankTest {
 
     public static void main(String... args) {
-        new VerySimpleRankTest().test();
+        new RankTest().test();
     }
 
     @Test

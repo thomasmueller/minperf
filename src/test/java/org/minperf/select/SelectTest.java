@@ -12,7 +12,7 @@ import org.minperf.rank.VerySimpleRank;
 /**
  * Test the simple select implementation.
  */
-public class VerySimpleSelectTest {
+public class SelectTest {
 
     public static void main(String... args) {
         System.out.println("FastSelect performance test");
@@ -107,15 +107,15 @@ public class VerySimpleSelectTest {
             int x = r.nextInt(size);
             set.set(x);
         }
-        BitBuffer buffer = new BitBuffer(10 * set.size());
-        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
+        BitBuffer buffer = new BitBuffer(10000 + 10 * set.size());
+        Select select = Select.generate(set, buffer);
         int p1 = buffer.position();
         buffer.seek(0);
-        select = VerySimpleSelect.load(buffer);
+        select = Select.load(buffer);
         int p2 = buffer.position();
         assertEquals(p1, p2);
 
-        BitBuffer buffer2 = new BitBuffer(10 * set.size());
+        BitBuffer buffer2 = new BitBuffer(10000 + 10 * set.size());
         VerySimpleRank rank = VerySimpleRank.generate(set, buffer2);
         p1 = buffer.position();
         buffer2.seek(0);
@@ -167,7 +167,7 @@ public class VerySimpleSelectTest {
         }
         // System.out.println("set: " + set);
         BitBuffer buffer = new BitBuffer(10 * set.size());
-        VerySimpleSelect select = VerySimpleSelect.generate(set, buffer);
+        Select select = Select.generate(set, buffer);
         int bitCount = buffer.position();
         System.out.println("bits/key fast: " + ((double) bitCount / size));
         long time;

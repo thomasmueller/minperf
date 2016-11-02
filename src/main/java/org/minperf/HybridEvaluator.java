@@ -1,8 +1,8 @@
 package org.minperf;
 
 import org.minperf.bdz.BDZ;
-import org.minperf.eliasFano.MonotoneList;
 import org.minperf.generator.HybridGenerator;
+import org.minperf.monotoneList.MonotoneList;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -78,7 +78,7 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
             if (bitCount > maxBits) {
                 BitBuffer b2 = new BitBuffer(buffer);
                 b2.seek(startPos);
-                return offset + BDZ.load(hash, b2).get(obj);
+                return offset + BDZ.load(hash, b2).evaluate(obj);
             }
         } else {
             startPos = startBuckets +
