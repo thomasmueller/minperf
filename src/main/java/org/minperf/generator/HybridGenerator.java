@@ -101,7 +101,7 @@ public class HybridGenerator<T> extends Generator<T> {
         int[] startList = new int[buckets.size() + 1];
         int[] offsetList = new int[buckets.size() + 1];
         int start = 0, offset = 0;
-        boolean alternativeHashOption = false;
+        boolean alternativeHashUsed = false;
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
             if (start - offset < 0) {
@@ -109,13 +109,28 @@ public class HybridGenerator<T> extends Generator<T> {
             }
             startList[i] = start;
             offsetList[i] = offset;
-            if (b.buff != null) {
-                start += b.buff.position();
+            int pos = b.buff.position();
+            // possible overlap
+            if (!b.alternativeHash && i < buckets.size() - 1) {
+                Bucket next = buckets.get(i + 1);
+                int maxOverlap = Math.min(16, next.buff.position());
+                // at least one bit per entry
+                maxOverlap = Math.min(maxOverlap, b.buff.position() - b.entryCount);
+                int overlap = 0;
+                for (; overlap < maxOverlap; overlap++) {
+                    if (next.buff.readNumber(0, overlap + 1) !=
+                            b.buff.readNumber(pos - overlap - 1, overlap + 1)) {
+                        break;
+                    }
+                }
+                pos -= overlap;
+                b.buff.seek(pos);
             }
+            start += pos;
             offset += b.entryCount;
-            alternativeHashOption |= b.alternativeHashOption;
+            alternativeHashUsed |= b.alternativeHash;
         }
-        d.writeBit(alternativeHashOption ? 1 : 0);
+        d.writeBit(alternativeHashUsed ? 1 : 0);
         startList[buckets.size()] = start;
         offsetList[buckets.size()] = offset;
         shrinkList(startList, offsetList);
@@ -130,9 +145,7 @@ public class HybridGenerator<T> extends Generator<T> {
         }
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
-            if (b.buff != null) {
-                d.write(b.buff);
-            }
+            d.write(b.buff);
         }
     }
 
@@ -161,17 +174,15 @@ public class HybridGenerator<T> extends Generator<T> {
     }
 
     public static int scaleSize(int size) {
-        // assume at least 1.375 bits per key
-        return (size  * 11 + 7) >> 3;
-        // return (size  * 10 + 7) >> 3;
-        // return size;
+        // at least 1 bit per entry
+        return size;
     }
 
     /**
      * A bucket.
      */
     class Bucket {
-        boolean alternativeHashOption;
+        boolean alternativeHash;
         ArrayList<T> list = new ArrayList<T>();
         BitBuffer buff;
         int entryCount;
@@ -232,7 +243,7 @@ public class HybridGenerator<T> extends Generator<T> {
                 // additional bit per bucket)
                 buff.writeBit(0);
             }
-            alternativeHashOption = true;
+            alternativeHash = true;
         }
 
     }

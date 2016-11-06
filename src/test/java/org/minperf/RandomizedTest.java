@@ -116,25 +116,25 @@ public class RandomizedTest {
         for (int i = 2; i < 22; i++) {
             int leafSize = (int) Math.round(0.18 * i + 6.83);
             int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
-            FunctionInfo info = test(leafSize, loadFactor, size / 10, true);
-            System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
-                    info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
+            // FunctionInfo info =
+            test(leafSize, loadFactor, size / 10, true);
+            // System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
+            //        info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
         }
         for (int leafSize = 8; leafSize < 14; leafSize++) {
+            System.out.println("leafSize " + leafSize);
             // int leafSize = (int) Math.round(0.18 * i + 6.83);
             for (int loadFactor : new int[] { 4, 6, 8, 10, 12, 14, 16, 20, 24,
                     28, 32, 40, 48, 56, 64 }) {
                 // int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
                 test(leafSize, loadFactor, size, true);
                 FunctionInfo info = test(leafSize, loadFactor, size, true);
-                System.out.println("leafSize " + leafSize + " loadFactor " + loadFactor +
-                        " " + info.evaluateNanos + " " + info.generateNanos +
-                        " " + info.bitsPerKey);
-                if (info.bitsPerKey < 2.4 && info.evaluateNanos < 200) {
-                    System.out.println("good***");
-                }
-                if (info.bitsPerKey < 2.4) {
+                if (info.bitsPerKey < 2.4 && info.evaluateNanos < 250) {
+                    System.out.println("leafSize " + leafSize + " loadFactor " + loadFactor +
+                            " " + info.evaluateNanos + " " + info.generateNanos +
+                            " " + info.bitsPerKey);
                     list.add(info);
+                    break;
                 }
             }
         }
@@ -148,67 +148,31 @@ public class RandomizedTest {
         }
     }
 
-    public static void printEvaluationTimeVersusSpace() {
+    public static void printEvaluationAndGenerationTimeVersusSpace() {
         System.out.println("A Evaluation Time Versus Space");
-        int size = 10000;
+        int size = 100000;
         System.out.println("size: " + size);
         ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
-        outer:
-        for (int leafSize = 2; leafSize <= 15; leafSize++) {
-            int minLoadFactor = 16;
-            for (int loadFactor = minLoadFactor; loadFactor < 8 * 1024; loadFactor *= 2) {
-                System.out.println("leafSize " + leafSize + " " + loadFactor);
+        for (int leafSize = 8; leafSize <= 14; leafSize++) {
+            for (int loadFactor : new int[] { 8, 12, 16, 20, 24, 28, 32, 48,
+                    64, 128, 256, 1024, 2048, 4096, 8 * 1024 }) {
+                // int loadFactor = (int) Math.pow(Math.sqrt(2), leafSize);
+                FunctionInfo best = null;
                 FunctionInfo info = test(leafSize, loadFactor, size, true);
-                if (info.evaluateNanos >= 10000) {
-                    if (loadFactor == minLoadFactor) {
-                        // done
-                        break outer;
-                    }
-                    // next leaf size
-                    break;
+                if (best == null || info.evaluateNanos < best.evaluateNanos) {
+                    best = info;
                 }
-                if (info.bitsPerKey < 2.4) {
-                    list.add(info);
-                }
+                System.out.println(best);
+                list.add(best);
             }
         }
-        Collections.sort(list, new Comparator<FunctionInfo>() {
-
-            @Override
-            public int compare(FunctionInfo o1, FunctionInfo o2) {
-                int comp = Double.compare(o1.evaluateNanos, o2.evaluateNanos);
-                if (comp == 0) {
-                    comp = Double.compare(o1.bitsPerKey, o2.bitsPerKey);
-                }
-                return comp;
-            }
-
-        });
-        FunctionInfo last = null;
-        int minLoadFactor = Integer.MAX_VALUE, maxLoadFactor = 0;
-        int minLeafSize = Integer.MAX_VALUE, maxLeafSize = 0;
+        System.out.println("Evaluation time");
         for (FunctionInfo info : list) {
-            if (last != null && info.bitsPerKey > last.bitsPerKey) {
-                continue;
-            }
             System.out.println("        (" + info.bitsPerKey + ", " + info.evaluateNanos + ")");
-            minLoadFactor = Math.min(minLoadFactor, info.loadFactor);
-            maxLoadFactor = Math.max(maxLoadFactor, info.loadFactor);
-            minLeafSize = Math.min(minLeafSize, info.leafSize);
-            maxLeafSize = Math.max(maxLeafSize, info.leafSize);
-            last = info;
         }
-        System.out.println("for loadFactor between " + minLoadFactor + " and " + maxLoadFactor);
-        System.out.println("and leafSize between " + minLeafSize + " and " + maxLeafSize);
-        last = null;
-        System.out.println("bits/key leafSize loadFactor evalTime genTime tableBitsPerKey");
+        System.out.println("Generation time");
         for (FunctionInfo info : list) {
-            if (last != null && info.bitsPerKey > last.bitsPerKey) {
-                continue;
-            }
-            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.loadFactor +
-                    " " + info.evaluateNanos + " " + info.generateNanos);
-            last = info;
+            System.out.println("        (" + info.bitsPerKey + ", " + info.generateNanos + ")");
         }
     }
 
@@ -337,7 +301,7 @@ public class RandomizedTest {
                 " seconds to generate");
         System.out.println("  " + info.evaluateNanos +
                 " nanoseconds to evaluate");
-        if (info.bitsPerKey < 2.25 &&
+        if (info.bitsPerKey < 2.27 &&
                 info.generateNanos * size / 1_000_000_000 < 0.5 &&
                 info.evaluateNanos < 250) {
             // all tests passed
@@ -437,20 +401,25 @@ public class RandomizedTest {
         }
         // measure
         // Profiler prof = new Profiler().startCollecting();
-        long evaluateNanos = System.nanoTime();
+        long best = Long.MAX_VALUE;
         for (int i = 0; i < measureCount; i++) {
-            for (T x : set) {
-                int index = eval.evaluate(x);
-                if (index > set.size() || index < 0) {
-                    Assert.fail("wrong entry: " + x + " " + index +
-                            " leafSize " + leafSize +
-                            " loadFactor " + loadFactor +
-                            " hash " + convertBytesToHex(description));
+            long evaluateNanos = System.nanoTime();
+            for (int j = 0; j < measureCount; j++) {
+                for (T x : set) {
+                    int index = eval.evaluate(x);
+                    if (index > set.size() || index < 0) {
+                        Assert.fail("wrong entry: " + x + " " + index +
+                                " leafSize " + leafSize +
+                                " loadFactor " + loadFactor +
+                                " hash " + convertBytesToHex(description));
+                    }
                 }
             }
+            evaluateNanos = System.nanoTime() - evaluateNanos;
+            best = Math.min(best, evaluateNanos);
         }
         // System.out.println(prof.getTop(5));
-        return evaluateNanos = (System.nanoTime() - evaluateNanos) / measureCount;
+        return best / measureCount;
     }
 
     public static FunctionInfo testAndMeasure(int leafSize, int loadFactor, int size) {
@@ -461,7 +430,7 @@ public class RandomizedTest {
         return test(leafSize, loadFactor, size, evaluate, 10);
     }
 
-    private static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate, int measureCount) {
+    public static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate, int measureCount) {
         HashSet<Long> set = createSet(size, 1);
         UniversalHash<Long> hash = new LongHash();
         long generateNanos = System.nanoTime();

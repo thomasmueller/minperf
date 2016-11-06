@@ -3,14 +3,17 @@ package org.minperf.monotoneList;
 import org.minperf.BitBuffer;
 
 /**
- * This implementation uses a linear regression, and 3 levels of offsets.
+ * This implementation uses a linear regression, and 3 levels of offsets. It is
+ * much simpler and typically faster than an EliasFanoMonotoneList, but space
+ * usage is typically a bit larger, and not strictly linear in the mathematical
+ * sense.
  */
 public class MultiStageMonotoneList extends MonotoneList {
 
-    private static final int GROUP_SHIFT = 4;
-    private static final int GROUP_COUNT = 1 << GROUP_SHIFT;
-    private static final int GROUP1_FACTOR = 8;
-    private static final int GROUP2_FACTOR = 4;
+    public static final int SHIFT1 = 6;
+    public static final int SHIFT2 = 3;
+    public static final int FACTOR1 = 32;
+    public static final int FACTOR2 = 16;
 
     private final BitBuffer buffer;
     private final int startLevel1, startLevel2, startLevel3;
@@ -29,8 +32,8 @@ public class MultiStageMonotoneList extends MonotoneList {
         this.bitCount2 = (int) buffer.readEliasDelta() - 1;
         this.bitCount3 = (int) buffer.readEliasDelta() - 1;
         startLevel1 = buffer.position();
-        count2 = (count3 + GROUP_COUNT - 1) / GROUP_COUNT;
-        count1 = (count2 + GROUP_COUNT - 1) / GROUP_COUNT;
+        count2 = (count3 + (1 << SHIFT2) - 1) >> SHIFT2;
+        count1 = (count3 + (1 << SHIFT1) - 1) >> SHIFT1;
         startLevel2 = startLevel1 + count1 * bitCount1;
         startLevel3 = startLevel2 + count2 * bitCount2;
         buffer.seek(startLevel3 + bitCount3 * count3);
@@ -60,8 +63,8 @@ public class MultiStageMonotoneList extends MonotoneList {
          buffer.writeEliasDelta(count3 + 1);
          buffer.writeEliasDelta(diff + 1);
          buffer.writeEliasDelta(BitBuffer.foldSigned(add) + 1);
-         int count2 = (count3 + GROUP_COUNT - 1) / GROUP_COUNT;
-         int count1 = (count2 + GROUP_COUNT - 1) / GROUP_COUNT;
+         int count2 = (count3 + (1 << SHIFT2) - 1) >> SHIFT2;
+         int count1 = (count3 + (1 << SHIFT1) - 1) >> SHIFT1;
          int[] group1 = new int[count1];
          int[] group2 = new int[count2];
          int[] group3 = new int[count3];
@@ -79,35 +82,34 @@ public class MultiStageMonotoneList extends MonotoneList {
          for (int i = 0; i < count3; i++) {
              int x = group3[i];
              a = Math.min(a, x);
-             if (i % GROUP_COUNT == (GROUP_COUNT - 1) || i == count3 - 1) {
-                 group2[i / GROUP_COUNT] = a / GROUP2_FACTOR;
+             if ((i +1) >> SHIFT2 != i >> SHIFT2 || i == count3 - 1) {
+                 group2[i >> SHIFT2] = a / FACTOR2;
                  a = Integer.MAX_VALUE;
              }
          }
          a = Integer.MAX_VALUE;
          for (int i = 0; i < count3; i++) {
-             int d = group2[i / GROUP_COUNT] * GROUP2_FACTOR;
+             int d = group2[i >> SHIFT2] * FACTOR2;
              int x = group3[i];
              group3[i] -= d;
              if (group3[i] < 0) {
                  throw new AssertionError();
              }
              a = Math.min(a, x);
-             if (i % (GROUP_COUNT * GROUP_COUNT) == (GROUP_COUNT * GROUP_COUNT - 1) || i == count3 - 1) {
-                 group1[i / GROUP_COUNT / GROUP_COUNT] = a / GROUP1_FACTOR;
+             if ((i + 1) >> SHIFT1 != i >> SHIFT1 || i == count3 - 1) {
+                 group1[i >> SHIFT1] = a / FACTOR1;
                  a = Integer.MAX_VALUE;
              }
          }
          int last = -1;
          for (int i = 0; i < count3; i++) {
-             int j = i / GROUP_COUNT / GROUP_COUNT;
-             int d = group1[j] * GROUP1_FACTOR;
-             int n = i / GROUP_COUNT;
-             if (n == last) {
+             int i2 = i >> SHIFT2;
+             if (i2 == last) {
                  continue;
              }
-             group2[n] -= d / GROUP2_FACTOR;
-             last = n;
+             int d = group1[i >> SHIFT1] * FACTOR1;
+             group2[i2] -= d / FACTOR2;
+             last = i2;
          }
          int max1 = 0, max2 = 0, max3 = 0;
          for (int i = 0; i < group3.length; i++) {
@@ -145,10 +147,10 @@ public class MultiStageMonotoneList extends MonotoneList {
     @Override
     public int get(int i) {
         int expected = (int) ((i * factor) >>> 32) + add;
-        long a = buffer.readNumber(startLevel1 + (i >>> (2 * GROUP_SHIFT)) * bitCount1, bitCount1);
-        long b = buffer.readNumber(startLevel2 + (i >>> GROUP_SHIFT) * bitCount2, bitCount2);
+        long a = buffer.readNumber(startLevel1 + (i >>> SHIFT1) * bitCount1, bitCount1);
+        long b = buffer.readNumber(startLevel2 + (i >>> SHIFT2) * bitCount2, bitCount2);
         long c = buffer.readNumber(startLevel3 + i * bitCount3, bitCount3);
-        return (int) (expected + a * GROUP1_FACTOR + b * GROUP2_FACTOR + c);
+        return (int) (expected + a * FACTOR1 + b * FACTOR2 + c);
     }
 
     @Override

@@ -18,14 +18,13 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
     private final MonotoneList offsetList;
     private final int startBuckets;
     private final int maxBits;
-    private final boolean alternativeHashOption;
+    private final boolean alternativeHashUsed;
     private final long bucketScaleFactor;
     private final int bucketScaleShift;
 
-
     public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings) {
         super(buffer, hash, settings);
-        this.alternativeHashOption = buffer.readBit() != 0;
+        this.alternativeHashUsed = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
         this.offsetList = MonotoneList.load(buffer);
         this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
@@ -63,7 +62,7 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
         int offsetNext = ((int) offsetPair) + (b + 1) * minOffsetDiff;
         int bucketSize = offsetNext - o;
         int startPos;
-        if (alternativeHashOption) {
+        if (alternativeHashUsed) {
             long startPair = startList.getPair(b);
             int start = (int) (startPair >>> 32);
             int startNext = (int) startPair;

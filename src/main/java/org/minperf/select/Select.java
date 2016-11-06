@@ -22,7 +22,7 @@ public abstract class Select {
      */
     public static Select generate(BitSet set, BitBuffer buffer) {
         if (SIMPLE_SELECT) {
-            return SimpleSelectWrapper.generate(set, buffer);
+            return SimpleSelect.generate(set, buffer);
         }
         return VerySimpleSelect.generate(set, buffer);
     }
@@ -35,7 +35,7 @@ public abstract class Select {
      */
     public static Select load(BitBuffer buffer) {
         if (SIMPLE_SELECT) {
-            return SimpleSelectWrapper.load(buffer);
+            return SimpleSelect.load(buffer);
         }
         return VerySimpleSelect.load(buffer);
     }

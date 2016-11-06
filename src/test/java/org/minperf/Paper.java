@@ -11,14 +11,14 @@ public class Paper {
     public static void main(String... args) {
 
         // B Generation Time Versus Space
-        RandomizedTest.printEvaluationTimeVersusSpaceMedium();
+        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
 
-        RandomizedTest.printEvaluationTimeVersusSpace();
-        RandomizedTest.printGenerationTimeVersusSpace();
+        // RandomizedTest.printTimeVersusSpace();
+        // RandomizedTest.printGenerationTimeVersusSpace();
 
-        // does not always work (depends on the hardware):
+        // does not always work (performance depends on the hardware):
         // 4.1 Parameters
         RandomizedTest.verifyParameters();
 
@@ -47,7 +47,7 @@ public class Paper {
 
         // A Evaluation Time
         TimeAndSpaceEstimator.listEvalulationTimes();
-        RandomizedTest.printEvaluationTimeVersusSpace();
+        RandomizedTest.printTimeVersusSpace();
 
         // B Generation Time Versus Space
         RandomizedTest.printGenerationTimeVersusSpace();
