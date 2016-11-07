@@ -58,7 +58,7 @@ public class Graphics {
             int offsetNext = ((int) offsetPair) + (x + 1) * minOffsetDiff;
             int bucketSize = offsetNext - o;
             int startPos = startBuckets +
-                    HybridGenerator.scaleSize(offset) +
+                    HybridGenerator.getMinBitCount(offset) +
                     startList.get(x) + x * minStartDiff;
             System.out.println("  child["+getSizeTikz(bucketSize)+"] {child[level distance=8mm]{node {$b_" + x + "$}");
             System.out.println("    child[grow cyclic, rotate=-90, sibling angle=30, "+

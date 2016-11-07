@@ -67,10 +67,10 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
             int start = (int) (startPair >>> 32);
             int startNext = (int) startPair;
             startPos = startBuckets +
-                    HybridGenerator.scaleSize(offset) +
+                    HybridGenerator.getMinBitCount(offset) +
                     start + b * minStartDiff;
             int startNextPos = startBuckets +
-                    HybridGenerator.scaleSize(offsetNext) +
+                    HybridGenerator.getMinBitCount(offsetNext) +
                     startNext + (b + 1) *
                     minStartDiff;
             int bitCount = startNextPos - startPos;
@@ -81,7 +81,7 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
             }
         } else {
             startPos = startBuckets +
-                    HybridGenerator.scaleSize(offset) +
+                    HybridGenerator.getMinBitCount(offset) +
                     startList.get(b) + b * minStartDiff;
         }
         return evaluate(startPos, obj, hashCode, 0, offset, bucketSize);

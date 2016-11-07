@@ -115,7 +115,8 @@ public class HybridGenerator<T> extends Generator<T> {
                 Bucket next = buckets.get(i + 1);
                 int maxOverlap = Math.min(16, next.buff.position());
                 // at least one bit per entry
-                maxOverlap = Math.min(maxOverlap, b.buff.position() - b.entryCount);
+                int minBitCount = getMinBitCount(b.entryCount);
+                maxOverlap = Math.min(maxOverlap, b.buff.position() - minBitCount);
                 int overlap = 0;
                 for (; overlap < maxOverlap; overlap++) {
                     if (next.buff.readNumber(0, overlap + 1) !=
@@ -154,7 +155,7 @@ public class HybridGenerator<T> extends Generator<T> {
         for (int i = 1; i < sourceList.length; i++) {
             int d = sourceList[i] - sourceList[i - 1];
             sum += d;
-            targetList[i] -= scaleSize(sum);
+            targetList[i] -= getMinBitCount(sum);
             if (targetList[i] < targetList[i - 1]) {
                 throw new IllegalArgumentException("");
             }
@@ -173,9 +174,9 @@ public class HybridGenerator<T> extends Generator<T> {
         return min;
     }
 
-    public static int scaleSize(int size) {
-        // at least 1 bit per entry
-        return size;
+    public static int getMinBitCount(int size) {
+        // assume at least 1.375 bits per key
+        return (size  * 11 + 7) >> 3;
     }
 
     /**
@@ -199,7 +200,7 @@ public class HybridGenerator<T> extends Generator<T> {
         void generateBucket(UniversalHash<T> hash, int maxBucketSize, int maxBits) {
             int size = list.size();
             entryCount = size;
-            int minSize = scaleSize(size);
+            int minSize = getMinBitCount(size);
             if (size <= 1) {
                 // zero or one entry
                 buff = new BitBuffer(minSize);
