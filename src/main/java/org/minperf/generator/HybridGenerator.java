@@ -101,17 +101,20 @@ public class HybridGenerator<T> extends Generator<T> {
         int[] startList = new int[buckets.size() + 1];
         int[] offsetList = new int[buckets.size() + 1];
         int start = 0, offset = 0;
-        boolean alternativeHashUsed = false;
+        ArrayList<T> alternativeList = new ArrayList<T>();
+        for (int i = 0; i < buckets.size(); i++) {
+            Bucket b = buckets.get(i);
+            // move all buckets first, so overlap is not affected
+            b.moveToAlternative(alternativeList);
+        }
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
             if (start - offset < 0) {
                 throw new AssertionError();
             }
-            startList[i] = start;
-            offsetList[i] = offset;
             int pos = b.buff.position();
             // possible overlap
-            if (!b.alternativeHash && i < buckets.size() - 1) {
+            if (i < buckets.size() - 1) {
                 Bucket next = buckets.get(i + 1);
                 int maxOverlap = Math.min(16, next.buff.position());
                 // at least one bit per entry
@@ -129,11 +132,10 @@ public class HybridGenerator<T> extends Generator<T> {
             }
             start += pos;
             offset += b.entryCount;
-            alternativeHashUsed |= b.alternativeHash;
+            startList[i + 1] = start;
+            offsetList[i + 1] = offset;
         }
-        d.writeBit(alternativeHashUsed ? 1 : 0);
-        startList[buckets.size()] = start;
-        offsetList[buckets.size()] = offset;
+        d.writeBit(alternativeList.isEmpty() ? 0 : 1);
         shrinkList(startList, offsetList);
         int minOffsetDiff = shrinkList(offsetList);
         int minStartDiff = shrinkList(startList);
@@ -147,6 +149,10 @@ public class HybridGenerator<T> extends Generator<T> {
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
             d.write(b.buff);
+        }
+        if (!alternativeList.isEmpty()) {
+            BitBuffer buff = BDZ.generate(hash, alternativeList);
+            d.write(buff);
         }
     }
 
@@ -183,14 +189,22 @@ public class HybridGenerator<T> extends Generator<T> {
      * A bucket.
      */
     class Bucket {
-        boolean alternativeHash;
         ArrayList<T> list = new ArrayList<T>();
         BitBuffer buff;
         int entryCount;
+        boolean alternative;
 
         @Override
        public String toString() {
             return "" + entryCount;
+        }
+
+        public void moveToAlternative(ArrayList<T> alternativeList) {
+            if (alternative) {
+                alternativeList.addAll(list);
+                entryCount = 0;
+                buff = new BitBuffer(0);
+            }
         }
 
         void add(T obj) {
@@ -210,7 +224,8 @@ public class HybridGenerator<T> extends Generator<T> {
                 return;
             }
             if (size > maxBucketSize) {
-                generateAlternative(hash, maxBits + 1);
+                alternative = true;
+                buff = new BitBuffer(0);
                 return;
             }
             @SuppressWarnings("unchecked")
@@ -231,20 +246,8 @@ public class HybridGenerator<T> extends Generator<T> {
                 }
             }
             if (buff.position() > maxBits) {
-                generateAlternative(hash, maxBits + 1);
+                alternative = true;
             }
-        }
-
-        private void generateAlternative(UniversalHash<T> hash, int minBits) {
-            buff = BDZ.generate(hash, list);
-            while (buff.position() < minBits) {
-                // fill with empty space until it is larger, to ensure this
-                // is detected when reading (an alternative would be to use
-                // one bit per bucket as a flag, but that would mean one
-                // additional bit per bucket)
-                buff.writeBit(0);
-            }
-            alternativeHash = true;
         }
 
     }

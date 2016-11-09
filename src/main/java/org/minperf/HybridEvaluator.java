@@ -17,25 +17,28 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
     private final int minOffsetDiff;
     private final MonotoneList offsetList;
     private final int startBuckets;
-    private final int maxBits;
-    private final boolean alternativeHashUsed;
     private final long bucketScaleFactor;
     private final int bucketScaleShift;
+    private final BDZ<T> alternative;
 
     public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings) {
         super(buffer, hash, settings);
-        this.alternativeHashUsed = buffer.readBit() != 0;
+        boolean alternative = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
         this.offsetList = MonotoneList.load(buffer);
         this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
         this.startList = MonotoneList.load(buffer);
         this.startBuckets = buffer.position();
-        if (bucketCount > 0) {
-            int averageBucketSize = (int) size / bucketCount;
-            int maxBucketSize = averageBucketSize * HybridGenerator.MAX_FILL;
-            this.maxBits = maxBucketSize * HybridGenerator.MAX_BITS_PER_ENTRY;
+        if (alternative) {
+            int b = bucketCount;
+            int offset = offsetList.get(b);
+            int pos = startBuckets +
+                    HybridGenerator.getMinBitCount(offset) +
+                    startList.get(b) + b * minStartDiff;
+            buffer.seek(pos);
+            this.alternative = BDZ.load(hash, buffer);
         } else {
-            this.maxBits = 0;
+            this.alternative = null;
         }
         this.bucketScaleFactor = Settings.scaleFactor(bucketCount);
         this.bucketScaleShift = Settings.scaleShift(bucketCount);
@@ -55,35 +58,22 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
         } else {
             b = Settings.scaleLong(hashCode, bucketScaleFactor, bucketScaleShift);
         }
-        int offset = 0;
-        long offsetPair = offsetList.getPair(b);
-        int o = (int) (offsetPair >>> 32) + b * minOffsetDiff;
-        offset += o;
-        int offsetNext = ((int) offsetPair) + (b + 1) * minOffsetDiff;
-        int bucketSize = offsetNext - o;
         int startPos;
-        if (alternativeHashUsed) {
-            long startPair = startList.getPair(b);
-            int start = (int) (startPair >>> 32);
-            int startNext = (int) startPair;
-            startPos = startBuckets +
-                    HybridGenerator.getMinBitCount(offset) +
-                    start + b * minStartDiff;
-            int startNextPos = startBuckets +
-                    HybridGenerator.getMinBitCount(offsetNext) +
-                    startNext + (b + 1) *
-                    minStartDiff;
-            int bitCount = startNextPos - startPos;
-            if (bitCount > maxBits) {
-                BitBuffer b2 = new BitBuffer(buffer);
-                b2.seek(startPos);
-                return offset + BDZ.load(hash, b2).evaluate(obj);
+        long offsetPair = offsetList.getPair(b);
+        int offset = (int) (offsetPair >>> 32) + b * minOffsetDiff;
+        int offsetNext = ((int) offsetPair) + (b + 1) * minOffsetDiff;
+        if (offsetNext == offset) {
+            if (alternative == null) {
+                // entry not found
+                return 0;
             }
-        } else {
-            startPos = startBuckets +
-                    HybridGenerator.getMinBitCount(offset) +
-                    startList.get(b) + b * minStartDiff;
+            offset = offsetList.get(bucketCount) + bucketCount * minOffsetDiff;
+            return offset + alternative.evaluate(obj);
         }
+        int bucketSize = offsetNext - offset;
+        startPos = startBuckets +
+                HybridGenerator.getMinBitCount(offset) +
+                startList.get(b) + b * minStartDiff;
         return evaluate(startPos, obj, hashCode, 0, offset, bucketSize);
     }
 
