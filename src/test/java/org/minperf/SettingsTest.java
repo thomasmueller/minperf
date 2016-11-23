@@ -15,10 +15,34 @@ public class SettingsTest {
      */
     public static void main(String... args) {
         System.out.println("Constants");
+        printSplit();
         generateEstimatedSpaceUsage();
         generateRiceLeaf();
         generateRiceSplitMore();
         generateRiceSplit2();
+    }
+
+    static void printSplit() {
+        for (int leafSize = 8; leafSize < 20; leafSize++) {
+            Settings s = new Settings(leafSize, 8 * 1024);
+            System.out.println("leafSize " + leafSize);
+            int last  = 0;
+            for (int i = leafSize + 1; i < 8 * 1024; i++) {
+                int split = s.getSplit(i);
+                if (split == 2) {
+                    split = -(i / 2);
+                }
+                if (split > 0) {
+                    System.out.println("  size " + i + " even split " + split);
+                    last = 0;
+                } else {
+                    if (last != split) {
+                        System.out.println("  size " + i + " split " + -split + ":remainder");
+                        last = split;
+                    }
+                }
+            }
+        }
     }
 
     @Test

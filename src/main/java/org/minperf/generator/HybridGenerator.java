@@ -98,15 +98,16 @@ public class HybridGenerator<T> extends Generator<T> {
 
         generateParallel(size, bucketCount, buckets);
 
-        int[] startList = new int[buckets.size() + 1];
-        int[] offsetList = new int[buckets.size() + 1];
-        int start = 0, offset = 0;
         ArrayList<T> alternativeList = new ArrayList<T>();
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
             // move all buckets first, so overlap is not affected
             b.moveToAlternative(alternativeList);
         }
+
+        int[] startList = new int[buckets.size() + 1];
+        int[] offsetList = new int[buckets.size() + 1];
+        int start = 0, offset = 0;
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
             if (start - offset < 0) {

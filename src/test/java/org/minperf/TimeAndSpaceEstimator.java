@@ -3,11 +3,100 @@ package org.minperf;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 
 /**
  * Methods to estimate the time and space needed to generate a MPHF.
  */
 public class TimeAndSpaceEstimator {
+
+    public static void printExpectedSpace(int leafSize, int loadFactor) {
+//      System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+//      System.out.println("  Bucket sizes");
+        Settings s = new Settings(leafSize, loadFactor);
+        double totalBits = 0;
+        double inRegularBucket = 0;
+        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
+        for (int i = 0; i <= s.getMaxBucketSize(); i++) {
+            double probBucketSize = Probability.getProbabilityOfBucketSize(
+                    loadFactor, i);
+            if (probBucketSize <= 0) {
+                continue;
+            }
+            double bits = printExpectedBucketSpace(s, i, 0, cache);
+            inRegularBucket += probBucketSize * i;
+            totalBits += bits * probBucketSize;
+        }
+//      System.out.println("  total average bits for a bucket: " + totalBits);
+//      System.out.println("  size > than max, p=" + overflow);
+//      System.out.println("  size > than max, p=" + overflow + " (adjusted)");
+        double pInOverflow = 1.0 - loadFactor / inRegularBucket;
+//      System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow);
+//      pInOverflow = Math.max(minP, pInOverflow);
+//      System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow + " (adjusted)");
+        double bitsPerEntryInOverflow = 4.0;
+        totalBits += pInOverflow * bitsPerEntryInOverflow;
+        double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
+        double bitsPerBucketOffsetOverhead = 2 + Math.log(loadFactor) / Math.log(2);
+        // bitsPerBucketStartOverhead = 0;
+        // bitsPerBucketOffsetOverhead = 0;
+        double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / loadFactor;
+        System.out.print("loadFactor " + loadFactor + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
+        int size = 10000 * loadFactor;
+        FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, false);
+        int sizeBits = BitCodes.getEliasDelta(size).length();
+        double bitsPerKeyReal = (info.bitsPerKey * size - sizeBits) / size;
+        System.out.println(" real " + bitsPerKeyReal);
+    }
+
+    private static double printExpectedBucketSpace(Settings s, int size, int indent, HashMap<Integer, Double> cache) {
+        if (size <= 1) {
+            return 0;
+        }
+        Double cached = cache.get(size);
+        if (cached != null) {
+            return cached;
+        }
+        double p;
+        int k;
+        // String spaces = new String(new char[2 + indent * 2]).replace((char) 0, ' ');
+        if (size <= s.getLeafSize()) {
+            p = Probability.probabilitySplitIntoMSubsetsOfSizeN(size, 1);
+            k = BitCodes.calcBestGolombRiceShift(p);
+            double bits = BitCodes.calcAverageRiceGolombBits(k, p);
+            // System.out.println(spaces + "leaf size " + size + " bits " + bits);
+            cache.put(size, bits);
+            return bits;
+        }
+        int split = s.getSplit(size);
+        return printExpectedBucketSpace(s, size, indent, cache, split);
+    }
+
+    private static double getSplitProbability(int size, int split) {
+        if (split < 0) {
+            // TODO verify this is correct
+            int smallSet = Math.min(size / 2, size - size / 2);
+            return Probability.probabilitySplitIntoMSubsetsOfSizeN(2, smallSet);
+        }
+        return Probability.probabilitySplitIntoMSubsetsOfSizeN(split, size / split);
+    }
+
+    private static double printExpectedBucketSpace(Settings s, int size, int indent, HashMap<Integer, Double> cache, int split) {
+        double p = getSplitProbability(size, split);
+        int k = BitCodes.calcBestGolombRiceShift(p);
+        double bits = BitCodes.calcAverageRiceGolombBits(k, p);
+        // System.out.println(spaces + "node size " + size + " split " + split + " bits " + bits);
+        if (split < 0) {
+            bits += printExpectedBucketSpace(s, -split, indent + 1, cache);
+            bits += printExpectedBucketSpace(s, size + split, indent + 1, cache);
+        } else {
+            for (int i = 0; i < split; i++) {
+                bits += printExpectedBucketSpace(s, size / split, indent + 1, cache);
+            }
+        }
+        cache.put(size, bits);
+        return bits;
+    }
 
     public static void listEvalulationTimes() {
         System.out.println("4.5 Evaluation times");
@@ -54,7 +143,7 @@ public class TimeAndSpaceEstimator {
             long hashesPerKey = calcEstimatedHashCallsPerKey(leafSize);
             double p = Probability.probabilitySplitIntoMSubsetsOfSizeN(leafSize, 1);
             int k = BitCodes.calcBestGolombRiceShift(p);
-            double bitsPerKey = BitCodes.calcEstimatedBits(k, p) / leafSize;
+            double bitsPerKey = BitCodes.calcAverageRiceGolombBits(k, p) / leafSize;
             System.out.printf("  %d & %d & %.2f \\\\\n", leafSize, hashesPerKey, bitsPerKey);
         }
     }
@@ -233,7 +322,7 @@ public class TimeAndSpaceEstimator {
             }
             lastP = p;
             int k = BitCodes.calcBestGolombRiceShift(p);
-            double est = BitCodes.calcEstimatedBits(k, p);
+            double est = BitCodes.calcAverageRiceGolombBits(k, p);
             // double entropy = BitCodes.calcEntropy(p);
             total +=  est / size;
             totalCalls += calls;

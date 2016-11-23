@@ -1,8 +1,10 @@
 package org.minperf;
 
-import static org.junit.Assert.assertEquals;
+import static junit.framework.Assert.assertEquals;
 
 import java.util.Random;
+
+import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -102,9 +104,9 @@ public class BitCodes {
                 Math.log(m) / Math.log(2);
     }
 
-    static double calcEstimatedBits(int k, double p) {
-        // alpha = p - 1
-        return k + (1 / (1 - Math.pow(1 - p, Math.pow(2, k))));
+    static double calcAverageRiceGolombBits(int k, double p) {
+        double alpha = p - 1;
+        return k + (1 / (1 - Math.pow(alpha, Math.pow(2, k))));
     }
 
     static int calcBestGolombRiceShift(double p) {
@@ -123,6 +125,77 @@ public class BitCodes {
         // Math.log(1 / (1 - p))) / Math.log(2);
 
         return Math.max(0, (int) k);
+    }
+
+    public static void verifyRiceParameterFormula() {
+        System.out.println("Rice Parameter Formula");
+        for (int leafSize = 4; leafSize < 12; leafSize++) {
+            double p = Probability.probabilitySplitIntoMSubsetsOfSizeN(
+                    leafSize, 1);
+            verifyRiceParameterFormula(p);
+        }
+    }
+
+    private static void verifyRiceParameterFormula(double p) {
+        System.out.println("Pr(X = x) = (1-p)^(x-1) * p with p=" + p);
+        int[] counts = new int[11];
+        Random r = new Random(2);
+        int repeat = 1000000;
+        for (int i = 0; i < repeat; i++) {
+            for (int j = 1; j <= 10; j++) {
+                boolean success = r.nextDouble() <= p;
+                if (success) {
+                    counts[j]++;
+                    break;
+                }
+            }
+        }
+        for (int j = 1; j <= 10; j++) {
+            double px = counts[j] / (double) repeat;
+            double pFormula = Math.pow(1 - p, j - 1) * p;
+            System.out.println("  try " + j + ": simulated " + px +
+                    " calculated " + pFormula);
+            if (Math.abs(px - pFormula) > px / 2) {
+                Assert.fail();
+            }
+        }
+        System.out.println("  Best Rice parameter");
+        double a = 1 - p;
+        double goldenRatio = (Math.sqrt(5) + 1) / 2;
+        double mu = (1 - p) / p;
+        double mu2 = a / (1 - a);
+        System.out.println("  mu:" + mu);
+        System.out.println("  mu2:" + mu2);
+        if (Math.abs(mu - mu2) > mu / 10) {
+            Assert.fail();
+        }
+        double logGoldenRatio = Math.log(goldenRatio - 1);
+        double logMu = Math.log(mu / (mu + 1));
+        int bestK = (int) Math.max(0, 1 + Math.log(logGoldenRatio / logMu) /
+                Math.log(2));
+        System.out.println("  bestK = " + bestK);
+        int test = calcBestGolombRiceShift(p);
+        assertEquals(test, bestK);
+        System.out.println("  Average Bits Needed");
+        long bitCount = 0;
+        r = new Random(1);
+        repeat = 10000;
+        for (int i = 0; i < repeat; i++) {
+            for (int j = 0;; j++) {
+                boolean success = r.nextDouble() <= p;
+                if (success) {
+                    bitCount += BitBuffer.getGolombRiceSize(test, j);
+                    break;
+                }
+            }
+        }
+        double averageBits = bitCount / (double) repeat;
+        System.out.println("  averageBits simulated " + averageBits);
+        double averageBits2 = calcAverageRiceGolombBits(test, p);
+        System.out.println("  averageBits calculated " + averageBits2);
+        if (Math.abs(averageBits - averageBits2) > averageBits / 10) {
+            Assert.fail();
+        }
     }
 
     public static void printEliasDeltaExample() {

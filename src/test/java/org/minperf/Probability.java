@@ -5,7 +5,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Random;
 
-// import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.minperf.utils.PoissonDistribution;
 
 /**
  * Probability methods.
@@ -13,77 +13,115 @@ import java.util.Random;
 public class Probability {
 
     private static final HashMap<Long, BigInteger> FACTORIALS = new HashMap<Long, BigInteger>();
+    private static final HashMap<String, Double> PROBABILITY_CACHE = new HashMap<String, Double>();
 
-    public static void bucketTooLarge() {
-        long shaN = 100_000_000_000L, shaBits = 160;
-        double pSha1Collision = ((double) shaN * (shaN - 1) / 2) * (1.0 / Math.pow(2, shaBits));
-        System.out.println("SHA1 hash collision with " + shaN + " entries " + pSha1Collision);
-        long uuidN = 100_000_000_000L, uuidBits = 122;
-        double pUuidCollision = ((double) uuidN * (uuidN - 1) / 2) * (1.0 / Math.pow(2, uuidBits));
-        System.out.println("UUID hash collision with " + uuidN + " entries " + pUuidCollision);
-        // http://math.stackexchange.com/questions/167441/probability-that-no-side-of-a-dice-is-rolled-more-than-k-times?rq=1
-        // 6.5 Probability Calculations in Hashing
-        // page 251
-        // "the probability that the maximum list length is t, is at most ne^t/t^t."
-        System.out.println("4.7 Probabilities");
-        System.out.println("Bucket Too Large");
-/*
-        double minP = Math.pow(10, -15);
-        for (int loadFactor = 1; loadFactor < 16 * 1024; loadFactor *= 2) {
-            int l = 1;
-            for (;; l++) {
-                double p = poissonLarger(loadFactor, l);
-                if (p <= 0.0) {
-                    break;
+    public static void veryLargeBucketProbability() {
+        for (int loadFactor = 8; loadFactor < 16 * 1024; loadFactor *= 2) {
+            for (int multiple = 2; multiple <= 20; multiple *= 10) {
+                double p = probabilityLargeBucket(loadFactor, multiple * loadFactor);
+                double p2 = probabilityLargeBucket2(loadFactor, multiple * loadFactor);
+                double simulated = Double.NaN;
+                if (p > 0.000001) {
+                    simulated = simulateProbabilityBucketLargerOrEqualTo(loadFactor, multiple * loadFactor);
                 }
+                System.out.println("loadFactor " + loadFactor +
+                        " p[bucketSize >= " + multiple * loadFactor + "] ~ " +
+                        p2 + "; <= " + p + "; simulated " + simulated);
             }
-            double loadMax = (double) l / loadFactor;
-            System.out.println("loadFactor " + loadFactor + " limit " + l + " maxLoad " + loadMax);
-            // double n = Math.pow(10, 7);
-            // double max = loadFactor + Math.sqrt(2 * loadFactor * Math.log(n/loadFactor));
-            // System.out.println("... " + max + " " + (max / loadFactor));
-        }
-        System.out.println("Estimated Max Load with probability < 10 ^ -15");
-        for (int loadFactor = 1; loadFactor < 16 * 1024; loadFactor *= 2) {
-            int l = 1;
-            for (;; l++) {
-                double p = poissonLarger(loadFactor, l);
-                if (p <= minP) {
-                    break;
-                }
-            }
-            double loadMax = (double) l / loadFactor;
-            System.out.println("        (" + loadFactor + ", " + loadMax + ")");
-        }
-*/
-        int size = (int) (1 / Math.pow(10, -7));
-        System.out.println("Tested Max Load with probability < 10 ^ -7, size=" + size);
-        for (int loadFactor = 1; loadFactor < 16 * 1024; loadFactor *= 2) {
-            int buckets = size / loadFactor;
-            int len = testBallsIntoBins(size, buckets);
-            if (len < 0) {
-                continue;
-            }
-            double load = (double) len / loadFactor;
-            System.out.println("        (" + loadFactor + ", " + load + ")");
         }
     }
 
-    private static int testBallsIntoBins(int mBalls, int nBins) {
-        int tests = 10000000 / mBalls;
-        if (tests < 1) {
-            return -1;
+    private static double probabilityLargeBucket2(int loadFactor, int atLeast) {
+        double p = 1.0;
+        if (loadFactor > 128) {
+            return Double.NaN;
         }
-        Random r = new Random(mBalls * nBins);
-        // r = new SecureRandom();
-        int max = 0;
-        for (int i = 0; i < tests; i++) {
-            int[] counts = new int[nBins];
-            for (int j = 0; j < mBalls; j++) {
-                max = Math.max(max, ++counts[r.nextInt(nBins)]);
+        for (int size = 0; size < atLeast; size++) {
+            p -= getProbabilityOfBucketSize(loadFactor, size);
+        }
+        return p;
+    }
+
+    private static void simulateBallInOverflow() {
+        int size = 1000000;
+        Random r = new Random();
+        int loadFactor = 2;
+        int buckets = size / loadFactor;
+        int[] counts = new int[buckets];
+        for (int i = 0; i < size; i++) {
+            counts[r.nextInt(buckets)]++;
+        }
+        int ballsInOverflow = 0;
+        int bucketsOverflow = 0;
+        for (int i = 0; i < buckets; i++) {
+            int c = counts[i];
+            if (c >= loadFactor * 2) {
+                bucketsOverflow++;
+                ballsInOverflow += c;
+                counts[i] = 0;
             }
         }
-        return max;
+        double pBalls = 0;
+        for (int i = 0; i < loadFactor * 2; i++) {
+            double p = Probability.getProbabilityOfBucketSize(loadFactor, i);
+            System.out.println(i + " p " + p);
+            pBalls += i * p;
+        }
+        System.out.println("pBalls " + pBalls);
+        System.out.println("pBall in overflow " + (1. - (pBalls / loadFactor)));
+        System.out.println("size " + size + " overflow " + ballsInOverflow +
+                " p=" + (double) ballsInOverflow / size + " bucketsOverflow p=" + (double) bucketsOverflow / buckets);
+    }
+
+    private static double simulateProbabilityBucketLargerOrEqualTo(int lambda, int x) {
+        int count = 100000000;
+        Random r = new Random(x);
+        int larger = 0;
+        int testCount = count / 1000;
+        int loop = count / testCount;
+        int bucketCount = loop / lambda;
+        for (int j = 0; j < testCount; j++) {
+            int c = 0;
+            for (int i = 0; i < loop; i++) {
+                if (r.nextInt(bucketCount) == 0) {
+                    c++;
+                }
+            }
+            if (c >= x) {
+                larger++;
+            }
+        }
+        return (double) larger / testCount;
+    }
+
+    private static double probabilityLargeBucket(int lambda, int x) {
+        // Poisson distribution, tail probability
+        return Math.exp(-lambda) * Math.pow(Math.E * lambda, x) / Math.pow(x, x);
+    }
+
+    public static double getProbabilityOfBucketSize(double averageBucketSize, int bucketSize) {
+        // https://en.wikipedia.org/wiki/Poisson_distribution
+        // Pr(X=k)=(lambda^k)*e^(-lambda)/k!
+        // =exp{k ln lambda - lambda - ln Gamma(k+1)}
+        // Gamma(n) = (n-1)!
+        // Gonnet, page 10, separate chaining
+        double k = bucketSize;
+        double a = averageBucketSize;
+        return Math.exp(-a) * Math.pow(a, k) /
+                factorial((long) k).doubleValue();
+    }
+
+    public static double getProbabilityOfBucketSize(int averageBucketSize, int bucketSize) {
+        int a = averageBucketSize;
+        int x = bucketSize;
+        return PoissonDistribution.probability(a, x);
+    }
+
+    static double poisson(int averageNumberOfEventsPerInterval,
+            int eventsInInterval) {
+        int a = averageNumberOfEventsPerInterval;
+        int k = eventsInInterval;
+        return Math.pow(a, k) * Math.exp(-a) / factorial(k).doubleValue();
     }
 
     public static int getPoisson(Random r, double lambda) {
@@ -111,27 +149,6 @@ public class Probability {
         }
     }
 
-/*
-    private static double poissonLarger(int averageNumberOfEventsPerInterval,
-            int eventsInIntervalOrMore) {
-        // Wikipedia: Bounds for the tail probabilities of a Poisson random variable  X
-        // \sim \operatorname{Pois}(\lambda) can be derived
-        // using a Chernoff bound argument
-        int a = averageNumberOfEventsPerInterval;
-        int x = eventsInIntervalOrMore;
-        PoissonDistribution p = new PoissonDistribution(a);
-        return 1 - p.cumulativeProbability(x);
-        // return Math.exp(-a) * Math.pow(Math.E * a, x) / Math.pow(x, x);
-    }
-*/
-
-    static double poisson(int averageNumberOfEventsPerInterval,
-            int eventsInInterval) {
-        int a = averageNumberOfEventsPerInterval;
-        int k = eventsInInterval;
-        return Math.pow(a, k) * Math.exp(-a) / factorial(k).doubleValue();
-    }
-
     /**
      * Probability, with a certain bucket count, that the bucket is of size
      * bucketSize, if size entries were added.
@@ -143,16 +160,6 @@ public class Probability {
      */
     static double calcProbabilityOfBucketSize(int bucketCount, int size, int bucketSize) {
         return estProb(1.0 / bucketCount, size, bucketSize);
-    }
-
-    static double estProbabilityOfBucketSize(int bucketCount, int size, int bucketSize) {
-        // Gonnet, page 10, separate chaining
-        double k = bucketSize;
-        double n = size;
-        double m = bucketCount;
-        double a = n / m;
-        return Math.exp(-a) * Math.pow(a, k) /
-                factorial((long) k).doubleValue();
     }
 
     // Binomial Probability Formula
@@ -176,13 +183,20 @@ public class Probability {
     }
 
     static double probabilitySplitIntoMSubsetsOfSizeN(int m, int n) {
+        String key = m + "/" + n;
+        Double cached = PROBABILITY_CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
         BigInteger mm = BigInteger.valueOf(m);
         BigInteger mnf = factorial(n * m);
         BigInteger nf = factorial(n);
         BigInteger u = nf.pow(m).multiply(mm.pow(m * n));
         BigDecimal r = new BigDecimal(mnf).divide(
                 new BigDecimal(u), 100, BigDecimal.ROUND_HALF_UP);
-        return r.doubleValue();
+        double result = r.doubleValue();
+        PROBABILITY_CACHE.put(key, result);
+        return result;
     }
 
     private static BigInteger factorial(long n) {

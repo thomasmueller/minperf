@@ -11,9 +11,10 @@ public class Paper {
     public static void main(String... args) {
 
         // B Generation Time Versus Space
-        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
+        // RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
+        BitCodes.verifyRiceParameterFormula();
 
         // RandomizedTest.printTimeVersusSpace();
         // RandomizedTest.printGenerationTimeVersusSpace();
@@ -30,7 +31,7 @@ public class Paper {
         BitCodes.printPositiveMapping();
         Graphics.generateSampleTikz();
         // 4.7 Probabilities
-        Probability.bucketTooLarge();
+        Probability.veryLargeBucketProbability();
         Probability.asymmetricCase();
         // 4.8 Rice
         BitCodes.printRiceExamples();
@@ -59,6 +60,10 @@ public class Paper {
         RandomizedTest.verifyParametersBestSize();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();
+
+        for (int loadFactor = 64; loadFactor < 1024; loadFactor *= 2) {
+            TimeAndSpaceEstimator.printExpectedSpace(8, loadFactor);
+        }
 
         supplementalHashPerfTest();
 

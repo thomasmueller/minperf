@@ -110,6 +110,11 @@ public class Settings {
         }
     }
 
+    public int getMaxBucketSize() {
+        // TODO should we use factor 2 instead of factor 20?
+        return loadFactor * 20;
+    }
+
     private static int calcRiceParamSplitByTwo(int size) {
         // this will throw an exception for sizes >= 180172
         for (int i = 0;; i++) {
