@@ -1,6 +1,5 @@
 package org.minperf.monotoneList;
 
-import org.minperf.BitBuffer;
 
 /**
  * A monotone list that uses a fenwick tree.
@@ -13,7 +12,7 @@ public class FenwickTreeMonotoneList extends MonotoneList {
         this.array = array;
     }
 
-    public static FenwickTreeMonotoneList generate(int[] data, BitBuffer buffer) {
+    public static FenwickTreeMonotoneList generate(int[] data) {
         int[] array = new int[data.length];
         int last = 0;
         for (int i = 0; i < data.length; i++) {
