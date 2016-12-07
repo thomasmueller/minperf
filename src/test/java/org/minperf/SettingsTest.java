@@ -25,22 +25,29 @@ public class SettingsTest {
     static void printSplit() {
         for (int leafSize = 8; leafSize < 20; leafSize++) {
             Settings s = new Settings(leafSize, 8 * 1024);
-            System.out.println("leafSize " + leafSize);
-            int last  = 0;
-            for (int i = leafSize + 1; i < 8 * 1024; i++) {
-                int split = s.getSplit(i);
-                if (split == 2) {
-                    split = -(i / 2);
-                }
-                if (split > 0) {
-                    System.out.println("  size " + i + " even split " + split);
-                    last = 0;
+            System.out.println("With leafSize " + leafSize + ":");
+            String lastRule = null;
+            int lastRuleStart = 1;
+            for (int i = 1; i < 8 * 1024; i++) {
+                String rule = null;
+                if (i <= leafSize) {
+                    rule = "map directly.";
                 } else {
-                    if (last != split) {
-                        System.out.println("  size " + i + " split " + -split + ":remainder");
-                        last = split;
+                    int split = s.getSplit(i);
+                    if (split == 2) {
+                        split = -(i / 2);
+                    }
+                    if (split > 0) {
+                        rule = "split evenly into " + split + " subsets.";
+                    } else {
+                        rule = "split into two subsets such that the first has " + -split + " keys.";
                     }
                 }
+                if (lastRule != null && !lastRule.equals(rule)) {
+                    System.out.println("Sets of size " + lastRuleStart + " to " + (i - 1) + ": " + lastRule);
+                    lastRuleStart = i;
+                }
+                lastRule = rule;
             }
         }
     }
@@ -168,7 +175,7 @@ public class SettingsTest {
         buff.append("int[] ESTIMATED_SPACE = {0");
         for (int leafSize = 1; leafSize <= 25; leafSize++) {
             buff.append(", ");
-            FunctionInfo info = TimeAndSpaceEstimator.estimateTimeAndSpace(leafSize, 1024, 1024);
+            FunctionInfo info = SpaceEstimator.estimateTimeAndSpace(leafSize, 1024, 1024);
             buff.append((int) (1000 * info.bitsPerKey));
         }
         System.out.println(buff.append("};"));

@@ -111,7 +111,6 @@ public class Settings {
     }
 
     public int getMaxBucketSize() {
-        // TODO should we use factor 2 instead of factor 20?
         return loadFactor * 20;
     }
 
@@ -129,9 +128,6 @@ public class Settings {
     }
 
     private static int calcSplit(int size, int leafSize) {
-        if (size <= leafSize * 2) {
-            return -(size - size / 2);
-        }
         for (int x = leafSize, f = x;;) {
             if (size < x) {
                 return -(x / f);
