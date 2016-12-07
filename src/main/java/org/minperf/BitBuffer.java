@@ -236,4 +236,14 @@ public class BitBuffer {
         return (int) ((value >>> shift) + 1 + shift);
     }
 
+    public static int getEliasDeltaSize(long value) {
+        if (value <= 0) {
+            throw new IllegalArgumentException();
+        }
+        int q = 64 - Long.numberOfLeadingZeros(value);
+        int qq = 31 - Integer.numberOfLeadingZeros(q);
+        int len = qq + qq+ q;
+        return len;
+    }
+
 }

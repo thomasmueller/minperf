@@ -105,7 +105,7 @@ public class BitCodes {
     }
 
     static double calcAverageRiceGolombBits(int k, double p) {
-        double alpha = p - 1;
+        double alpha = 1 - p;
         return k + (1 / (1 - Math.pow(alpha, Math.pow(2, k))));
     }
 
@@ -217,6 +217,7 @@ public class BitCodes {
             BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
             long val = (r.nextLong() & 0xfffffffL) + 1;
             buff.writeEliasDelta(val);
+            assertEquals(buff.position(), BitBuffer.getEliasDeltaSize(val));
             buff.writeNumber(123, 10);
             int pos = buff.position();
             byte[] data = buff.toByteArray();
@@ -246,6 +247,7 @@ public class BitCodes {
     static String getEliasDelta(int value) {
         BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
         buff.writeEliasDelta(value);
+        assertEquals(buff.position(), BitBuffer.getEliasDeltaSize(value));
         int size = buff.position();
         buff.seek(0);
         long test = buff.readEliasDelta();
@@ -266,6 +268,7 @@ public class BitCodes {
         for (int i = 1; i < 100; i++) {
             BitBuffer b = new BitBuffer(160);
             b.writeEliasDelta(i);
+            assertEquals(b.position(), BitBuffer.getEliasDeltaSize(i));
             buff.write(b);
         }
         buff.seek(0);
