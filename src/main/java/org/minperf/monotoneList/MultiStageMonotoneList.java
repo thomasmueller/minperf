@@ -138,7 +138,97 @@ public class MultiStageMonotoneList extends MonotoneList {
          }
          buffer.seek(start);
          return new MultiStageMonotoneList(buffer);
-     }
+    }
+
+    public static int getSize(int[] data) {
+        int result = 0;
+        int count3 = data.length;
+        // verify it is monotone
+        for (int i = 1; i < count3; i++) {
+            if (data[i - 1] > data[i]) {
+                throw new IllegalArgumentException();
+            }
+        }
+        int diff = data[count3 - 1] - data[0];
+        long factor = getScaleFactor(diff, count3);
+        int add = data[0];
+        for (int i = 1; i < count3; i++) {
+            int expected = (int) ((i * factor) >>> 32);
+            int x = data[i];
+            add = Math.min(add, x - expected);
+        }
+        result += BitBuffer.getEliasDeltaSize(count3 + 1);
+        result += BitBuffer.getEliasDeltaSize(diff + 1);
+        result += BitBuffer.getEliasDeltaSize(BitBuffer.foldSigned(add) + 1);
+        int count2 = (count3 + (1 << SHIFT2) - 1) >> SHIFT2;
+        int count1 = (count3 + (1 << SHIFT1) - 1) >> SHIFT1;
+        int[] group1 = new int[count1];
+        int[] group2 = new int[count2];
+        int[] group3 = new int[count3];
+        for (int i = 0; i < count3; i++) {
+            // int expected = (int) (i * max / count3);
+            int expected = (int) ((i * factor) >>> 32) + add;
+            int got = data[i];
+            int x = got - expected;
+            if (x < 0) {
+                throw new AssertionError();
+            }
+            group3[i] = x;
+        }
+        int a = Integer.MAX_VALUE;
+        for (int i = 0; i < count3; i++) {
+            int x = group3[i];
+            a = Math.min(a, x);
+            if ((i +1) >> SHIFT2 != i >> SHIFT2 || i == count3 - 1) {
+                group2[i >> SHIFT2] = a / FACTOR2;
+                a = Integer.MAX_VALUE;
+            }
+        }
+        a = Integer.MAX_VALUE;
+        for (int i = 0; i < count3; i++) {
+            int d = group2[i >> SHIFT2] * FACTOR2;
+            int x = group3[i];
+            group3[i] -= d;
+            if (group3[i] < 0) {
+                throw new AssertionError();
+            }
+            a = Math.min(a, x);
+            if ((i + 1) >> SHIFT1 != i >> SHIFT1 || i == count3 - 1) {
+                group1[i >> SHIFT1] = a / FACTOR1;
+                a = Integer.MAX_VALUE;
+            }
+        }
+        int last = -1;
+        for (int i = 0; i < count3; i++) {
+            int i2 = i >> SHIFT2;
+            if (i2 == last) {
+                continue;
+            }
+            int d = group1[i >> SHIFT1] * FACTOR1;
+            group2[i2] -= d / FACTOR2;
+            last = i2;
+        }
+        int max1 = 0, max2 = 0, max3 = 0;
+        for (int i = 0; i < group3.length; i++) {
+            max3 = Math.max(max3, group3[i]);
+        }
+        for (int i = 0; i < group2.length; i++) {
+            max2 = Math.max(max2, group2[i]);
+        }
+        for (int i = 0; i < group1.length; i++) {
+            max1 = Math.max(max1, group1[i]);
+        }
+        int bitCount1 = 32 - Integer.numberOfLeadingZeros(max1);
+        int bitCount2 = 32 - Integer.numberOfLeadingZeros(max2);
+        int bitCount3 = 32 - Integer.numberOfLeadingZeros(max3);
+        result += BitBuffer.getEliasDeltaSize(bitCount1 + 1);
+        result += BitBuffer.getEliasDeltaSize(bitCount2 + 1);
+        result += BitBuffer.getEliasDeltaSize(bitCount3 + 1);
+        result += bitCount1 * group1.length;
+        result += bitCount2 * group2.length;
+        result += bitCount3 * group3.length;
+        return result;
+    }
 
     public static MultiStageMonotoneList load(BitBuffer buffer) {
         return new MultiStageMonotoneList(buffer);

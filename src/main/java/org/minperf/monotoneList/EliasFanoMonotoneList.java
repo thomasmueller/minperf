@@ -50,6 +50,22 @@ public class EliasFanoMonotoneList extends MonotoneList {
         return new EliasFanoMonotoneList(buffer, start, lowBitCount, select);
     }
 
+    public static int getSize(int[] data) {
+        int len = data.length;
+        int result = BitBuffer.getEliasDeltaSize(len + 1);
+        int max = data[len - 1];
+        int lowBitCount = 32 - Integer.numberOfLeadingZeros(Integer.highestOneBit(max / len));
+        result += BitBuffer.getEliasDeltaSize(lowBitCount + 1);
+        BitSet set = new BitSet();
+        for (int i = 0; i < len; i++) {
+            int x = i + (data[i] >>> lowBitCount);
+            set.set(x);
+        }
+        result += lowBitCount * len;
+        result += Select.getSize(set);
+        return result;
+    }
+
     public static EliasFanoMonotoneList load(BitBuffer buffer) {
         int len = (int) (buffer.readEliasDelta() - 1);
         int lowBitCount = (int) (buffer.readEliasDelta() - 1);

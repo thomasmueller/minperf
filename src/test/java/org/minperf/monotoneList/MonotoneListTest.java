@@ -13,7 +13,8 @@ import org.minperf.BitBuffer;
 public class MonotoneListTest {
 
     public static void main(String... args) {
-        testBestSize(100, 8);
+        testBestSize(100, 8, true);
+        testBestSize(100, 8, false);
         new MonotoneListTest().testSaving();
     }
 
@@ -22,7 +23,8 @@ public class MonotoneListTest {
         for (int bucketSize = 8; bucketSize < 256; bucketSize *= 2) {
             for (int size = 100; size <= 1000000; size *= 10) {
                 if (size >= bucketSize) {
-                    test(bucketSize, size);
+                    test(bucketSize, size, true);
+                    test(bucketSize, size, false);
                 }
             }
         }
@@ -32,20 +34,22 @@ public class MonotoneListTest {
         for (int bucketSize = 8; bucketSize < 256; bucketSize *= 2) {
             for (int size = 100; size <= 100000000; size *= 10) {
                 if (size >= bucketSize) {
-                    test(bucketSize, size);
+                    test(bucketSize, size, true);
+                    test(bucketSize, size, false);
                 }
             }
         }
     }
 
-    private static void testBestSize(int bucketSize, int size) {
+    private static void testBestSize(int bucketSize, int size, boolean eliasFano) {
         int bucketCount = size / bucketSize;
         int[] sizes = randomSizes(size, bucketCount);
         int[] posList = posList(sizes);
         int bestLen = Integer.MAX_VALUE;
         String best = "";
         BitBuffer buffer = new BitBuffer(100 * bucketCount);
-        MonotoneList.generate(posList, buffer);
+        MonotoneList.generate(posList, buffer, eliasFano);
+        assertEquals(MonotoneList.getSize(posList, eliasFano), buffer.position());
         int len2 = buffer.position();
         for (int shift1 = 2; shift1 <= 16; shift1++) {
             for (int shift2 = 1; shift2 <= shift1; shift2++) {
@@ -76,7 +80,7 @@ public class MonotoneListTest {
         System.out.println(size + " " + best + " " + len2);
     }
 
-    private static void test(int bucketSize, int size) {
+    private static void test(int bucketSize, int size, boolean eliasFano) {
         int bucketCount = size / bucketSize;
         int[] sizes = randomSizes(size, bucketCount);
         int[] posList = posList(sizes);
@@ -92,7 +96,8 @@ public class MonotoneListTest {
             assertEquals(posList[i], posList2[i] + i * diff);
         }
         BitBuffer buffer = new BitBuffer(1000 + 100 * size);
-        MonotoneList list = MonotoneList.generate(posList2, buffer);
+        MonotoneList list = MonotoneList.generate(posList2, buffer, eliasFano);
+        assertEquals(MonotoneList.getSize(posList2, eliasFano), buffer.position());
         int bitCount = buffer.position();
         double oldBits = (double) (entryBits * bucketCount) / size;
         double newBits =  (double) bitCount / size;
@@ -103,7 +108,7 @@ public class MonotoneListTest {
             assertEquals("i: " + i, posList2[i], list.get(i));
         }
         buffer.seek(0);
-        list = MonotoneList.load(buffer);
+        list = MonotoneList.load(buffer, eliasFano);
         assertEquals(bitCount, buffer.position());
         for (int i = 0; i < bucketCount; i++) {
             assertEquals(posList2[i], list.get(i));
