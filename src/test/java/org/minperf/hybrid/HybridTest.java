@@ -45,7 +45,7 @@ public class HybridTest {
             Settings settings = new Settings(leafSize, loadFactor);
             Generator<Long> generator;
 
-            generator = new HybridGenerator<Long>(hash, settings);
+            generator = new HybridGenerator<Long>(hash, settings, true);
             BitBuffer buffer0 = generator.generate(set);
             int bitCount0 = buffer0.position();
 
@@ -72,7 +72,7 @@ public class HybridTest {
             System.out.println(time / 10 / size + " ns Old dummy " + sum);
 
             buffer0.seek(0);
-            HybridEvaluator<Long> evaluator = new HybridEvaluator<Long>(buffer0, hash, settings);
+            HybridEvaluator<Long> evaluator = new HybridEvaluator<Long>(buffer0, hash, settings, true);
 
             BitSet test = new BitSet();
             for (long x : set) {
