@@ -1,25 +1,23 @@
 package org.minperf.utils;
 
-import java.util.Collection;
+import java.util.AbstractSet;
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 /**
  * A map of longs. Only add an iteration are not supported. This implementation
  * doesn't use much memory.
  */
-public class LongSet implements Collection<Long> {
+public class LongSet extends AbstractSet<Long> {
 
     LargeLongArray data;
     boolean containsZero;
     private long size;
 
-    LongSet(int capacity) {
+    public LongSet(int capacity) {
         // 80% fill rate
-        long len = (long) (capacity * 1.2);
+        long len = capacity * 12L / 10;
         data = new LargeLongArray(len);
     }
 
@@ -123,72 +121,7 @@ public class LongSet implements Collection<Long> {
     }
 
     @Override
-    public void forEach(Consumer<? super Long> action) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean contains(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Object[] toArray() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> T[] toArray(T[] a) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean addAll(Collection<? extends Long> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean removeIf(Predicate<? super Long> filter) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void clear() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Spliterator<Long> spliterator() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Stream<Long> stream() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Stream<Long> parallelStream() {
         throw new UnsupportedOperationException();
     }
 
@@ -205,7 +138,13 @@ public class LongSet implements Collection<Long> {
         LargeLongArray(long size) {
             this.size = size;
             int chunkCount = (int) ((size + CHUNK_SIZE - 1) >>> CHUNK_SHIFT);
-            data = new long[chunkCount][CHUNK_SIZE];
+            data = new long[chunkCount][];
+            long remaining = size;
+            for (int i = 0; i < chunkCount - 1; i++) {
+                data[i] = new long[CHUNK_SIZE];
+                remaining -= CHUNK_SIZE;
+            }
+            data[chunkCount - 1] = new long[(int) remaining];
         }
 
         long get(long i) {
