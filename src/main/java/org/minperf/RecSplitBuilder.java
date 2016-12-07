@@ -18,6 +18,7 @@ public class RecSplitBuilder<T> {
     private final UniversalHash<T> hash;
     private int loadFactor = 256;
     private int leafSize = 10;
+    private boolean eliasFanoMonotoneLists = true;
 
     private RecSplitBuilder(UniversalHash<T> hash) {
         this.hash = hash;
@@ -50,6 +51,11 @@ public class RecSplitBuilder<T> {
         return this;
     }
 
+    public RecSplitBuilder<T> eliasFanoMonotoneLists(boolean eliasFano) {
+        this.eliasFanoMonotoneLists = eliasFano;
+        return this;
+    }
+
     /**
      * Generate the hash function description for a collection.
      * The entries in the collection must be unique.
@@ -63,7 +69,7 @@ public class RecSplitBuilder<T> {
         if (OLD_ALGORITHM) {
             g = new Generator<T>(hash, s);
         } else {
-            g = new HybridGenerator<T>(hash, s);
+            g = new HybridGenerator<T>(hash, s, eliasFanoMonotoneLists);
         }
         BitBuffer result = g.generate(collection);
         // we could re-use the generator,
@@ -79,7 +85,7 @@ public class RecSplitBuilder<T> {
         if (OLD_ALGORITHM) {
             eval = new RecSplitEvaluator<T>(new BitBuffer(description), hash, s);
         } else {
-            eval = new HybridEvaluator<T>(new BitBuffer(description), hash, s);
+            eval = new HybridEvaluator<T>(new BitBuffer(description), hash, s, eliasFanoMonotoneLists);
         }
         eval.init();
         return eval;

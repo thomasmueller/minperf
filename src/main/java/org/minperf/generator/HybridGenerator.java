@@ -21,83 +21,70 @@ public class HybridGenerator<T> extends Generator<T> {
 
     public static final int MAX_FILL = 8;
     public static final int MAX_BITS_PER_ENTRY = 8;
+    public static final int MAX_CHUNK_SIZE = 100_000_000;
 
     static final ForkJoinPool POOL = new ForkJoinPool(Generator.PARALLELISM);
 
-    public HybridGenerator(UniversalHash<T> hash, Settings settings) {
+    private final boolean eliasFanoMonotoneLists;
+
+    public HybridGenerator(UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
         super(hash, settings);
+        this.eliasFanoMonotoneLists = eliasFanoMonotoneLists;
     }
 
     @Override
     public BitBuffer generate(Collection<T> collection) {
-        int size = collection.size();
-        BitBuffer all = new BitBuffer(size * 10 + 1000);
-        all.writeEliasDelta(size + 1);
-        int bucketCount = (size + (settings.getLoadFactor() - 1)) /
+        long size = collection.size();
+        int bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
-        if (size > 1) {
-            generateBuckets(collection, size, bucketCount, all);
-        }
-        return all;
-    }
-
-    private void generateParallel(long size, int bucketCount, final ArrayList<Bucket> buckets) {
-
-        int averageBucketSize = (int) (size / bucketCount);
-        final int maxBucketSize = averageBucketSize * MAX_FILL;
-        final int maxBits = maxBucketSize * MAX_BITS_PER_ENTRY;
-
-        ForkJoinPool pool = new ForkJoinPool();
-
-        pool.invoke(new RecursiveAction() {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            protected void compute() {
-                RecursiveAction[] list = new RecursiveAction[buckets.size()];
-                for (int i = 0; i < buckets.size(); i++) {
-                    final Bucket b = buckets.get(i);
-                    list[i] = new RecursiveAction() {
-
-                        private static final long serialVersionUID = 1L;
-
-                        @Override
-                        protected void compute() {
-                            b.generateBucket(hash, maxBucketSize, maxBits);
-                        }
-
-                    };
-                }
-                invokeAll(list);
-
-            }
-        });
-    }
-
-    private void generateBuckets(Collection<T> collection, long size, int bucketCount,
-            BitBuffer d) {
         ArrayList<Bucket> buckets = new ArrayList<Bucket>(bucketCount);
-        for (int i = 0; i < bucketCount; i++) {
-            buckets.add(new Bucket());
-        }
+        int loadFactor = settings.getLoadFactor();
         long bucketScaleFactor = Settings.scaleFactor(bucketCount);
         int bucketScaleShift = Settings.scaleShift(bucketCount);
-        for (T t : collection) {
-            int b;
-            if (bucketCount == 1) {
-                b = 0;
-            } else {
-                long h = hash.universalHash(t, 0);
-                b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
-                if (b >= bucketCount || b < 0) {
-                    throw new AssertionError();
-                }
+        if (size <= MAX_CHUNK_SIZE || bucketCount == 1) {
+            for (int i = 0; i < bucketCount; i++) {
+                buckets.add(new Bucket(loadFactor));
             }
-            buckets.get(b).add(t);
+            for (T t : collection) {
+                int b;
+                if (bucketCount == 1) {
+                    b = 0;
+                } else {
+                    long h = hash.universalHash(t, 0);
+                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    if (b >= bucketCount || b < 0) {
+                        throw new AssertionError();
+                    }
+                }
+                buckets.get(b).add(t);
+            }
+            generateParallel(size, bucketCount, buckets);
+        } else {
+            // split into chunks
+            int bucketsPerChunk = Math.max(1, MAX_CHUNK_SIZE / loadFactor);
+            for (int bucketOffset = 0; bucketOffset < bucketCount; bucketOffset += bucketsPerChunk) {
+                ArrayList<Bucket> buckets2 = new ArrayList<Bucket>(bucketsPerChunk);
+                for (int i = 0; i < bucketsPerChunk; i++) {
+                    buckets2.add(new Bucket(loadFactor));
+                }
+                for (T t : collection) {
+                    int b;
+                    long h = hash.universalHash(t, 0);
+                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    if (b >= bucketCount || b < 0) {
+                        throw new AssertionError();
+                    }
+                    if (b >= bucketOffset && b < bucketOffset + bucketsPerChunk) {
+                        buckets2.get(b - bucketOffset).add(t);
+                    }
+                }
+                generateParallel(size, bucketCount, buckets2);
+                for (Bucket b2 : buckets2) {
+                    buckets.add(b2);
+                }
+                buckets2.clear();
+            }
         }
-
-        generateParallel(size, bucketCount, buckets);
-
         ArrayList<T> alternativeList = new ArrayList<T>();
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
@@ -136,27 +123,82 @@ public class HybridGenerator<T> extends Generator<T> {
             startList[i + 1] = start;
             offsetList[i + 1] = offset;
         }
-        d.writeBit(alternativeList.isEmpty() ? 0 : 1);
         shrinkList(startList, offsetList);
         int minOffsetDiff = shrinkList(offsetList);
         int minStartDiff = shrinkList(startList);
-        d.writeEliasDelta(minOffsetDiff + 1);
-        MonotoneList.generate(offsetList, d);
-        d.writeEliasDelta(minStartDiff + 1);
-        MonotoneList.generate(startList, d);
         if (minStartDiff < 0) {
             throw new AssertionError();
         }
+
+        BitBuffer alt = null;
+        if (!alternativeList.isEmpty()) {
+            alt = BDZ.generate(hash, alternativeList);
+        }
+
+        int bitCount = BitBuffer.getEliasDeltaSize(size + 1);
+        bitCount += 1;
+        bitCount += BitBuffer.getEliasDeltaSize(minOffsetDiff + 1);
+        bitCount += MonotoneList.getSize(offsetList, eliasFanoMonotoneLists);
+        bitCount += BitBuffer.getEliasDeltaSize(minStartDiff + 1);
+        bitCount += MonotoneList.getSize(startList, eliasFanoMonotoneLists);
+        bitCount += start;
+        if (alt != null) {
+            bitCount += alt.position();
+        }
+
+        BitBuffer all = new BitBuffer(bitCount);
+        all.writeEliasDelta(size + 1);
+        all.writeBit(alternativeList.isEmpty() ? 0 : 1);
+        all.writeEliasDelta(minOffsetDiff + 1);
+        MonotoneList.generate(offsetList, all, eliasFanoMonotoneLists);
+        all.writeEliasDelta(minStartDiff + 1);
+        MonotoneList.generate(startList, all, eliasFanoMonotoneLists);
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
-            d.write(b.buff);
+            all.write(b.buff);
         }
-        if (!alternativeList.isEmpty()) {
-            BitBuffer buff = BDZ.generate(hash, alternativeList);
-            d.write(buff);
+        if (alt != null) {
+            all.write(alt);
         }
+        if (bitCount != all.position()) {
+            throw new AssertionError();
+        }
+        return all;
     }
 
+    private void generateParallel(long size, int bucketCount, final ArrayList<Bucket> buckets) {
+
+        int averageBucketSize = (int) (size / bucketCount);
+        final int maxBucketSize = averageBucketSize * MAX_FILL;
+        final int maxBits = maxBucketSize * MAX_BITS_PER_ENTRY;
+
+        ForkJoinPool pool = new ForkJoinPool();
+
+        pool.invoke(new RecursiveAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected void compute() {
+                RecursiveAction[] list = new RecursiveAction[buckets.size()];
+                for (int i = 0; i < buckets.size(); i++) {
+                    final Bucket b = buckets.get(i);
+                    list[i] = new RecursiveAction() {
+
+                        private static final long serialVersionUID = 1L;
+
+                        @Override
+                        protected void compute() {
+                            b.generateBucket(hash, maxBucketSize, maxBits);
+                        }
+
+                    };
+                }
+                invokeAll(list);
+
+            }
+        });
+        pool.shutdown();
+    }
     void shrinkList(int[] targetList, int[] sourceList) {
         int sum = 0;
         for (int i = 1; i < sourceList.length; i++) {
@@ -190,10 +232,14 @@ public class HybridGenerator<T> extends Generator<T> {
      * A bucket.
      */
     class Bucket {
-        ArrayList<T> list = new ArrayList<T>();
+        ArrayList<T> list;
         BitBuffer buff;
         int entryCount;
         boolean alternative;
+
+        Bucket(int loadFactor) {
+            list = new ArrayList<T>((int) (loadFactor * 1.1));
+        }
 
         @Override
        public String toString() {
@@ -203,6 +249,7 @@ public class HybridGenerator<T> extends Generator<T> {
         public void moveToAlternative(ArrayList<T> alternativeList) {
             if (alternative) {
                 alternativeList.addAll(list);
+                list = null;
                 entryCount = 0;
                 buff = new BitBuffer(0);
             }
@@ -231,6 +278,7 @@ public class HybridGenerator<T> extends Generator<T> {
             }
             @SuppressWarnings("unchecked")
             T[] data = list.toArray((T[]) new Object[0]);
+            list = null;
             long[] hashes = new long[size];
             for (int i = 0; i < size; i++) {
                 hashes[i] = hash.universalHash(data[i], 0);

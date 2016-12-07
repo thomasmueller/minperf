@@ -21,13 +21,13 @@ public class HybridEvaluator<T> extends RecSplitEvaluator<T> {
     private final int bucketScaleShift;
     private final BDZ<T> alternative;
 
-    public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings) {
+    public HybridEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
         super(buffer, hash, settings);
         boolean alternative = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
-        this.offsetList = MonotoneList.load(buffer);
+        this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
         this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
-        this.startList = MonotoneList.load(buffer);
+        this.startList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
         this.startBuckets = buffer.position();
         if (alternative) {
             int b = bucketCount;
