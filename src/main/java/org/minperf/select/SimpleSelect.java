@@ -400,6 +400,22 @@ public class SimpleSelect extends Select {
         return s;
     }
 
+    public static int getSize(BitSet bitSet) {
+        int result = 0;
+        SimpleSelect s = new SimpleSelect(bitSet);
+        result += BitBuffer.getEliasDeltaSize(s.numOnes + 1);
+        result += BitBuffer.getEliasDeltaSize(s.numWords + 1);
+        result += 64 * s.bits.length;
+        result += BitBuffer.getEliasDeltaSize(s.inventory.length + 1);
+        result += 64 * s.inventory.length;
+        result += BitBuffer.getEliasDeltaSize(s.log2OnesPerInventory + 1);
+        result += BitBuffer.getEliasDeltaSize(s.subinventory.length + 1);
+        result += 64 * s.subinventory.length;
+        result += BitBuffer.getEliasDeltaSize(s.exactSpill.length + 1);
+        result += 64 * s.exactSpill.length;
+        return result;
+    }
+
     void setSubInventory16(int index, int x) {
         subinventory[index / 4] |= ((long) x) << (16 * (index % 4));
     }

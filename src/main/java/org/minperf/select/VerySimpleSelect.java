@@ -59,13 +59,6 @@ public class VerySimpleSelect extends Select {
         buffer.seek(dataPos + size);
     }
 
-    /**
-     * Generate a rank/select object, and store it into the provided buffer.
-     *
-     * @param set the bit set
-     * @param buffer the buffer
-     * @return the generated object
-     */
     public static VerySimpleSelect generate(BitSet set, BitBuffer buffer) {
         int start = buffer.position();
         int size = set.length() + 1;
@@ -111,6 +104,48 @@ public class VerySimpleSelect extends Select {
         }
         buffer.seek(start);
         return new VerySimpleSelect(buffer);
+    }
+
+    public static int getSize(BitSet set) {
+        int result = 0;
+        int size = set.length() + 1;
+        result += BitBuffer.getEliasDeltaSize(size + 1);
+        int cardinality = set.cardinality();
+        result += BitBuffer.getEliasDeltaSize(cardinality + 1);
+        int blockCount = (cardinality + BITS_PER_BLOCK - 1) / BITS_PER_BLOCK;
+        ArrayList<Integer> list = new ArrayList<Integer>();
+        int pos = set.nextSetBit(0);
+        for (int i = 0; i < blockCount; i++) {
+            list.add(pos);
+            for (int j = 0; j < BITS_PER_BLOCK; j++) {
+                pos = set.nextSetBit(pos + 1);
+            }
+        }
+        long blockCountScale = getScaleFactor(size, blockCount);
+        int minDiff = Integer.MAX_VALUE;
+        for (int i = 0; i < list.size(); i++) {
+            // int expected = (int) ((long) size * i / blockCount);
+            int expected = (int) ((i * blockCountScale) >>> 32);
+            int got = list.get(i);
+            int diff = got - expected;
+            list.set(i, diff);
+            minDiff = Math.min(minDiff, diff);
+        }
+        if (list.size() == 0) {
+            minDiff = 0;
+        }
+        result += BitBuffer.getEliasDeltaSize(BitBuffer.foldSigned(-minDiff) + 1);
+        int max = 0;
+        for (int i = 0; i < list.size(); i++) {
+            int x = list.get(i) - minDiff;
+            max = Math.max(max, x);
+            list.set(i, x);
+        }
+        int bitCount = 32 - Integer.numberOfLeadingZeros(max);
+        result += BitBuffer.getEliasDeltaSize(bitCount + 1);
+        result += bitCount * list.size();
+        result += size;
+        return result;
     }
 
     private static long getScaleFactor(int multiply, int divide) {

@@ -110,6 +110,7 @@ public class SelectTest {
         BitBuffer buffer = new BitBuffer(10000 + 10 * set.size());
         Select select = Select.generate(set, buffer);
         int p1 = buffer.position();
+        assertEquals(p1, Select.getSize(set));
         buffer.seek(0);
         select = Select.load(buffer);
         int p2 = buffer.position();
@@ -169,6 +170,7 @@ public class SelectTest {
         BitBuffer buffer = new BitBuffer(10 * set.size());
         Select select = Select.generate(set, buffer);
         int bitCount = buffer.position();
+        assertEquals(bitCount, Select.getSize(set));
         System.out.println("bits/key fast: " + ((double) bitCount / size));
         long time;
         time = System.nanoTime();

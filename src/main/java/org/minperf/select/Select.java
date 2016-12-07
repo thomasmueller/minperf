@@ -28,6 +28,19 @@ public abstract class Select {
     }
 
     /**
+     * Get the number of bits needed.
+     *
+     * @param set the bit set
+     * @return the number of bits
+     */
+    public static int getSize(BitSet set) {
+        if (SIMPLE_SELECT) {
+            return SimpleSelect.getSize(set);
+        }
+        return VerySimpleSelect.getSize(set);
+    }
+
+    /**
      * Generate a rank/select object from the provided buffer.
      *
      * @param buffer the buffer
