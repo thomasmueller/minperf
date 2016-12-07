@@ -25,7 +25,10 @@ public class Graphics {
         HashSet<Long> set = RandomizedTest.createSet(size, 6);
         UniversalHash<Long> hash = new LongHash();
         Settings settings = new Settings(leafSize, loadFactor);
-        BitBuffer buff = RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).generate(set);
+        boolean eliasFano = true;
+        BitBuffer buff = RecSplitBuilder.newInstance(hash).
+                eliasFanoMonotoneLists(eliasFano).
+                leafSize(leafSize).loadFactor(loadFactor).generate(set);
         buff.seek(0);
         System.out.println("\\begin{tikzpicture}");
         System.out.println("\\node {}");
@@ -41,12 +44,12 @@ public class Graphics {
         int bucketCount = (size + (loadFactor - 1)) / loadFactor;
         int start = buff.position();
         int minOffsetDiff = (int) (buff.readEliasDelta() - 1);
-        MonotoneList offsetList = MonotoneList.load(buff);
+        MonotoneList offsetList = MonotoneList.load(buff, eliasFano);
         appendLastBits(bits, buff, buff.position() - start);
         bits.append(" & offset list: " + offsetList.asString(bucketCount) + " (an EliasFano monotone list)\\\\\n");
         start = buff.position();
         int minStartDiff = (int) (buff.readEliasDelta() - 1);
-        MonotoneList startList = MonotoneList.load(buff);
+        MonotoneList startList = MonotoneList.load(buff, eliasFano);
         appendLastBits(bits, buff, buff.position() - start);
         bits.append(" & start list: " + startList.asString(bucketCount) + " (an EliasFano monotone list)\\\\\n");
         int startBuckets = buff.position();
