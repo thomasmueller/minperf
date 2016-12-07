@@ -8,11 +8,15 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Paper {
 
+
     public static void main(String... args) {
+
+
+
+        ;
 
         // B Generation Time Versus Space
         // RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
-        // RandomizedTest.printTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
         BitCodes.verifyRiceParameterFormula();
 
@@ -37,17 +41,17 @@ public class Paper {
         BitCodes.printRiceExamples();
         BitCodes.printEliasDeltaExample();
         // 4.9 Space Usage and Generation Time
-        TimeAndSpaceEstimator.spaceUsageEstimateSmallSet();
-        TimeAndSpaceEstimator.spaceUsageEstimate();
+        SpaceEstimator.spaceUsageEstimateSmallSet();
+        SpaceEstimator.spaceUsageEstimate();
         // 5.2 Time and Space Complexity of Evaluation
-        TimeAndSpaceEstimator.listMaxRecursionDepth();
+        SpaceEstimator.listMaxRecursionDepth();
         // 6.1 Reasonable Parameter Values
         RandomizedTest.reasonableParameterValues();
         // 6.2 Using Real-World Data
         WikipediaTest.main();
 
         // A Evaluation Time
-        TimeAndSpaceEstimator.listEvalulationTimes();
+        SpaceEstimator.listEvalulationTimes();
         RandomizedTest.printTimeVersusSpace();
 
         // B Generation Time Versus Space
@@ -56,13 +60,13 @@ public class Paper {
         // slow:
 
         // 4.1 Parameters
-        TimeAndSpaceEstimator.calcBestSizes();
+        SpaceEstimator.calcBestSizes();
         RandomizedTest.verifyParametersBestSize();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();
 
         for (int loadFactor = 64; loadFactor < 1024; loadFactor *= 2) {
-            TimeAndSpaceEstimator.printExpectedSpace(8, loadFactor);
+            SpaceEstimator.getExpectedSpace(8, loadFactor);
         }
 
         supplementalHashPerfTest();
