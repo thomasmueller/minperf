@@ -34,6 +34,13 @@ public class RandomizedTest {
         }
     }
 
+    public static void printLargeSet() {
+        for (int i = 10; i <= 1_000_000_000; i *= 10) {
+            FunctionInfo info = RandomizedTest.test(8, 128, i, false);
+            System.out.println(info);
+        }
+    }
+
     public static void printTimeVersusSpace() {
         System.out.println("A Time Versus Space");
         final double evaluateWeight = 20;
@@ -319,7 +326,7 @@ public class RandomizedTest {
         for (int leafSize = 2; leafSize <= 64; leafSize++) {
             int size = 1024 * 1024 / leafSize;
             size = Math.max(size, 32 * 1024);
-            FunctionInfo info = TimeAndSpaceEstimator.estimateTimeAndSpace(leafSize, loadFactor, size);
+            FunctionInfo info = SpaceEstimator.estimateTimeAndSpace(leafSize, loadFactor, size);
             System.out.println("        (" + info.leafSize + ", " + info.bitsPerKey + ")");
             // System.out.println("size: " + size);
         }
