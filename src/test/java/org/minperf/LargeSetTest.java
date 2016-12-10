@@ -26,6 +26,9 @@ public class LargeSetTest {
 
     private static void test(boolean eliasFano) {
         int leafSize = 8, loadFactor = 128;
+        System.out.println("leafSize " + leafSize + ", loadFactor " + loadFactor +
+                ", calcualted " +
+                SpaceEstimator.getExpectedSpace(8, 128) + " bits/key");
         for (int len = 10; len <= 1_000_000_000; len *= 10) {
             LongSet set = createSet(len, 1);
             System.out.println("...set created, size " + set.size());

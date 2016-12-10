@@ -111,7 +111,8 @@ public class Settings {
     }
 
     public int getMaxBucketSize() {
-        return loadFactor * 20;
+        // return loadFactor * 20;
+        return 200 + loadFactor * 15 / 10;
     }
 
     private static int calcRiceParamSplitByTwo(int size) {
@@ -141,10 +142,6 @@ public class Settings {
 
     public long getEstimatedBits(long size) {
         return ESTIMATED_SPACE[leafSize] * size / 1000;
-    }
-
-    public long getEstimatedEntryCount(long bitCount) {
-        return bitCount * 1000 / ESTIMATED_SPACE[leafSize];
     }
 
     public int getSplit(int size) {

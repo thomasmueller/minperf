@@ -117,26 +117,6 @@ public class Probability {
         return PoissonDistribution.probability(a, x);
     }
 
-    static double poisson(int averageNumberOfEventsPerInterval,
-            int eventsInInterval) {
-        int a = averageNumberOfEventsPerInterval;
-        int k = eventsInInterval;
-        return Math.pow(a, k) * Math.exp(-a) / factorial(k).doubleValue();
-    }
-
-    public static int getPoisson(Random r, double lambda) {
-        // http://stackoverflow.com/questions/1241555/algorithm-to-generate-poisson-and-binomial-random-numbers
-        // a faster way is described here: http://www.johndcook.com/blog/2010/06/14/generating-poisson-random-values/
-        double limit = Math.exp(-lambda);
-        double p = 1.0;
-        int k = 0;
-        do {
-            k++;
-            p *= r.nextDouble();
-        } while (p > limit);
-        return k - 1;
-    }
-
     public static void asymmetricCase() {
         System.out.println("4.7 Probabilities");
         System.out.println("Asymmetric Split");
@@ -213,29 +193,12 @@ public class Probability {
         return good / trials;
     }
 
-    /**
-     * Probability, with a certain bucket count, that the bucket is of size
-     * bucketSize, if size entries were added.
-     *
-     * @param bucketCount the bucket count
-     * @param size the number of entries
-     * @param bucketSize the bucket size
-     * @return the probability (0..1)
-     */
-    static double calcProbabilityOfBucketSize(int bucketCount, int size, int bucketSize) {
-        return estProb(1.0 / bucketCount, size, bucketSize);
-    }
-
-    // Binomial Probability Formula
-    private static double estProb(double prob, int trials, int successes) {
-        // Probability formula for Bernoulli trials.
-        // The probability of achieving exactly a number of successes in a number of trials.
-        double comb = calcCombinations(trials, successes);
-        return comb *
-                Math.pow(prob, successes) * Math.pow(1. - prob, trials - successes);
-    }
-
     public static double calcCombinations(int n, int k) {
+        String key = "comb-" + n + "/" + k;
+        Double cached = PROBABILITY_CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
         BigInteger nf = factorial(n);
         BigInteger kf = factorial(k);
         BigInteger nmkf = factorial(n - k);
@@ -246,11 +209,13 @@ public class Probability {
 
         // approximation:
         // log(n k) ~ (n log n) - (k log k) - (n-k) log(n-k)
-        return r.doubleValue();
+        double result = r.doubleValue();
+        PROBABILITY_CACHE.put(key, result);
+        return result;
     }
 
     public static double probabilitySplitIntoMSubsetsOfSizeN(int m, int n) {
-        String key = m + "/" + n;
+        String key = "split-" + m + "/" + n;
         Double cached = PROBABILITY_CACHE.get(key);
         if (cached != null) {
             return cached;

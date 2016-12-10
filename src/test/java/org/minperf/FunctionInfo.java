@@ -20,7 +20,6 @@ public class FunctionInfo {
                 " leafSize: " + leafSize +
                 " loadFactor: " + loadFactor +
                 " bitsPerKey: " + bitsPerKey +
-                " generateSeconds: " + (generateNanos * size / 1_000_000_000) +
                 " generateNanosPerKey: " + generateNanos +
                 " evaluateNanosPerKey: " + evaluateNanos;
     }

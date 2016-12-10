@@ -9,13 +9,8 @@ import java.nio.channels.FileChannel.MapMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Spliterator;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 
 /**
  * A persisted list of longs.
@@ -70,37 +65,7 @@ public class LargeLongList extends AbstractList<Long> {
     }
 
     @Override
-    public void replaceAll(UnaryOperator<Long> operator) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void sort(Comparator<? super Long> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Spliterator<Long> spliterator() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean removeIf(Predicate<? super Long> filter) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Stream<Long> stream() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Stream<Long> parallelStream() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void forEach(Consumer<? super Long> action) {
         throw new UnsupportedOperationException();
     }
 

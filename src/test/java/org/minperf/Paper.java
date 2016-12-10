@@ -11,10 +11,6 @@ public class Paper {
 
     public static void main(String... args) {
 
-
-
-        ;
-
         // B Generation Time Versus Space
         // RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
         // RandomizedTest.printTimeVersusSpace();
@@ -56,11 +52,10 @@ public class Paper {
 
         // B Generation Time Versus Space
         RandomizedTest.printGenerationTimeVersusSpace();
+        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
         // slow:
 
-        // 4.1 Parameters
-        SpaceEstimator.calcBestSizes();
         RandomizedTest.verifyParametersBestSize();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();

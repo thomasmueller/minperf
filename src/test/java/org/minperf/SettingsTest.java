@@ -16,7 +16,6 @@ public class SettingsTest {
     public static void main(String... args) {
         System.out.println("Constants");
         printSplit();
-        generateEstimatedSpaceUsage();
         generateRiceLeaf();
         generateRiceSplitMore();
         generateRiceSplit2();
@@ -168,17 +167,6 @@ public class SettingsTest {
                 last = rice;
             }
         }
-    }
-
-    private static void generateEstimatedSpaceUsage() {
-        StringBuilder buff = new StringBuilder();
-        buff.append("int[] ESTIMATED_SPACE = {0");
-        for (int leafSize = 1; leafSize <= 25; leafSize++) {
-            buff.append(", ");
-            FunctionInfo info = SpaceEstimator.estimateTimeAndSpace(leafSize, 1024, 1024);
-            buff.append((int) (1000 * info.bitsPerKey));
-        }
-        System.out.println(buff.append("};"));
     }
 
     private static void generateRiceLeaf() {
