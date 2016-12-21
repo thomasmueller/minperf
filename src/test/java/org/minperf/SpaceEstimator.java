@@ -21,17 +21,21 @@ public class SpaceEstimator {
         double inRegularBucket = 0;
         HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
         double worst = 0;
+        // int worstSize = -1;
         for (int i = 0; i <= s.getMaxBucketSize(); i++) {
+            // System.out.println("size " + i);
             double probBucketSize = Probability.getProbabilityOfBucketSize(
                     loadFactor, i);
             double bits = getExpectedBucketSpace(s, i, 0, cache);
             if (bits > 0 && bits / i > worst) {
                 worst = bits / i;
+                // worstSize = i;
             }
             inRegularBucket += probBucketSize * i;
             totalBits += bits * probBucketSize;
             // System.out.println("   " + i + ": " + bits * probBucketSize);
         }
+        // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
 
         // worst case (disregarding probabilities)
         // loadFactor 1024 leafSize 20 calc 1.5842701617288442
@@ -49,8 +53,8 @@ public class SpaceEstimator {
         totalBits += pInOverflow * bitsPerEntryInOverflow;
         double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
         double bitsPerBucketOffsetOverhead = 2 + Math.log(loadFactor) / Math.log(2);
-        // bitsPerBucketStartOverhead = 0;
-        // bitsPerBucketOffsetOverhead = 0;
+        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / loadFactor);
+        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / loadFactor);
         double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / loadFactor;
         // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
         // int size = 10000 * loadFactor;

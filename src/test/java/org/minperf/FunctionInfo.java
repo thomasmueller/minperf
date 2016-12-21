@@ -24,4 +24,30 @@ public class FunctionInfo {
                 " evaluateNanosPerKey: " + evaluateNanos;
     }
 
+    @Override
+    public int hashCode() {
+        return leafSize ^ loadFactor ^ (int) Double.doubleToLongBits(bitsPerKey);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof FunctionInfo)) {
+            return false;
+        }
+        FunctionInfo other = (FunctionInfo) o;
+        if (bitsPerKey != other.bitsPerKey) {
+            return false;
+        }
+        if (leafSize != other.leafSize) {
+            return false;
+        }
+        if (loadFactor != other.loadFactor) {
+            return false;
+        }
+        return true;
+    }
+
 }

@@ -5,8 +5,7 @@ import org.minperf.BitBuffer;
 /**
  * This implementation uses a linear regression, and 3 levels of offsets. It is
  * much simpler and typically faster than an EliasFanoMonotoneList, but space
- * usage is typically a bit larger, and not strictly linear in the mathematical
- * sense.
+ * usage is not linear.
  */
 public class MultiStageMonotoneList extends MonotoneList {
 

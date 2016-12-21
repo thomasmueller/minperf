@@ -7,6 +7,24 @@ import java.util.Random;
  */
 public class TimeEstimator {
 
+    public static double getExpectedEvaluationSupplementalHashCalls(int leafSize, int loadFactor) {
+        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+        // System.out.println("  Bucket sizes");
+        Settings s = new Settings(leafSize, loadFactor);
+        double result = 0;
+        for (int i = 0; i <= s.getMaxBucketSize(); i++) {
+            double probBucketSize = Probability.getProbabilityOfBucketFallsIntoBinOfSize(
+                    loadFactor, i);
+            if (probBucketSize <= 0) {
+                continue;
+            }
+            double r = getExpectedEvaluationSupplementalHashCalls(s, i, 0);
+            result += r * probBucketSize;
+        }
+        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " gen " + result);
+        return result;
+    }
+
     public static double getExpectedGenerationTime(int leafSize, int loadFactor) {
         // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
         // System.out.println("  Bucket sizes");
@@ -35,6 +53,34 @@ public class TimeEstimator {
         }
         int split = s.getSplit(size);
         double result = getExpectedGenerationTime(s, size, indent, split);
+        return result;
+    }
+
+    private static double getExpectedEvaluationSupplementalHashCalls(Settings s, int size, int indent) {
+        if (size <= 1) {
+            return 0;
+        }
+        // String spaces = new String(new char[2 + indent * 2]).replace((char) 0, ' ');
+        if (size <= s.getLeafSize()) {
+            return 1;
+        }
+        int split = s.getSplit(size);
+        double result = getExpectedEvaluationSupplementalHashCalls(s, size, indent, split);
+        return result;
+    }
+
+    private static double getExpectedEvaluationSupplementalHashCalls(Settings s, int size, int indent, int split) {
+        double result = 1;
+        if (split < 0) {
+            double p = -split / (double) size;
+            result += p * getExpectedEvaluationSupplementalHashCalls(s, -split, indent + 1);
+            result += (1 - p) * getExpectedEvaluationSupplementalHashCalls(s, size + split, indent + 1);
+        } else {
+            double p = 1.0 / split;
+            for (int i = 0; i < split; i++) {
+                result += p * getExpectedEvaluationSupplementalHashCalls(s, size / split, indent + 1);
+            }
+        }
         return result;
     }
 

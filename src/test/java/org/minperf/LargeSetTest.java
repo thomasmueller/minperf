@@ -20,6 +20,7 @@ import org.minperf.utils.LongSet;
 public class LargeSetTest {
 
     public static void main(String... args) {
+        System.out.println("Calculated " + SpaceEstimator.getExpectedSpace(8, 128));
         test(true);
         test(false);
     }

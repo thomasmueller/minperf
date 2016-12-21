@@ -115,6 +115,10 @@ public class WikipediaTest {
         System.out.println("len: " + desc.length);
         int bits = desc.length * 8;
         System.out.println(((double) bits / list.size()) + " bits/key");
+
+        FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, list.size(), false);
+        System.out.println("random data: " + info.bitsPerKey + " bits/key");
+
     }
 
     private static void test(HashSet<Text> set, int leafSize, int loadFactor) {

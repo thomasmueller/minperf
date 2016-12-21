@@ -42,10 +42,25 @@ public class Probability {
         return p;
     }
 
-    private static void simulateBallInOverflow() {
+    public static void simulateKeyInOverflow() {
         int size = 1000000;
+        int loadFactor = 3;
+        int maxLoad = 5;
+        System.out.println("size " + size);
+        // calculated
+        double pBalls = 0;
+        double pTooLarge = 1;
+        for (int i = 0; i <= maxLoad; i++) {
+            double p = getProbabilityOfBucketSize(loadFactor, i);
+            System.out.println("bucket size " + i + ": p=" + p);
+            pBalls += i * p;
+            pTooLarge -= p;
+        }
+        System.out.println("average expected number of balls in regular buckets: " + pBalls);
+        System.out.println("probability of bucket too large: " + pTooLarge);
+        System.out.println("probability of ball in overflow: " + (1. - (pBalls / loadFactor)));
+        // simulated
         Random r = new Random();
-        int loadFactor = 2;
         int buckets = size / loadFactor;
         int[] counts = new int[buckets];
         for (int i = 0; i < size; i++) {
@@ -53,24 +68,22 @@ public class Probability {
         }
         int ballsInOverflow = 0;
         int bucketsOverflow = 0;
+        int totalInRegularBuckets = 0;
         for (int i = 0; i < buckets; i++) {
             int c = counts[i];
-            if (c >= loadFactor * 2) {
+            if (c > maxLoad) {
                 bucketsOverflow++;
                 ballsInOverflow += c;
                 counts[i] = 0;
+            } else {
+                totalInRegularBuckets += c;
             }
         }
-        double pBalls = 0;
-        for (int i = 0; i < loadFactor * 2; i++) {
-            double p = getProbabilityOfBucketSize(loadFactor, i);
-            System.out.println(i + " p " + p);
-            pBalls += i * p;
-        }
-        System.out.println("pBalls " + pBalls);
-        System.out.println("pBall in overflow " + (1. - (pBalls / loadFactor)));
-        System.out.println("size " + size + " overflow " + ballsInOverflow +
-                " p=" + (double) ballsInOverflow / size + " bucketsOverflow p=" + (double) bucketsOverflow / buckets);
+        System.out.println("simulated balls in overflow: " + ballsInOverflow);
+        System.out.println("simulated balls in regular buckets: " + totalInRegularBuckets);
+        System.out.println("simulated average expected number of balls in regular buckets: " + (double) totalInRegularBuckets / buckets);
+        System.out.println("simulated probability of bucket too large: " + (double) bucketsOverflow / buckets);
+        System.out.println("simulated probability of ball in overflow: " + (double) ballsInOverflow / size);
     }
 
     private static double simulateProbabilityBucketLargerOrEqualTo(int lambda, int x) {
@@ -99,22 +112,17 @@ public class Probability {
         return Math.exp(-lambda) * Math.pow(Math.E * lambda, x) / Math.pow(x, x);
     }
 
-    public static double getProbabilityOfBucketSize(double averageBucketSize, int bucketSize) {
-        // https://en.wikipedia.org/wiki/Poisson_distribution
-        // Pr(X=k)=(lambda^k)*e^(-lambda)/k!
-        // =exp{k ln lambda - lambda - ln Gamma(k+1)}
-        // Gamma(n) = (n-1)!
-        // Gonnet, page 10, separate chaining
-        double k = bucketSize;
-        double a = averageBucketSize;
-        return Math.exp(-a) * Math.pow(a, k) /
-                factorial((long) k).doubleValue();
-    }
-
     public static double getProbabilityOfBucketSize(int averageBucketSize, int bucketSize) {
         int a = averageBucketSize;
         int x = bucketSize;
         return PoissonDistribution.probability(a, x);
+    }
+
+    public static double getProbabilityOfBucketFallsIntoBinOfSize(int averageBucketSize, int bucketSize) {
+        int a = averageBucketSize;
+        int x = bucketSize;
+        double average = bucketSize * PoissonDistribution.probability(a, x);
+        return average / averageBucketSize;
     }
 
     public static void asymmetricCase() {

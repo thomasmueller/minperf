@@ -8,8 +8,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Paper {
 
-
     public static void main(String... args) {
+
+        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
         // B Generation Time Versus Space
         // RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
@@ -31,6 +32,7 @@ public class Paper {
         BitCodes.printPositiveMapping();
         Graphics.generateSampleTikz();
         // 4.7 Probabilities
+        Probability.simulateKeyInOverflow();
         Probability.veryLargeBucketProbability();
         Probability.asymmetricCase();
         // 4.8 Rice
@@ -55,7 +57,7 @@ public class Paper {
         RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
         // slow:
-
+        LargeSetTest.main();
         RandomizedTest.verifyParametersBestSize();
         // 6 Experimental Results
         RandomizedTest.experimentalResults();

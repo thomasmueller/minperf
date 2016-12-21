@@ -36,17 +36,4 @@ public abstract class MonotoneList {
                 MultiStageMonotoneList.load(buffer);
     }
 
-    public String asString(int len) {
-        StringBuilder buff = new StringBuilder();
-        buff.append("[");
-        for (int i = 0; i < len; i++) {
-            if (i > 0) {
-                buff.append(", ");
-            }
-            buff.append(get(i));
-        }
-        buff.append("]");
-        return buff.toString();
-    }
-
 }

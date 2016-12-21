@@ -13,9 +13,18 @@ import org.minperf.BitBuffer;
 public class MonotoneListTest {
 
     public static void main(String... args) {
+        testPerformance();
+        testPerformance();
+        testPerformance();
         testBestSize(100, 8, true);
         testBestSize(100, 8, false);
         new MonotoneListTest().testSaving();
+    }
+
+    private static void testPerformance() {
+        int bucketSize = 16, size = 1000000;
+        test(bucketSize, size, false);
+        test(bucketSize, size, true);
     }
 
     @Test
@@ -103,12 +112,14 @@ public class MonotoneListTest {
         double newBits =  (double) bitCount / size;
         System.out.println("bucketSize " + bucketSize + " bucketCount " + bucketCount
                 + " old " + oldBits + " (" + entryBits + "*" + bucketCount + ") new " + newBits
-                + " saving " + (oldBits - newBits));
+                + " saving " + (oldBits - newBits) + " " + (eliasFano ? "elias-fano" : "fast"));
         for (int i = 0; i < bucketCount; i++) {
             assertEquals("i: " + i, posList2[i], list.get(i));
         }
         buffer.seek(0);
         list = MonotoneList.load(buffer, eliasFano);
+        buffer.seek(0);
+        MonotoneList list2 = MonotoneList.load(buffer, eliasFano);
         assertEquals(bitCount, buffer.position());
         for (int i = 0; i < bucketCount; i++) {
             assertEquals(posList2[i], list.get(i));
@@ -119,17 +130,26 @@ public class MonotoneListTest {
             long ab = list.getPair(i);
             assertEquals(((long) a << 32) + b, ab);
         }
+        Random r = new Random(1);
+        // memory access elsewhere
+        byte[] data = new byte[bucketCount * 8];
+        int[] readList = new int[bucketCount];
+        r.nextBytes(data);
+        for (int i = 0; i < bucketCount; i++) {
+            readList[i] = r.nextInt(bucketCount - 1);
+        }
         int dummy = 0;
         long time = System.nanoTime();
-        for (int test = 0; test < 100; test++) {
+        for (int test = 0; test < 10; test++) {
             for (int i = 0; i < bucketCount - 1; i++) {
-                int a = list.get(i);
-                dummy += a;
+                int x = readList[i];
+                dummy += list.get(x);
+                dummy += list2.get(x);
             }
         }
         time = System.nanoTime() - time;
         if (bucketCount > 1) {
-            System.out.println("Time: " + time / 1000000 + " ms; " + time / 100 / (bucketCount - 1) + " ns/key dummy " + dummy);
+            System.out.println("Time: " + time / 1000000 + " ms; " + time / 10 / 2 / (bucketCount - 1) + " ns/key dummy " + dummy);
         }
     }
 
