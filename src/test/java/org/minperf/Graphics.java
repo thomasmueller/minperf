@@ -2,7 +2,7 @@ package org.minperf;
 
 import java.util.HashSet;
 
-import org.minperf.generator.HybridGenerator;
+import org.minperf.generator.Generator;
 import org.minperf.monotoneList.MonotoneList;
 import org.minperf.universal.LongHash;
 import org.minperf.universal.UniversalHash;
@@ -46,12 +46,12 @@ public class Graphics {
         int minOffsetDiff = (int) (buff.readEliasDelta() - 1);
         MonotoneList offsetList = MonotoneList.load(buff, eliasFano);
         appendLastBits(bits, buff, buff.position() - start);
-        bits.append(" & offset list: " + offsetList.asString(bucketCount) + " (an EliasFano monotone list)\\\\\n");
+        bits.append(" & offset list (an EliasFano monotone list)\\\\\n");
         start = buff.position();
         int minStartDiff = (int) (buff.readEliasDelta() - 1);
         MonotoneList startList = MonotoneList.load(buff, eliasFano);
         appendLastBits(bits, buff, buff.position() - start);
-        bits.append(" & start list: " + startList.asString(bucketCount) + " (an EliasFano monotone list)\\\\\n");
+        bits.append(" & start list (an EliasFano monotone list)\\\\\n");
         int startBuckets = buff.position();
         for (int x = 0; x < bucketCount; x++) {
             int offset = 0;
@@ -61,7 +61,7 @@ public class Graphics {
             int offsetNext = ((int) offsetPair) + (x + 1) * minOffsetDiff;
             int bucketSize = offsetNext - o;
             int startPos = startBuckets +
-                    HybridGenerator.getMinBitCount(offset) +
+                    Generator.getMinBitCount(offset) +
                     startList.get(x) + x * minStartDiff;
             System.out.println("  child["+getSizeTikz(bucketSize)+"] {child[level distance=8mm]{node {$b_" + x + "$}");
             System.out.println("    child[grow cyclic, rotate=-90, sibling angle=30, "+

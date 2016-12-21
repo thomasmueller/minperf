@@ -1,7 +1,6 @@
 package org.minperf.generator;
 
 import java.util.ArrayList;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 
 import org.minperf.BitBuffer;
@@ -12,8 +11,6 @@ import org.minperf.BitBuffer;
  * @param <T> the type
  */
 public class Processor<T> extends RecursiveAction {
-
-    private static ForkJoinPool pool;
 
     private static final long serialVersionUID = 1L;
     public BitBuffer out;
@@ -30,8 +27,6 @@ public class Processor<T> extends RecursiveAction {
     }
 
     public Processor(Generator<T> recSplitGenerator) {
-        // TODO pool is static, not final
-        pool = new ForkJoinPool(Generator.PARALLELISM);
         generator = recSplitGenerator;
     }
 
@@ -43,7 +38,7 @@ public class Processor<T> extends RecursiveAction {
      * @param outList the target list
      */
     public void process(final T[][] lists, final long[][] hashLists, final ArrayList<BitBuffer> outList) {
-        pool.invoke(new RecursiveAction() {
+        generator.pool.invoke(new RecursiveAction() {
 
             private static final long serialVersionUID = 1L;
 
@@ -55,7 +50,7 @@ public class Processor<T> extends RecursiveAction {
                 for (int i = 0; i < bucketCount; i++) {
                     list[i] = new Processor<T>(generator, lists[i], hashLists[i], 0);
                 }
-                invokeAll(list);
+                generator.pool.invokeAll(list);
                 for (int i = 0; i < bucketCount; i++) {
                     Processor<T> p = list[i];
                     outList.add(p.out);
@@ -93,7 +88,7 @@ public class Processor<T> extends RecursiveAction {
             list[i] = new Processor<T>(generator, data[i], hashes[i],
                     startIndex);
         }
-        invokeAll(list);
+        generator.pool.invokeAll(list);
         int bits = BitBuffer.getGolombRiceSize(shift, index);
         for (Processor<T> p : list) {
             if (p.out != null) {
@@ -122,7 +117,7 @@ public class Processor<T> extends RecursiveAction {
     }
 
     public void dispose() {
-        pool.shutdown();
+        generator.pool.shutdown();
     }
 
 }

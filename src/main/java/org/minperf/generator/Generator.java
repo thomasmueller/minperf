@@ -3,40 +3,38 @@ package org.minperf.generator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.concurrent.RecursiveAction;
 
 import org.minperf.BitBuffer;
 import org.minperf.Settings;
+import org.minperf.bdz.BDZ;
+import org.minperf.monotoneList.MonotoneList;
 import org.minperf.universal.UniversalHash;
 
 /**
- * A generator for hash function descriptions.
+ * Generator of a hybrid MPHF. It is guaranteed to use linear space, because
+ * large buckets are encoded using an alternative algorithm.
  *
  * @param <T> the type
  */
 public class Generator<T> {
 
-    static final int PARALLELISM = Runtime.getRuntime().availableProcessors();
+    public static final int MAX_FILL = 8;
+    public static final int MAX_BITS_PER_ENTRY = 8;
+    public static final int MAX_CHUNK_SIZE = 100_000_000;
 
     public final UniversalHash<T> hash;
     public final Processor<T> processor;
-    protected final Settings settings;
+    final ConcurrencyTool pool;
+    private final Settings settings;
+    private final boolean eliasFanoMonotoneLists;
 
-    public Generator(UniversalHash<T> hash, Settings settings) {
+    public Generator(ConcurrencyTool pool, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
+        this.pool = pool;
         this.settings = settings;
         this.hash = hash;
-        processor = new Processor<T>(this);
-    }
-
-    public BitBuffer generate(Collection<T> collection) {
-        int size = collection.size();
-        int bucketCount = (size + (settings.getLoadFactor() - 1)) /
-                settings.getLoadFactor();
-        BitBuffer all = new BitBuffer(size * 10 + 100);
-        all.writeEliasDelta(size + 1);
-        if (size > 1) {
-            generateBuckets(collection, size, bucketCount, all);
-        }
-        return all;
+        this.processor = new Processor<T>(this);
+        this.eliasFanoMonotoneLists = eliasFanoMonotoneLists;
     }
 
     @SuppressWarnings("unchecked")
@@ -89,131 +87,6 @@ public class Generator<T> {
         }
         splitEvenly(data, hashes, index, data2, hashes2);
         p.split(writeK, writeIndex, index, data2, hashes2);
-    }
-
-    private void generateBuckets(Collection<T> collection, long size, int bucketCount,
-            BitBuffer d) {
-        ArrayList<ArrayList<T>> subList = new ArrayList<ArrayList<T>>(
-                bucketCount);
-        for (int i = 0; i < bucketCount; i++) {
-            subList.add(new ArrayList<T>((int) (size / bucketCount)));
-        }
-        int maxBucketSize  = (int) (20 * (size / bucketCount));
-        int[] sizes = new int[bucketCount];
-        // doing this in parallel probably wouldn't to save much time
-        for (T t : collection) {
-            int b;
-            if (bucketCount == 1) {
-                b = 0;
-            } else {
-                long h = hash.universalHash(t, 0);
-                b = Settings.scaleLong(h, bucketCount);
-            }
-            sizes[b]++;
-            if (sizes[b] > maxBucketSize) {
-                throw new IllegalArgumentException(
-                        "Bucket size too large, most likely due to bad universal hash function");
-            }
-            subList.get(b).add(t);
-        }
-        ArrayList<BitBuffer> outList = new ArrayList<BitBuffer>();
-        @SuppressWarnings("unchecked")
-        T[][] data = (T[][]) new Object[bucketCount][];
-        long[][] hashes = new long[bucketCount][];
-        for (int i = 0; i < bucketCount; i++) {
-            ArrayList<T> list = subList.get(i);
-            int len = list.size();
-            @SuppressWarnings("unchecked")
-            T[] x = (T[]) list.toArray(new Object[len]);
-            data[i] = x;
-            long[] h = new long[len];
-            for (int j = 0; j < len; j++) {
-                h[j] = hash.universalHash(list.get(j), 0);
-            }
-            hashes[i] = h;
-        }
-        generate(data, hashes, outList);
-        // assuming 4 bits per key worst case
-        BitBuffer bitOut = new BitBuffer((int) size * 4 + 100);
-        int add = 0;
-        int[] startList = new int[outList.size()];
-        int[] addList = new int[outList.size()];
-        for (int i = 0; i < outList.size(); i++) {
-            addList[i] = add;
-            BitBuffer out = outList.get(i);
-            processOverlap(bitOut, out);
-            startList[i] = bitOut.position();
-            if (out != null) {
-                bitOut.write(out);
-            }
-            add += sizes[i];
-        }
-        if (bucketCount > 1) {
-            long dataBits = bitOut.position();
-            int maxOffset = 0;
-            int maxStartOffset = 0;
-            for (int i = 0; i < outList.size(); i++) {
-                int expectedAdd = (int) (size * i / bucketCount);
-                int offsetAdd = addList[i] - expectedAdd;
-                maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetAdd));
-                if (Settings.COMPLEX_BUCKET_HEADER) {
-                    long db = expectedAdd == 0 ? dataBits : (dataBits * addList[i] / expectedAdd);
-                    int expectedStart2 = (int) (db * i / bucketCount);
-                    int offsetStart2 = startList[i] - expectedStart2;
-                    maxStartOffset = Math.max(maxStartOffset,
-                            (int) BitBuffer.foldSigned(offsetStart2));
-                } else {
-                    int expectedStart = (int) (dataBits * i / bucketCount);
-                    int offsetStart = startList[i] - expectedStart;
-                    // use the same maxOffset here
-                    maxOffset = Math.max(maxOffset, (int) BitBuffer.foldSigned(offsetStart));
-                }
-            }
-            int bitsPerEntry = 32 - Integer.numberOfLeadingZeros(maxOffset);
-            d.writeEliasDelta(BitBuffer.foldSigned(
-                    dataBits - settings.getEstimatedBits(size)) + 1);
-            d.writeGolombRice(2, bitsPerEntry);
-            int bitsPerEntry2 = 32 - Integer.numberOfLeadingZeros(maxStartOffset);
-            if (Settings.COMPLEX_BUCKET_HEADER) {
-                d.writeGolombRice(2, bitsPerEntry2);
-            }
-            for (int i = 1; i < outList.size(); i++) {
-                int expectedAdd = (int) (size * i / bucketCount);
-                int offsetAdd = addList[i] - expectedAdd;
-                d.writeNumber(BitBuffer.foldSigned(offsetAdd), bitsPerEntry);
-                if (Settings.COMPLEX_BUCKET_HEADER) {
-                    long db = expectedAdd == 0 ? dataBits : dataBits * addList[i] / expectedAdd;
-                    int expectedStart2 = (int) (db * i / bucketCount);
-                    int offsetStart = startList[i] - expectedStart2;
-                    d.writeNumber(BitBuffer.foldSigned(offsetStart), bitsPerEntry2);
-                } else {
-                    int expectedStart = (int) (dataBits * i / bucketCount);
-                    int offsetStart = startList[i] - expectedStart;
-                    d.writeNumber(BitBuffer.foldSigned(offsetStart), bitsPerEntry);
-                }
-            }
-        }
-        d.write(bitOut);
-    }
-
-    private static void processOverlap(BitBuffer buffer, BitBuffer append) {
-        if (append == null) {
-            return;
-        }
-        int best = 0;
-        for (int size = 1; size < 64; size++) {
-            if (buffer.position() < size || append.position() < size) {
-                break;
-            }
-            long b = buffer.readNumber(buffer.position() - size, size);
-            long a = append.readNumber(0, size);
-            if (a == b) {
-                best = size;
-            }
-        }
-        if (best > 0) {
-            buffer.seek(buffer.position() - best);
-        }
     }
 
     public void generate(final T[][] lists,
@@ -347,6 +220,276 @@ public class Generator<T> {
 
     public void dispose() {
         processor.dispose();
+    }
+
+    public BitBuffer generate(Collection<T> collection) {
+        long size = collection.size();
+        int bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
+                settings.getLoadFactor();
+        ArrayList<Bucket> buckets = new ArrayList<Bucket>(bucketCount);
+        int loadFactor = settings.getLoadFactor();
+        long bucketScaleFactor = Settings.scaleFactor(bucketCount);
+        int bucketScaleShift = Settings.scaleShift(bucketCount);
+        if (size <= MAX_CHUNK_SIZE || bucketCount == 1) {
+            for (int i = 0; i < bucketCount; i++) {
+                buckets.add(new Bucket(loadFactor));
+            }
+            for (T t : collection) {
+                int b;
+                if (bucketCount == 1) {
+                    b = 0;
+                } else {
+                    long h = hash.universalHash(t, 0);
+                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    if (b >= bucketCount || b < 0) {
+                        throw new AssertionError();
+                    }
+                }
+                buckets.get(b).add(t);
+            }
+            processBuckets(size, bucketCount, buckets);
+        } else {
+            // split into chunks
+            int bucketsPerChunk = Math.max(1, MAX_CHUNK_SIZE / loadFactor);
+            int remaining = bucketCount;
+            for (int bucketOffset = 0; bucketOffset < bucketCount; bucketOffset += bucketsPerChunk) {
+                int chunkSize = Math.min(bucketsPerChunk, remaining);
+                remaining -= chunkSize;
+                ArrayList<Bucket> buckets2 = new ArrayList<Bucket>(chunkSize);
+                for (int i = 0; i < chunkSize; i++) {
+                    buckets2.add(new Bucket(loadFactor));
+                }
+                for (T t : collection) {
+                    int b;
+                    long h = hash.universalHash(t, 0);
+                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    if (b >= bucketCount || b < 0) {
+                        throw new AssertionError();
+                    }
+                    if (b >= bucketOffset && b < bucketOffset + bucketsPerChunk) {
+                        buckets2.get(b - bucketOffset).add(t);
+                    }
+                }
+                processBuckets(size, bucketCount, buckets2);
+                for (Bucket b2 : buckets2) {
+                    buckets.add(b2);
+                }
+                buckets2.clear();
+            }
+        }
+        ArrayList<T> alternativeList = new ArrayList<T>();
+        for (int i = 0; i < buckets.size(); i++) {
+            Bucket b = buckets.get(i);
+            // move all buckets first, so overlap is not affected
+            b.moveToAlternative(alternativeList);
+        }
+
+        int[] startList = new int[buckets.size() + 1];
+        int[] offsetList = new int[buckets.size() + 1];
+        int start = 0, offset = 0;
+        for (int i = 0; i < buckets.size(); i++) {
+            Bucket b = buckets.get(i);
+            if (start - offset < 0) {
+                throw new AssertionError();
+            }
+            int pos = b.buff.position();
+            // possible overlap
+            if (i < buckets.size() - 1) {
+                Bucket next = buckets.get(i + 1);
+                int maxOverlap = Math.min(16, next.buff.position());
+                // at least one bit per entry
+                int minBitCount = getMinBitCount(b.entryCount);
+                maxOverlap = Math.min(maxOverlap, b.buff.position() - minBitCount);
+                int overlap = 0;
+                for (; overlap < maxOverlap; overlap++) {
+                    if (next.buff.readNumber(0, overlap + 1) !=
+                            b.buff.readNumber(pos - overlap - 1, overlap + 1)) {
+                        break;
+                    }
+                }
+                pos -= overlap;
+                b.buff.seek(pos);
+            }
+            start += pos;
+            offset += b.entryCount;
+            startList[i + 1] = start;
+            offsetList[i + 1] = offset;
+        }
+        shrinkList(startList, offsetList);
+        int minOffsetDiff = shrinkList(offsetList);
+        int minStartDiff = shrinkList(startList);
+        if (minStartDiff < 0) {
+            throw new AssertionError();
+        }
+
+        BitBuffer alt = null;
+        if (!alternativeList.isEmpty()) {
+            alt = BDZ.generate(hash, alternativeList);
+        }
+
+        int bitCount = BitBuffer.getEliasDeltaSize(size + 1);
+        bitCount += 1;
+        bitCount += BitBuffer.getEliasDeltaSize(minOffsetDiff + 1);
+        bitCount += MonotoneList.getSize(offsetList, eliasFanoMonotoneLists);
+        bitCount += BitBuffer.getEliasDeltaSize(minStartDiff + 1);
+        bitCount += MonotoneList.getSize(startList, eliasFanoMonotoneLists);
+        bitCount += start;
+        if (alt != null) {
+            bitCount += alt.position();
+        }
+
+        BitBuffer all = new BitBuffer(bitCount);
+        all.writeEliasDelta(size + 1);
+        all.writeBit(alternativeList.isEmpty() ? 0 : 1);
+        all.writeEliasDelta(minOffsetDiff + 1);
+        MonotoneList.generate(offsetList, all, eliasFanoMonotoneLists);
+        all.writeEliasDelta(minStartDiff + 1);
+        MonotoneList.generate(startList, all, eliasFanoMonotoneLists);
+        for (int i = 0; i < buckets.size(); i++) {
+            Bucket b = buckets.get(i);
+            all.write(b.buff);
+        }
+        if (alt != null) {
+            all.write(alt);
+        }
+        if (bitCount != all.position()) {
+            throw new AssertionError();
+        }
+        return all;
+    }
+
+    private void processBuckets(long size, int bucketCount, final ArrayList<Bucket> buckets) {
+
+        int averageBucketSize = (int) (size / bucketCount);
+        final int maxBucketSize = averageBucketSize * MAX_FILL;
+        final int maxBits = maxBucketSize * MAX_BITS_PER_ENTRY;
+
+        pool.invoke(new RecursiveAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected void compute() {
+                RecursiveAction[] list = new RecursiveAction[buckets.size()];
+                for (int i = 0; i < buckets.size(); i++) {
+                    final Bucket b = buckets.get(i);
+                    list[i] = new RecursiveAction() {
+
+                        private static final long serialVersionUID = 1L;
+
+                        @Override
+                        protected void compute() {
+                            b.generateBucket(hash, maxBucketSize, maxBits);
+                        }
+
+                    };
+                }
+                pool.invokeAll(list);
+            }
+        });
+    }
+
+    void shrinkList(int[] targetList, int[] sourceList) {
+        int sum = 0;
+        for (int i = 1; i < sourceList.length; i++) {
+            int d = sourceList[i] - sourceList[i - 1];
+            sum += d;
+            targetList[i] -= getMinBitCount(sum);
+            if (targetList[i] < targetList[i - 1]) {
+                throw new IllegalArgumentException("");
+            }
+        }
+    }
+
+    int shrinkList(int[] list) {
+        int min = Integer.MAX_VALUE;
+        for (int i = 0; i < list.length - 1; i++) {
+            int d = list[i + 1] - list[i];
+            min = Math.min(min, d);
+        }
+        for (int i = 1; i < list.length; i++) {
+            list[i] -= i * min;
+        }
+        return min;
+    }
+
+    public static int getMinBitCount(int size) {
+        // assume at least 1.375 bits per key
+        return (size  * 11 + 7) >> 3;
+    }
+
+    /**
+     * A bucket.
+     */
+    class Bucket {
+        ArrayList<T> list;
+        BitBuffer buff;
+        int entryCount;
+        boolean alternative;
+
+        Bucket(int loadFactor) {
+            list = new ArrayList<T>((int) (loadFactor * 1.1));
+        }
+
+        @Override
+       public String toString() {
+            return "" + entryCount;
+        }
+
+        public void moveToAlternative(ArrayList<T> alternativeList) {
+            if (alternative) {
+                alternativeList.addAll(list);
+                list = null;
+                entryCount = 0;
+                buff = new BitBuffer(0);
+            }
+        }
+
+        void add(T obj) {
+            list.add(obj);
+        }
+
+        void generateBucket(UniversalHash<T> hash, int maxBucketSize, int maxBits) {
+            int size = list.size();
+            entryCount = size;
+            int minSize = getMinBitCount(size);
+            if (size <= 1) {
+                // zero or one entry
+                buff = new BitBuffer(minSize);
+                while (buff.position() < minSize) {
+                    buff.writeBit(1);
+                }
+                return;
+            }
+            if (size > maxBucketSize) {
+                alternative = true;
+                buff = new BitBuffer(0);
+                return;
+            }
+            @SuppressWarnings("unchecked")
+            T[] data = list.toArray((T[]) new Object[0]);
+            list = null;
+            long[] hashes = new long[size];
+            long startIndex = 0;
+            for (int i = 0; i < size; i++) {
+                hashes[i] = hash.universalHash(data[i],
+                        Settings.getUniversalHashIndex(startIndex));
+            }
+            Processor<T> p = new Processor<T>(
+                    Generator.this, data, hashes, startIndex);
+            generate(data, hashes, startIndex, p);
+            buff = p.out;
+            if (buff.position() < minSize) {
+                buff = new BitBuffer(minSize);
+                buff.write(p.out);
+                while (buff.position() < minSize) {
+                    buff.writeBit(1);
+                }
+            }
+            if (buff.position() > maxBits) {
+                alternative = true;
+            }
+        }
+
     }
 
 }

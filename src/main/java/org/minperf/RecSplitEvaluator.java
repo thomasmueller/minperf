@@ -1,99 +1,84 @@
 package org.minperf;
 
+import org.minperf.bdz.BDZ;
+import org.minperf.generator.Generator;
+import org.minperf.monotoneList.MonotoneList;
 import org.minperf.universal.UniversalHash;
 
 /**
- * Evaluate the minimum perfect hash function.
- * Concurrent reads are supported.
+ * Evaluator for the hybrid mechanism.
  *
- * @param <T> the key type
+ * @param <T> the data type
  */
 public class RecSplitEvaluator<T> {
 
-    protected final Settings settings;
-    protected final UniversalHash<T> hash;
-    protected final BitBuffer buffer;
-    protected final long size;
-    protected final int bucketCount;
+    private final Settings settings;
+    private final UniversalHash<T> hash;
+    private final BitBuffer buffer;
+    private final long size;
+    private final int bucketCount;
+    private final int minStartDiff;
+    private final MonotoneList startList;
+    private final int minOffsetDiff;
+    private final MonotoneList offsetList;
+    private final int startBuckets;
+    private final long bucketScaleFactor;
+    private final int bucketScaleShift;
+    private final BDZ<T> alternative;
 
-    private long dataBits;
-    private int tableStart;
-    private int bitsPerEntry;
-    private int bitsPerEntry2;
-    private int headerBits;
-
-    public RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash,
-            Settings settings) {
+    public RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
         this.settings = settings;
         this.hash = hash;
         this.buffer = buffer;
         this.size = (int) (buffer.readEliasDelta() - 1);
         this.bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
                 settings.getLoadFactor();
-    }
-
-    public void init() {
-        if (bucketCount == 1) {
-            bitsPerEntry = 0;
-            bitsPerEntry2 = 0;
-            dataBits = 0;
+        boolean alternative = buffer.readBit() != 0;
+        this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
+        this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
+        this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
+        this.startList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
+        this.startBuckets = buffer.position();
+        if (alternative) {
+            int b = bucketCount;
+            int offset = offsetList.get(b);
+            int pos = startBuckets +
+                    Generator.getMinBitCount(offset) +
+                    startList.get(b) + b * minStartDiff;
+            buffer.seek(pos);
+            this.alternative = BDZ.load(hash, buffer);
         } else {
-            dataBits = settings.getEstimatedBits(size) +
-                    BitBuffer.unfoldSigned(buffer.readEliasDelta() - 1);
-            bitsPerEntry = (int) buffer.readGolombRice(2);
-            if (Settings.COMPLEX_BUCKET_HEADER) {
-                bitsPerEntry2 = (int) buffer.readGolombRice(2);
-            } else {
-                bitsPerEntry2 = bitsPerEntry;
-            }
+            this.alternative = null;
         }
-        tableStart = buffer.position();
-        int tableBits = (bitsPerEntry + bitsPerEntry2) * (bucketCount - 1);
-        headerBits = tableStart + tableBits;
+        this.bucketScaleFactor = Settings.scaleFactor(bucketCount);
+        this.bucketScaleShift = Settings.scaleShift(bucketCount);
     }
 
     public int evaluate(T obj) {
-        long hashCode;
-        int bucket;
-        hashCode = hash.universalHash(obj, 0);
+        int b;
+        long hashCode = hash.universalHash(obj, 0);
         if (bucketCount == 1) {
-            bucket = 0;
+            b = 0;
         } else {
-            bucket = Settings.scaleLong(hashCode, bucketCount);
+            b = Settings.scaleLong(hashCode, bucketScaleFactor, bucketScaleShift);
         }
-        int add, start;
-        int pos;
-        if (bucket == 0) {
-            pos = tableStart;
-            add = 0;
-            start = 0;
-        } else {
-            pos = tableStart + (bitsPerEntry + bitsPerEntry2) * (bucket - 1);
-            int expectedAdd = (int) (size * bucket / bucketCount);
-            add = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry)) + expectedAdd;
-            pos += bitsPerEntry;
-            if (Settings.COMPLEX_BUCKET_HEADER) {
-                long db = expectedAdd == 0 ? dataBits : (dataBits * add / expectedAdd);
-                int expectedStart = (int) (db * bucket / bucketCount);
-                start = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry2)) + expectedStart;
-            } else {
-                int expectedStart = (int) (dataBits * bucket / bucketCount);
-                start = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry2)) + expectedStart;
+        int startPos;
+        long offsetPair = offsetList.getPair(b);
+        int offset = (int) (offsetPair >>> 32) + b * minOffsetDiff;
+        int offsetNext = ((int) offsetPair) + (b + 1) * minOffsetDiff;
+        if (offsetNext == offset) {
+            if (alternative == null) {
+                // entry not found
+                return 0;
             }
-            pos += bitsPerEntry2;
+            offset = offsetList.get(bucketCount) + bucketCount * minOffsetDiff;
+            return offset + alternative.evaluate(obj);
         }
-        int bucketSize;
-        if (bucket < bucketCount - 1) {
-            int expectedAdd = (int) (size * (bucket + 1) / bucketCount);
-            int nextAdd = (int) BitBuffer.unfoldSigned(buffer.readNumber(pos, bitsPerEntry)) + expectedAdd;
-            bucketSize = nextAdd - add;
-        } else {
-            bucketSize = (int) (size - add);
-        }
-        if (bucketCount > 0) {
-            pos = headerBits + start;
-        }
-        return add + evaluate(pos, obj, hashCode, 0, 0, bucketSize);
+        int bucketSize = offsetNext - offset;
+        startPos = startBuckets +
+                Generator.getMinBitCount(offset) +
+                startList.get(b) + b * minStartDiff;
+        return evaluate(startPos, obj, hashCode, 0, offset, bucketSize);
     }
 
     private int skip(int pos, int size) {

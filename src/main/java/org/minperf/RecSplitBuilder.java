@@ -2,8 +2,8 @@ package org.minperf;
 
 import java.util.Collection;
 
+import org.minperf.generator.ConcurrencyTool;
 import org.minperf.generator.Generator;
-import org.minperf.generator.HybridGenerator;
 import org.minperf.universal.UniversalHash;
 
 /**
@@ -13,12 +13,11 @@ import org.minperf.universal.UniversalHash;
  */
 public class RecSplitBuilder<T> {
 
-    private static final boolean OLD_ALGORITHM = Boolean.getBoolean("old");
-
     private final UniversalHash<T> hash;
     private int loadFactor = 256;
     private int leafSize = 10;
     private boolean eliasFanoMonotoneLists = true;
+    private int parallelism = Runtime.getRuntime().availableProcessors();
 
     private RecSplitBuilder(UniversalHash<T> hash) {
         this.hash = hash;
@@ -56,6 +55,11 @@ public class RecSplitBuilder<T> {
         return this;
     }
 
+    public RecSplitBuilder<T> parallelism(int parallelism) {
+        this.parallelism = parallelism;
+        return this;
+    }
+
     /**
      * Generate the hash function description for a collection.
      * The entries in the collection must be unique.
@@ -65,12 +69,8 @@ public class RecSplitBuilder<T> {
      */
     public BitBuffer generate(Collection<T> collection) {
         Settings s = new Settings(leafSize, loadFactor);
-        Generator<T> g;
-        if (OLD_ALGORITHM) {
-            g = new Generator<T>(hash, s);
-        } else {
-            g = new HybridGenerator<T>(hash, s, eliasFanoMonotoneLists);
-        }
+        ConcurrencyTool pool = new ConcurrencyTool(parallelism);
+        Generator<T> g = new Generator<T>(pool, hash, s, eliasFanoMonotoneLists);
         BitBuffer result = g.generate(collection);
         // we could re-use the generator,
         // so that starting and stopping threads is not needed
@@ -81,14 +81,7 @@ public class RecSplitBuilder<T> {
 
     public RecSplitEvaluator<T> buildEvaluator(BitBuffer description) {
         Settings s = new Settings(leafSize, loadFactor);
-        RecSplitEvaluator<T> eval;
-        if (OLD_ALGORITHM) {
-            eval = new RecSplitEvaluator<T>(new BitBuffer(description), hash, s);
-        } else {
-            eval = new HybridEvaluator<T>(new BitBuffer(description), hash, s, eliasFanoMonotoneLists);
-        }
-        eval.init();
-        return eval;
+        return new RecSplitEvaluator<T>(new BitBuffer(description), hash, s, eliasFanoMonotoneLists);
     }
 
 }

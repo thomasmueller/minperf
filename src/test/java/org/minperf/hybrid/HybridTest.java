@@ -8,13 +8,12 @@ import java.util.HashSet;
 
 import org.junit.Test;
 import org.minperf.BitBuffer;
-import org.minperf.HybridEvaluator;
 import org.minperf.RandomizedTest;
 import org.minperf.RecSplitBuilder;
 import org.minperf.RecSplitEvaluator;
 import org.minperf.Settings;
+import org.minperf.generator.ConcurrencyTool;
 import org.minperf.generator.Generator;
-import org.minperf.generator.HybridGenerator;
 import org.minperf.universal.LongHash;
 import org.minperf.universal.UniversalHash;
 
@@ -45,7 +44,8 @@ public class HybridTest {
             Settings settings = new Settings(leafSize, loadFactor);
             Generator<Long> generator;
 
-            generator = new HybridGenerator<Long>(hash, settings, true);
+            ConcurrencyTool pool = new ConcurrencyTool(8);
+            generator = new Generator<Long>(pool, hash, settings, true);
             BitBuffer buffer0 = generator.generate(set);
             int bitCount0 = buffer0.position();
 
@@ -72,7 +72,7 @@ public class HybridTest {
             System.out.println(time / 10 / size + " ns Old dummy " + sum);
 
             buffer0.seek(0);
-            HybridEvaluator<Long> evaluator = new HybridEvaluator<Long>(buffer0, hash, settings, true);
+            RecSplitEvaluator<Long> evaluator = new RecSplitEvaluator<Long>(buffer0, hash, settings, true);
 
             BitSet test = new BitSet();
             for (long x : set) {
