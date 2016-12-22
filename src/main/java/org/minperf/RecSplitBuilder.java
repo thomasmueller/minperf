@@ -18,6 +18,7 @@ public class RecSplitBuilder<T> {
     private int leafSize = 10;
     private boolean eliasFanoMonotoneLists = true;
     private int parallelism = Runtime.getRuntime().availableProcessors();
+    private int maxChunkSize = Integer.MAX_VALUE;
 
     private RecSplitBuilder(UniversalHash<T> hash) {
         this.hash = hash;
@@ -55,6 +56,11 @@ public class RecSplitBuilder<T> {
         return this;
     }
 
+    public RecSplitBuilder<T> maxChunkSize(int maxChunkSize) {
+        this.maxChunkSize = maxChunkSize;
+        return this;
+    }
+
     public RecSplitBuilder<T> parallelism(int parallelism) {
         this.parallelism = parallelism;
         return this;
@@ -70,7 +76,9 @@ public class RecSplitBuilder<T> {
     public BitBuffer generate(Collection<T> collection) {
         Settings s = new Settings(leafSize, loadFactor);
         ConcurrencyTool pool = new ConcurrencyTool(parallelism);
-        Generator<T> g = new Generator<T>(pool, hash, s, eliasFanoMonotoneLists);
+        Generator<T> g = new Generator<T>(
+                pool, hash, s,
+                eliasFanoMonotoneLists, maxChunkSize);
         BitBuffer result = g.generate(collection);
         // we could re-use the generator,
         // so that starting and stopping threads is not needed

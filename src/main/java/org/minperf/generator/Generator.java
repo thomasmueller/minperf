@@ -21,20 +21,25 @@ public class Generator<T> {
 
     public static final int MAX_FILL = 8;
     public static final int MAX_BITS_PER_ENTRY = 8;
-    public static final int MAX_CHUNK_SIZE = 100_000_000;
 
-    public final UniversalHash<T> hash;
-    public final Processor<T> processor;
     final ConcurrencyTool pool;
+    final UniversalHash<T> hash;
+    private final Processor<T> processor;
     private final Settings settings;
     private final boolean eliasFanoMonotoneLists;
+    private final int maxChunkSize;
 
-    public Generator(ConcurrencyTool pool, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
+    public Generator(ConcurrencyTool pool,
+            UniversalHash<T> hash,
+            Settings settings,
+            boolean eliasFanoMonotoneLists,
+            int maxChunkSize) {
         this.pool = pool;
         this.settings = settings;
         this.hash = hash;
         this.processor = new Processor<T>(this);
         this.eliasFanoMonotoneLists = eliasFanoMonotoneLists;
+        this.maxChunkSize = maxChunkSize;
     }
 
     @SuppressWarnings("unchecked")
@@ -230,7 +235,7 @@ public class Generator<T> {
         int loadFactor = settings.getLoadFactor();
         long bucketScaleFactor = Settings.scaleFactor(bucketCount);
         int bucketScaleShift = Settings.scaleShift(bucketCount);
-        if (size <= MAX_CHUNK_SIZE || bucketCount == 1) {
+        if (size <= maxChunkSize || bucketCount == 1) {
             for (int i = 0; i < bucketCount; i++) {
                 buckets.add(new Bucket(loadFactor));
             }
@@ -250,7 +255,7 @@ public class Generator<T> {
             processBuckets(size, bucketCount, buckets);
         } else {
             // split into chunks
-            int bucketsPerChunk = Math.max(1, MAX_CHUNK_SIZE / loadFactor);
+            int bucketsPerChunk = Math.max(1, maxChunkSize / loadFactor);
             int remaining = bucketCount;
             for (int bucketOffset = 0; bucketOffset < bucketCount; bucketOffset += bucketsPerChunk) {
                 int chunkSize = Math.min(bucketsPerChunk, remaining);

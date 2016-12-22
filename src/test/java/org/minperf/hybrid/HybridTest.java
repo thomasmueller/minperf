@@ -45,7 +45,8 @@ public class HybridTest {
             Generator<Long> generator;
 
             ConcurrencyTool pool = new ConcurrencyTool(8);
-            generator = new Generator<Long>(pool, hash, settings, true);
+            generator = new Generator<Long>(pool, hash, settings, true,
+                    Integer.MAX_VALUE);
             BitBuffer buffer0 = generator.generate(set);
             int bitCount0 = buffer0.position();
 

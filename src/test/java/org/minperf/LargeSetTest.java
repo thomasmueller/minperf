@@ -19,6 +19,8 @@ import org.minperf.utils.LongSet;
  */
 public class LargeSetTest {
 
+    public static final int MAX_CHUNK_SIZE = 100_000_000;
+
     public static void main(String... args) {
         System.out.println("Calculated " + SpaceEstimator.getExpectedSpace(8, 128));
         test(true);
@@ -42,6 +44,7 @@ public class LargeSetTest {
                     newInstance(hash).
                     leafSize(leafSize).loadFactor(loadFactor).
                     eliasFanoMonotoneLists(eliasFano).
+                    maxChunkSize(MAX_CHUNK_SIZE).
                     generate(list);
             time = System.nanoTime() - time;
             int bitCount = buff.position();
