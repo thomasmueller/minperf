@@ -432,7 +432,7 @@ public class Generator<T> {
         boolean alternative;
 
         Bucket(int loadFactor) {
-            list = new ArrayList<T>((int) (loadFactor * 1.1));
+            list = new ArrayList<T>(loadFactor * 11 / 10);
         }
 
         @Override
