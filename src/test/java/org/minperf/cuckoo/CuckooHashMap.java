@@ -47,7 +47,7 @@ public class CuckooHashMap<K, V> {
             offset = keys.length / 2;
             x = hashIndex + 1;
         }
-        return offset + Settings.scaleLong(hash.universalHash(key, x), keys.length / 2);
+        return offset + Settings.reduce((int) hash.universalHash(key, x), keys.length / 2);
     }
 
     public V get(K key) {

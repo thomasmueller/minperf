@@ -190,7 +190,7 @@ public class BDZ<T> {
     private static <T> int getHash(T x, UniversalHash<T> hash,
             int hashIndex, int index, int arrayLength) {
         long r = hash.universalHash(x, hashIndex + index);
-        r = Settings.scaleLong(r, arrayLength / HASHES);
+        r = Settings.reduce((int) r, arrayLength / HASHES);
         r = r + index * arrayLength / HASHES;
         return (int) r;
     }

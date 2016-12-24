@@ -73,21 +73,11 @@ public class Settings {
 
     private static final int CACHE_SPLITS = 4 * 1024;
 
-    private static final long[] SCALE_FACTOR = new long[32];
-    private static final int SCALE_SHIFT = 58;
-
     private final int leafSize;
     private final int loadFactor;
 
     private final int[] splits = new int[CACHE_SPLITS];
     private final int[] rice = new int[CACHE_SPLITS];
-
-    static {
-        for (int i = 2; i < SCALE_FACTOR.length; i++) {
-            long f = getSizeFactor(i, SCALE_SHIFT);
-            SCALE_FACTOR[i] = f;
-        }
-    }
 
     /**
      * Constructor for settings.
@@ -217,82 +207,13 @@ public class Settings {
         return x;
     }
 
-    public static int scaleShift(int scale) {
-        if (scale == 0) {
-            return 0;
-        }
-        int divisor = (int) (0x7fffffffL / scale);
-        return 63 - Integer.numberOfLeadingZeros(divisor);
+    public static int getBucketCount(long size, int loadFactor) {
+        return (int) ((size + loadFactor - 1) / loadFactor);
     }
 
-    public static long getSizeFactor(int size, int shift) {
-        if (size == 0) {
-            return 0;
-        }
-        int divisor = (int) (0x7fffffffL / size);
-        long value = ((1L << shift) / divisor) + 1;
-        // this is a bit a hack: find a good value
-        // that (almost) evenly divides the range
-        int limit = Integer.MAX_VALUE / size;
-        while (true) {
-            if (scaleLong(limit, value, shift) > 0) {
-                value--;
-                continue;
-            }
-            if (scaleLong(limit + 2, value, shift) < 1) {
-                value++;
-                continue;
-            }
-            if (scaleLong(Integer.MAX_VALUE, value, shift) >= size) {
-                value--;
-                continue;
-            }
-            return value;
-        }
-    }
-
-    public static long scaleFactor(int scale) {
-        if (scale == 0) {
-            return 0;
-        }
-        int divisor = (int) (0x7fffffffL / scale);
-        int shift = 63 - Integer.numberOfLeadingZeros(divisor);
-        // this is a bit a hack:
-        // find a value that almost evenly divides the range
-        while (true) {
-            long result = ((1L << shift) / divisor) - 1;
-            if (scaleLong(0x7fffffffL, result, shift) < scale) {
-                return result;
-            }
-            divisor++;
-        }
-    }
-
-    public static int scaleLong(long x, int size) {
-        // this is actually not completely uniform,
-        // there is a small bias towards smaller numbers
-        // possible speedup for the 2^n case:
-        // return x & (size - 1);
-        // division-by-multiplication would also be faster
-        return (int) ((x & (-1L >>> 1)) % size);
-    }
-
-    public static int scaleInt(int x, int size) {
-        // this is actually not completely uniform,
-        // there is a small bias towards smaller numbers
-        // possible speedup for the 2^n case:
-        // return x & (size - 1);
-        // division-by-multiplication would also be faster
-        return (x & (-1 >>> 1)) % size;
-    }
-
-    public static int scaleSmallSize(int x, int size) {
-        return scaleLong(x, SCALE_FACTOR[size], SCALE_SHIFT);
-        // return scaleInt(x, size);
-    }
-
-    public static int scaleLong(long x, long factor, int shift) {
-        return (int) (((x & 0x7fffffffL) * factor) >>> shift);
+    public static int reduce(int hash, int n) {
+        // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+        return (int) (((hash & 0xffffffffL) * n) >>> 32);
     }
 
 }

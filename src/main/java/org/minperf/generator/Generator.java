@@ -24,7 +24,6 @@ public class Generator<T> {
 
     final ConcurrencyTool pool;
     final UniversalHash<T> hash;
-    private final Processor<T> processor;
     private final Settings settings;
     private final boolean eliasFanoMonotoneLists;
     private final int maxChunkSize;
@@ -37,13 +36,12 @@ public class Generator<T> {
         this.pool = pool;
         this.settings = settings;
         this.hash = hash;
-        this.processor = new Processor<T>(this);
         this.eliasFanoMonotoneLists = eliasFanoMonotoneLists;
         this.maxChunkSize = maxChunkSize;
     }
 
     @SuppressWarnings("unchecked")
-    public void generate(T[] data, long[] hashes, long startIndex, Processor<T> p) {
+    public void generate(T[] data, long[] hashes, long startIndex, BitBuffer buff) {
         int size = data.length;
         if (size < 2) {
             return;
@@ -52,7 +50,7 @@ public class Generator<T> {
             long index = getIndex(data, hashes, startIndex);
             int shift = settings.getGolombRiceShift(size);
             long value = index - startIndex - 1;
-            p.writeLeaf(shift, value);
+            buff.writeGolombRice(shift, value);
             return;
         }
         long index = startIndex + 1;
@@ -70,6 +68,7 @@ public class Generator<T> {
         }
         int writeK = settings.getGolombRiceShift(size);
         long writeIndex = index - startIndex - 1;
+        buff.writeGolombRice(writeK, writeIndex);
         int split = settings.getSplit(size);
         int firstPart, otherPart;
         if (split < 0) {
@@ -91,13 +90,9 @@ public class Generator<T> {
             hashes2 = new long[split][firstPart];
         }
         splitEvenly(data, hashes, index, data2, hashes2);
-        p.split(writeK, writeIndex, index, data2, hashes2);
-    }
-
-    public void generate(final T[][] lists,
-            final long[][] hashLists,
-            final ArrayList<BitBuffer> outList) {
-        processor.process(lists, hashLists, outList);
+        for (int i = 0; i < data2.length; i++) {
+            generate(data2[i], hashes2[i], index, buff);
+        }
     }
 
     private long getIndex(T[] data, long[] hashes, long startIndex) {
@@ -144,7 +139,7 @@ public class Generator<T> {
             for (int i = 0; i < size; i++) {
                 long h = hashes[i];
                 int x = Settings.supplementalHash(h, index);
-                x = Settings.scaleInt(x, size);
+                x = Settings.reduce(x, size);
                 if (x < limit) {
                     if (--firstPart < 0) {
                         return false;
@@ -162,7 +157,7 @@ public class Generator<T> {
         for (int i = 0; i < size; i++) {
             long h = hashes[i];
             int x = Settings.supplementalHash(h, index);
-            x = Settings.scaleSmallSize(x, split);
+            x = Settings.reduce(x, split);
             if (--count[x] < 0) {
                 return false;
             }
@@ -183,7 +178,7 @@ public class Generator<T> {
                 T t = data[i];
                 long h = hashes[i];
                 int x = Settings.supplementalHash(h, index);
-                x = Settings.scaleInt(x, size);
+                x = Settings.reduce(x, size);
                 if (x < limit) {
                     data2[0][i0] = t;
                     hashes2[0][i0] = h;
@@ -201,7 +196,7 @@ public class Generator<T> {
             T t = data[i];
             long h = hashes[i];
             int x = Settings.supplementalHash(h, index);
-            int bucket = Settings.scaleSmallSize(x, split);
+            int bucket = Settings.reduce(x, split);
             int p = pos[bucket]++;
             data2[bucket][p] = t;
             hashes2[bucket][p] = h;
@@ -214,7 +209,7 @@ public class Generator<T> {
         for (int i = 0; i < size; i++) {
             long x = hashes[i];
             int h = Settings.supplementalHash(x, index);
-            h = Settings.scaleSmallSize(h, size);
+            h = Settings.reduce(h, size);
             if ((bits & (1 << h)) != 0) {
                 return false;
             }
@@ -223,18 +218,11 @@ public class Generator<T> {
         return true;
     }
 
-    public void dispose() {
-        processor.dispose();
-    }
-
     public BitBuffer generate(Collection<T> collection) {
         long size = collection.size();
-        int bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
-                settings.getLoadFactor();
+        int bucketCount = Settings.getBucketCount(size, settings.getLoadFactor());
         ArrayList<Bucket> buckets = new ArrayList<Bucket>(bucketCount);
         int loadFactor = settings.getLoadFactor();
-        long bucketScaleFactor = Settings.scaleFactor(bucketCount);
-        int bucketScaleShift = Settings.scaleShift(bucketCount);
         if (size <= maxChunkSize || bucketCount == 1) {
             for (int i = 0; i < bucketCount; i++) {
                 buckets.add(new Bucket(loadFactor));
@@ -245,7 +233,7 @@ public class Generator<T> {
                     b = 0;
                 } else {
                     long h = hash.universalHash(t, 0);
-                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    b = Settings.reduce((int) h, bucketCount);
                     if (b >= bucketCount || b < 0) {
                         throw new AssertionError();
                     }
@@ -267,7 +255,7 @@ public class Generator<T> {
                 for (T t : collection) {
                     int b;
                     long h = hash.universalHash(t, 0);
-                    b = Settings.scaleLong(h, bucketScaleFactor, bucketScaleShift);
+                    b = Settings.reduce((int) h, bucketCount);
                     if (b >= bucketCount || b < 0) {
                         throw new AssertionError();
                     }
@@ -479,13 +467,10 @@ public class Generator<T> {
                 hashes[i] = hash.universalHash(data[i],
                         Settings.getUniversalHashIndex(startIndex));
             }
-            Processor<T> p = new Processor<T>(
-                    Generator.this, data, hashes, startIndex);
-            generate(data, hashes, startIndex, p);
-            buff = p.out;
+            ; // TODO
+            buff = new BitBuffer(minSize * 4);
+            generate(data, hashes, startIndex, buff);
             if (buff.position() < minSize) {
-                buff = new BitBuffer(minSize);
-                buff.write(p.out);
                 while (buff.position() < minSize) {
                     buff.writeBit(1);
                 }

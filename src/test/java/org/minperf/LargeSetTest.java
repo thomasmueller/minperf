@@ -22,7 +22,6 @@ public class LargeSetTest {
     public static final int MAX_CHUNK_SIZE = 100_000_000;
 
     public static void main(String... args) {
-        System.out.println("Calculated " + SpaceEstimator.getExpectedSpace(8, 128));
         test(true);
         test(false);
     }
@@ -31,9 +30,9 @@ public class LargeSetTest {
         int leafSize = 8, loadFactor = 128;
         System.out.println("leafSize " + leafSize + ", loadFactor " + loadFactor +
                 ", calcualted " +
-                SpaceEstimator.getExpectedSpace(8, 128) + " bits/key");
-        for (int len = 10; len <= 1_000_000_000; len *= 10) {
-            LongSet set = createSet(len, 1);
+                SpaceEstimator.getExpectedSpace(leafSize, loadFactor) + " bits/key");
+        for (long len = 1_000; len <= 1_000_000_000; len *= 10) {
+            LongSet set = createSet((int) len, 1);
             System.out.println("...set created, size " + set.size());
             LargeLongList list = LargeLongList.create(set);
             set = null;

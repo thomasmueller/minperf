@@ -22,8 +22,6 @@ public class RecSplitEvaluator<T> {
     private final int minOffsetDiff;
     private final MonotoneList offsetList;
     private final int startBuckets;
-    private final long bucketScaleFactor;
-    private final int bucketScaleShift;
     private final BDZ<T> alternative;
 
     public RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
@@ -31,8 +29,7 @@ public class RecSplitEvaluator<T> {
         this.hash = hash;
         this.buffer = buffer;
         this.size = (int) (buffer.readEliasDelta() - 1);
-        this.bucketCount = (int) (size + (settings.getLoadFactor() - 1)) /
-                settings.getLoadFactor();
+        this.bucketCount = Settings.getBucketCount(size, settings.getLoadFactor());
         boolean alternative = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
         this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
@@ -50,8 +47,6 @@ public class RecSplitEvaluator<T> {
         } else {
             this.alternative = null;
         }
-        this.bucketScaleFactor = Settings.scaleFactor(bucketCount);
-        this.bucketScaleShift = Settings.scaleShift(bucketCount);
     }
 
     public int evaluate(T obj) {
@@ -60,7 +55,7 @@ public class RecSplitEvaluator<T> {
         if (bucketCount == 1) {
             b = 0;
         } else {
-            b = Settings.scaleLong(hashCode, bucketScaleFactor, bucketScaleShift);
+            b = Settings.reduce((int) hashCode, bucketCount);
         }
         int startPos;
         long offsetPair = offsetList.getPair(b);
@@ -126,7 +121,7 @@ public class RecSplitEvaluator<T> {
             }
             if (size <= settings.getLeafSize()) {
                 int h = Settings.supplementalHash(hashCode, index);
-                h = Settings.scaleSmallSize(h, size);
+                h = Settings.reduce(h, size);
                 return add + h;
             }
             int split = settings.getSplit(size);
@@ -141,7 +136,7 @@ public class RecSplitEvaluator<T> {
             }
             int h = Settings.supplementalHash(hashCode, index);
             if (firstPart != otherPart) {
-                h = Settings.scaleInt(h, size);
+                h = Settings.reduce(h, size);
                 if (h < firstPart) {
                     size = firstPart;
                     continue;
@@ -151,7 +146,7 @@ public class RecSplitEvaluator<T> {
                 size = otherPart;
                 continue;
             }
-            h = Settings.scaleSmallSize(h, split);
+            h = Settings.reduce(h, split);
             for (int i = 0; i < h; i++) {
                 pos = skip(pos, firstPart);
                 add += firstPart;

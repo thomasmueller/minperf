@@ -80,10 +80,6 @@ public class RecSplitBuilder<T> {
                 pool, hash, s,
                 eliasFanoMonotoneLists, maxChunkSize);
         BitBuffer result = g.generate(collection);
-        // we could re-use the generator,
-        // so that starting and stopping threads is not needed
-        // when generate is called multiple times
-        g.dispose();
         return result;
     }
 
