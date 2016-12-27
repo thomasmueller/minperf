@@ -10,6 +10,8 @@ public class Paper {
 
     public static void main(String... args) {
 
+        // TODO is leafSize 23 the minimum? compute higher
+
         RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
         // B Generation Time Versus Space
@@ -79,7 +81,6 @@ public class Paper {
         }
     }
 
-
     private static void supplementalHashPerfTest() {
         final AtomicLong count = new AtomicLong();
         final AtomicLong dummy = new AtomicLong();
@@ -94,7 +95,7 @@ public class Paper {
                           x += r.nextLong();
                           for (int i = 0; i < 1000; i++) {
                               int h = Settings.supplementalHash(x, i);
-                              h = Settings.scaleSmallSize(h, 30);
+                              h = Settings.reduce(h, 30);
                               sum += h;
                           }
                           count.incrementAndGet();
