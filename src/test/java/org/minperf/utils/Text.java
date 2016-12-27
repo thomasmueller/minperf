@@ -8,7 +8,7 @@ import org.minperf.universal.UniversalHash;
 /**
  * A text. It is similar to a String, but needs less memory.
  */
-public class Text {
+public class Text implements CharSequence {
 
     /**
      * The byte data (may be shared, so must not be modified).
@@ -92,8 +92,19 @@ public class Text {
         return new String(data, offset, len);
     }
 
+    @Override
     public int length() {
         return len;
+    }
+
+    @Override
+    public char charAt(int index) {
+        return (char) data[offset + index];
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+        return new Text(data, offset + start, end - start);
     }
 
     /**
