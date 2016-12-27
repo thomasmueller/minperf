@@ -11,6 +11,7 @@ public class Paper {
     public static void main(String... args) {
 
         // TODO is leafSize 23 the minimum? compute higher
+        // TODO improve simple monotone list
 
         RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
