@@ -192,7 +192,7 @@ public class RandomizedTest {
 //                14, 192, 1.6437121891329978, 402364, 372,
 //                14, 256, 1.6302684001174041, 404552, 401,
 
-                // Elias Fano, Java 7, 1 mio, *
+                // Elias Fano, Java 7, 200'000, *
                 4, 20, 2.470905, 531.61, 197.398,
                 4, 24, 2.41963, 568.145, 207.133,
                 4, 28, 2.398395, 567.185, 225.119,
@@ -415,6 +415,7 @@ public class RandomizedTest {
 //            info.evaluateNanos = data[i + 4];
 //            list.add(info);
 //        }
+//        printTables(list);
 
 //        int[] pairs = new int[] { 4, 20, 4, 24, 5, 20, 5, 24, 5, 64, 5, 128, 6, 128, 6, 256,
 //                7, 256, 7, 512, 8, 128, 8, 256, 8, 512, 9, 256, 9, 512, 10, 12,
@@ -444,16 +445,10 @@ public class RandomizedTest {
 //            list.add(info);
 //        }
 
-        int lastBucketCount = 0;
         for (int leafSize = 4; leafSize <= 17; leafSize++) {
             for (int loadFactor : new int[] {
                     10, 12, 14, 16, 18, 20, 24, 28, 32,
                     64, 96, 128, 192, 256, 512, 1024 }) {
-                int bucketCount = Settings.getBucketCount(size, loadFactor);
-                if (bucketCount == lastBucketCount) {
-                    continue;
-                }
-                lastBucketCount = bucketCount;
                 double expectedBits = SpaceEstimator.getExpectedSpace(leafSize, loadFactor);
                 if (expectedBits > 3.2) {
                     continue;
@@ -567,6 +562,52 @@ public class RandomizedTest {
         System.out.println("All used");
         for (FunctionInfo info : usedList) {
             System.out.println(info.leafSize + ", " + info.loadFactor + ", ");
+        }
+    }
+
+    private static void printTables(ArrayList<FunctionInfo> list) {
+        System.out.println("Space");
+        printTables(list, 0);
+        System.out.println("Generation");
+        printTables(list, 1);
+        System.out.println("Evaluation");
+        printTables(list, 2);
+    }
+
+    private static void printTables(ArrayList<FunctionInfo> list, int type) {
+        System.out.print(" ");
+        for (int loadFactor : new int[] { 10, 12, 16, 32, 64, 128, 256,
+                512, 1024 }) {
+            System.out.print(" & " + loadFactor);
+        }
+        System.out.println(" \\\\");
+        for (int leafSize = 5; leafSize <= 17; leafSize++) {
+            System.out.print(leafSize);
+            for (int loadFactor : new int[] { 10, 12, 16, 32, 64, 128, 256,
+                    512, 1024 }) {
+                boolean found = false;
+                System.out.print(" & ");
+                for (FunctionInfo info : list) {
+                    if (leafSize != info.leafSize ||
+                            loadFactor != info.loadFactor) {
+                        continue;
+                    }
+                    if (type == 0) {
+                        System.out.printf("%1.2f", info.bitsPerKey);
+                        found = true;
+                    } else if (type == 1) {
+                        System.out.printf("%1.1f", info.generateNanos / 1000);
+                        found = true;
+                    } else {
+                        System.out.printf("%d", (int) info.evaluateNanos);
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    System.out.print(" ");
+                }
+            }
+            System.out.println(" \\\\");
         }
     }
 

@@ -233,7 +233,7 @@ public class TextFileTest {
                 "use that many threads (default: " + threadCount + ")");
         System.out.println();
         System.out.println("Example (index one million entries, and evaluate):");
-        System.out.println("seq 1 1000000 > seq.txt");
+        System.out.println("seq -f \"%.20g\" 1 1000000 > seq.txt");
         System.out.println("java -cp bin org.minperf.TextFileTest " +
                 "-textFile seq.txt -hashFile seq.bin " +
                 "-threadCount 1 -repeat 3");
