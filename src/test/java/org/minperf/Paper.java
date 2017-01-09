@@ -10,10 +10,14 @@ public class Paper {
 
     public static void main(String... args) {
 
+        RandomizedTest.experimentalResults();
+        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
+        WikipediaTest.main();
+        LargeSetTest.main();
+        RandomizedTest.experimentalResults();
+
         // TODO is leafSize 23 the minimum? compute higher
         // TODO improve simple monotone list
-
-        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
 
         // B Generation Time Versus Space
         // RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
@@ -31,6 +35,8 @@ public class Paper {
 
         // 4.3 Split Rule
         SettingsTest.printSplitRule();
+        SettingsTest.printSplitRulesList();
+
         // 4.4 Data Format
         BitCodes.printPositiveMapping();
         Graphics.generateSampleTikz();

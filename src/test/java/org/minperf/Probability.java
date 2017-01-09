@@ -147,7 +147,23 @@ public class Probability {
         }
     }
 
-    public static double calcApproxAsymmetricSplitProbability(int size, int firstSet) {
+    public static double calcExactAsymmetricSplitProbability(int size, int firstSet) {
+        double p;
+        if (size <= 143) {
+            p = Probability.calcAsymmetricSplitProbability(size, firstSet);
+            if (p == 0 || p == 1 || Double.isNaN(p)) {
+                System.out.println("fail at " + size + " split " + firstSet);
+            }
+        } else {
+            p = 0;
+        }
+        if (p == 0 || p == 1 || Double.isNaN(p)) {
+            p = Probability.calcApproxAsymmetricSplitProbability(size, firstSet);
+        }
+        return p;
+    }
+
+    private static double calcApproxAsymmetricSplitProbability(int size, int firstSet) {
         // http://math.stackexchange.com/questions/64716/approximating-the-logarithm-of-the-binomial-coefficient
         int n = size;
         int k = firstSet;
@@ -156,7 +172,7 @@ public class Probability {
         return Math.exp(logComb + Math.log(k) * k - Math.log(n) * n + Math.log(n - k) * (n - k));
     }
 
-    public static double calcAsymmetricSplitProbability(int size, int firstSet) {
+    private static double calcAsymmetricSplitProbability(int size, int firstSet) {
         // http://math.stackexchange.com/questions/951236/probability-of-exactly-2-low-rolls-in-5-throws-of-a-die
         // (n k) p^k q^(n-k)
         // p: probability of the event (prob of r.nextInt(size) < firstSet)

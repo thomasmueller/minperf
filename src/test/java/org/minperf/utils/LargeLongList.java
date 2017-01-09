@@ -32,7 +32,7 @@ public class LargeLongList extends AbstractList<Long> {
     @Override
     public Long get(int index) {
         if (index == 0) {
-            System.out.println("LargeLongList.get[0]");
+            System.out.println("...LargeLongList.get[0]");
         }
         return list.get(index >>> CHUNK_SHIFT).get(index & CHUNK_MASK);
     }

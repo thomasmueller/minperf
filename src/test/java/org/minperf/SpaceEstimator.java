@@ -10,8 +10,66 @@ import java.util.HashMap;
  */
 public class SpaceEstimator {
 
+    private static final HashMap<String, Double> SPLIT_PROBABILITY_CACHE = new HashMap<String, Double>();
+
     public static final boolean OPTIMAL_SPLIT_RULE = false;
     public static final boolean EXACT_ASYMMETRIC_SPLIT = true;
+
+    public static double getExpectedSpace2(int leafSize, int loadFactor) {
+        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+        // System.out.println("  Bucket sizes");
+        Settings s = new Settings(leafSize, loadFactor);
+        double totalBits = 0;
+        double inRegularBucket = 0;
+        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
+        double worst = 0;
+        // int worstSize = -1;
+        for (int i = 0; i <= s.getMaxBucketSize(); i++) {
+            // System.out.println("size " + i);
+            double probBucketSize = Probability.getProbabilityOfBucketSize(
+                    loadFactor, i);
+            double bits = getExpectedBucketSpace(s, i, 0, cache);
+            if (bits > 0 && bits / i > worst) {
+                worst = bits / i;
+                // worstSize = i;
+            }
+            inRegularBucket += probBucketSize * i;
+            totalBits += bits * probBucketSize;
+            // System.out.println("   " + i + ": " + bits * probBucketSize);
+        }
+        double bits = totalBits;
+//        System.out.println("total bits: " + totalBits + " rounded " + bits);
+        totalBits = 0;
+        // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
+
+        // worst case (disregarding probabilities)
+        // loadFactor 1024 leafSize 20 calc 1.5842701617288442
+        // leaf 20 lf 1024 **********
+        // totalBits = worst * loadFactor;
+
+        // System.out.println("  total average bits for a bucket: " + totalBits);
+        // System.out.println("  size > than max, p=" + overflow);
+        // System.out.println("  size > than max, p=" + overflow + " (adjusted)");
+        double pInOverflow = 1.0 - loadFactor / inRegularBucket;
+        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow);
+        // pInOverflow = Math.max(minP, pInOverflow);
+        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow + " (adjusted)");
+        double bitsPerEntryInOverflow = 4.0;
+        totalBits += pInOverflow * bitsPerEntryInOverflow;
+        double bitsPerBucket = 2 + bits;
+//        double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
+        double bitsPerBucketOffsetOverhead = 2 + Math.log(loadFactor) / Math.log(2);
+        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / loadFactor);
+        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / loadFactor);
+        double bitsPerKeyCalc =  (totalBits + bitsPerBucket + bitsPerBucketOffsetOverhead) / loadFactor;
+        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
+        // int size = 10000 * loadFactor;
+        // FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, false);
+        // int sizeBits = BitCodes.getEliasDelta(size).length();
+        // double bitsPerKeyReal = (info.bitsPerKey * size - sizeBits) / size;
+        // System.out.println(" real " + bitsPerKeyReal);
+        return bitsPerKeyCalc;
+    }
 
     public static double getExpectedSpace(int leafSize, int loadFactor) {
         // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
@@ -33,7 +91,8 @@ public class SpaceEstimator {
             }
             inRegularBucket += probBucketSize * i;
             totalBits += bits * probBucketSize;
-            // System.out.println("   " + i + ": " + bits * probBucketSize);
+//            if(bits * probBucketSize > 1)
+//             System.out.println("   " + i + " " + bits * probBucketSize);
         }
         // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
 
@@ -103,52 +162,72 @@ public class SpaceEstimator {
                     continue;
                 }
             }
+            if (i > 0) {
+                double p2 = Probability.probabilitySplitIntoMSubsetsOfSizeN(i, size / i);
+                double p3 = Probability.probabilitySplitIntoMSubsetsOfSizeN(s.getLeafSize(), 1);
+                if (p2 < p3) {
+                    // at least more probably than direct mapping
+                    continue;
+                }
+                if (s.getLeafSize() / p3 < size / p2) {
+                    continue;
+                }
+            }
             double x = getExpectedBucketSpace(s, size, indent, cache, i);
             if (x < result) {
                 result = x;
                 split2 = i;
             }
         }
-        if (split != split2) {
+//        if (split != split2 || split > 0) {
+//            double p2 = 0, p3 = 0;
+//            if (split2 > 0) {
+//                p2 = Probability.probabilitySplitIntoMSubsetsOfSizeN(split2, size / split2);
+//                p3 = Probability.probabilitySplitIntoMSubsetsOfSizeN(s.getLeafSize(), 1);
+//                if (p2 < p3) {
+//
+//                }
+//                System.out.println(size + ", " + split2 + ", ");
+////                System.out.println("    size " + size + " oldSplit " + split + " newSplit " + split2 + " p2=" + p2 + " p3=" + p3);
+//            }
+//        }
+//        if (split != split2) {
             if (split2 < 0) {
                 System.out.println("   size " + size + " split " + -split2 + ":" + (size+split2) + "; " + result);
             } else {
-                System.out.println("   size " + size + " split by " + split2 + "; " + result / size + " *** ");
+                System.out.println("   size " + size + " split by " + split2 + "; " + result / size + " *** old:" + split);
             }
-        } else {
-            if (split2 < 0) {
-                System.out.println("   size " + size + " split " + -split2 + ":" + (size+split2) + "; " + result);
-            } else {
-                System.out.println("   size " + size + " split by " + split2 + "; " + result / size);
-            }
-        }
+//        } else {
+//            if (split2 < 0) {
+//                System.out.println("   size " + size + " split " + -split2 + ":" + (size+split2) + "; " + result);
+//            } else {
+//                System.out.println("   size " + size + " split by " + split2 + "; " + result / size);
+//            }
+//        }
         cache.put(size, result);
         return result;
 
     }
 
     public static double getSplitProbability(int size, int split) {
-        if (split < 0) {
-            double p;
-            if (size <= 143) {
-                p = Probability.calcAsymmetricSplitProbability(size, -split);
-                if (p == 0 || p == 1 || Double.isNaN(p)) {
-                    System.out.println("fail at " + size + " split " + split);
-                }
-            } else {
-                p = 0;
-            }
-            if (p == 0 || p == 1 || Double.isNaN(p)) {
-                p = Probability.calcApproxAsymmetricSplitProbability(size, -split);
-            }
-            return p;
+        String key = "split-" + size + "/" + split;
+        Double cached = SPLIT_PROBABILITY_CACHE.get(key);
+        if (cached != null) {
+            return cached;
         }
-        return Probability.probabilitySplitIntoMSubsetsOfSizeN(split, size / split);
+        double p;
+        if (split < 0) {
+            p = Probability.calcExactAsymmetricSplitProbability(size, -split);
+        } else {
+            p = Probability.probabilitySplitIntoMSubsetsOfSizeN(split, size / split);
+        }
+        SPLIT_PROBABILITY_CACHE.put(key, p);
+        return p;
     }
 
     private static double getExpectedBucketSpace(Settings s, int size, int indent, HashMap<Integer, Double> cache, int split) {
         double p = getSplitProbability(size, split);
-        int k = BitCodes.calcBestGolombRiceShift(p);
+        int k = s.getGolombRiceShift(size); //  BitCodes.calcBestGolombRiceShift(p);
         double bits = BitCodes.calcAverageRiceGolombBits(k, p);
         // System.out.println(spaces + "node size " + size + " split " + split + " bits " + bits);
         if (split < 0) {

@@ -27,16 +27,17 @@ public class LargeSetTest {
     }
 
     private static void test(boolean eliasFano) {
-        int leafSize = 8, loadFactor = 128;
+        System.out.println(eliasFano ? "EliasFano" : "Fast");
+        int leafSize = 8;
+        // int loadFactor = 128;
+        int loadFactor = 4096;
         System.out.println("leafSize " + leafSize + ", loadFactor " + loadFactor +
                 ", calcualted " +
                 SpaceEstimator.getExpectedSpace(leafSize, loadFactor) + " bits/key");
         for (long len = 1_000; len <= 1_000_000_000; len *= 10) {
             LongSet set = createSet((int) len, 1);
-            System.out.println("...set created, size " + set.size());
             LargeLongList list = LargeLongList.create(set);
             set = null;
-            System.out.println("...list created");
             LongHash hash = new LongHash();
             long time = System.nanoTime();
             BitBuffer buff = RecSplitBuilder.
@@ -48,10 +49,9 @@ public class LargeSetTest {
             time = System.nanoTime() - time;
             int bitCount = buff.position();
             buff.seek(0);
-            System.out.println("Size " + len +
-                    " " + (double) bitCount / len + " bits/key, " +
-                    " " + (double) time / len + " ns/key, " +
-                    " " + (eliasFano ? "EliasFano" : "Fast"));
+            double bitsPerKEy = (double) bitCount / len;
+            System.out.println("        (" + len + ", " + bitsPerKEy + ")");
+            System.out.println("...generated " + (double) time / len + " ns/key");
             RecSplitEvaluator<Long> eval = RecSplitBuilder.
                     newInstance(hash).
                     leafSize(leafSize).loadFactor(loadFactor).
@@ -69,11 +69,10 @@ public class LargeSetTest {
                     Assert.fail("duplicate entry: " + x + " " + index);
                 }
                 known.set(index);
-                if ((i++ & 0xffffff) == 0) {
+                if ((i++ & 0xffffff) == 0xffffff) {
                     System.out.println("...evaluated " + i);
                 }
             }
-            System.out.println("...done");
             list.dispose();
             list = null;
         }
@@ -85,7 +84,7 @@ public class LargeSetTest {
         long i = 0;
         while (set.size() < size) {
             set.add(r.nextLong());
-            if ((i++ & 0xffffff) == 0) {
+            if ((i++ & 0xffffff) == 0xffffff) {
                 System.out.println("...createSet size " + set.size() + " of " + size);
             }
         }

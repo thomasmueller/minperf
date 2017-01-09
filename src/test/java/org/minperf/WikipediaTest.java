@@ -66,6 +66,9 @@ public class WikipediaTest {
 
       int[] pairs = new int[] {
               5, 20,
+              6, 12,
+              6, 14,
+              6, 16,
               6, 20,
               7, 16,
               7, 20,
@@ -74,6 +77,9 @@ public class WikipediaTest {
               8, 18,
               8, 20,
               8, 24,
+              8, 64,
+              8, 96,
+              8, 128,
               9, 12,
               9, 14,
               9, 16,
@@ -85,17 +91,21 @@ public class WikipediaTest {
               9, 64,
               10, 32,
               10, 64,
+              10, 192,
               11, 32,
               11, 64,
+              11, 256,
               12, 64,
               13, 128,
               13, 192,
               14, 192,
               14, 256,
+              14, 512,
               15, 256,
               15, 512,
               15, 1024,
-              16, 1024,          };
+              16, 1024,
+          };
 
         for (int i = 0; i < pairs.length; i += 2) {
             int leafSize = pairs[i], loadFactor = pairs[i + 1];
