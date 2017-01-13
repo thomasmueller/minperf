@@ -467,7 +467,7 @@ public class Generator<T> {
                 hashes[i] = hash.universalHash(data[i],
                         Settings.getUniversalHashIndex(startIndex));
             }
-            ; // TODO
+            // this is very conservative; less memory could be allocated
             buff = new BitBuffer(minSize * 4);
             generate(data, hashes, startIndex, buff);
             if (buff.position() < minSize) {

@@ -20,10 +20,9 @@ public class SettingsTest {
      */
     public static void main(String... args) {
         System.out.println("Constants");
-        printSplitRulesList();
-if(true)return;
-        generateSplitRules();
         printSplit();
+        printSplitRulesList();
+        generateSplitRules();
         generateRiceLeaf();
         generateRiceSplitMore();
         generateRiceSplit2();
@@ -323,9 +322,6 @@ if(true)return;
                     rule = "map directly.";
                 } else {
                     int split = s.getSplit(i);
-                    if (split == 2) {
-                        split = -(i / 2);
-                    }
                     if (split > 0) {
                         rule = "split evenly into " + split + " subsets.";
                     } else {
@@ -333,7 +329,13 @@ if(true)return;
                     }
                 }
                 if (lastRule != null && !lastRule.equals(rule)) {
-                    System.out.println("Sets of size " + lastRuleStart + " to " + (i - 1) + ": " + lastRule);
+                    String range;
+                    if (lastRuleStart == i - 1) {
+                        range = "" + lastRuleStart;
+                    } else {
+                        range = lastRuleStart + " to " + (i - 1);
+                    }
+                    System.out.println("Sets of size " + range + ": " + lastRule);
                     lastRuleStart = i;
                 }
                 lastRule = rule;

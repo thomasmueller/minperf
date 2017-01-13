@@ -16,12 +16,19 @@ public class FunctionInfo {
 
     @Override
     public String toString() {
-        return "size: " + size +
-                " leafSize: " + leafSize +
-                " loadFactor: " + loadFactor +
-                " bitsPerKey: " + bitsPerKey +
-                " generateNanosPerKey: " + generateNanos +
-                " evaluateNanosPerKey: " + evaluateNanos;
+        String s = "size " + size +
+                " leafSize " + leafSize +
+                " bits/key " + bitsPerKey +
+                " generate " + generateNanos +
+                " evaluate " + evaluateNanos;
+        if (loadFactor > 0) {
+            s += " loadFactor " + loadFactor;
+        }
+        if (split != 0) {
+            s += " split " +
+                    (split > 0 ? split : (-split + ":" + (size + split)));
+        }
+        return s;
     }
 
     @Override

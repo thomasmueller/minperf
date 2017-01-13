@@ -10,13 +10,15 @@ public class Paper {
 
     public static void main(String... args) {
 
-        RandomizedTest.experimentalResults();
+         WikipediaTest.main();
         RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
-        WikipediaTest.main();
         LargeSetTest.main();
         RandomizedTest.experimentalResults();
+        RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
+        LargeSetTest.main();
+        WikipediaTest.main();
+        RandomizedTest.experimentalResults();
 
-        // TODO is leafSize 23 the minimum? compute higher
         // TODO improve simple monotone list
 
         // B Generation Time Versus Space

@@ -30,7 +30,8 @@ public class LargeSetTest {
         System.out.println(eliasFano ? "EliasFano" : "Fast");
         int leafSize = 8;
         // int loadFactor = 128;
-        int loadFactor = 4096;
+        // int loadFactor = 4096;
+        int loadFactor = 1024;
         System.out.println("leafSize " + leafSize + ", loadFactor " + loadFactor +
                 ", calcualted " +
                 SpaceEstimator.getExpectedSpace(leafSize, loadFactor) + " bits/key");
