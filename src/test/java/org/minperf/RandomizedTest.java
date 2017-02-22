@@ -51,12 +51,12 @@ public class RandomizedTest {
         ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
         outer:
         for (int leafSize = 2; leafSize <= 12; leafSize++) {
-            int minLoadFactor = 4;
-            for (int loadFactor = minLoadFactor; loadFactor <= 1024;) {
-                System.out.println("leafSize " + leafSize + " " + loadFactor);
-                FunctionInfo info = test(leafSize, loadFactor, size, true);
+            int minAverageBucketSize = 4;
+            for (int averageBucketSize = minAverageBucketSize; averageBucketSize <= 1024;) {
+                System.out.println("leafSize " + leafSize + " " + averageBucketSize);
+                FunctionInfo info = test(leafSize, averageBucketSize, size, true);
                 if (info.evaluateNanos >= 10000) {
-                    if (loadFactor == minLoadFactor) {
+                    if (averageBucketSize == minAverageBucketSize) {
                         // done
                         break outer;
                     }
@@ -66,12 +66,12 @@ public class RandomizedTest {
                 if (info.bitsPerKey < 4.0) {
                     list.add(info);
                 }
-                if (loadFactor < 16) {
-                    loadFactor += 2;
-                } else if (loadFactor < 32) {
-                    loadFactor += 4;
+                if (averageBucketSize < 16) {
+                    averageBucketSize += 2;
+                } else if (averageBucketSize < 32) {
+                    averageBucketSize += 4;
                 } else {
-                    loadFactor *= 2;
+                    averageBucketSize *= 2;
                 }
             }
         }
@@ -90,28 +90,28 @@ public class RandomizedTest {
 
         });
         FunctionInfo last = null;
-        int minLoadFactor = Integer.MAX_VALUE, maxLoadFactor = 0;
+        int minAverageBucketSize = Integer.MAX_VALUE, maxAverageBucketSize = 0;
         int minLeafSize = Integer.MAX_VALUE, maxLeafSize = 0;
         for (FunctionInfo info : list) {
             if (last != null && info.bitsPerKey > last.bitsPerKey) {
                 continue;
             }
             System.out.println("        (" + info.bitsPerKey + ", " + info.evaluateNanos + ")");
-            minLoadFactor = Math.min(minLoadFactor, info.loadFactor);
-            maxLoadFactor = Math.max(maxLoadFactor, info.loadFactor);
+            minAverageBucketSize = Math.min(minAverageBucketSize, info.averageBucketSize);
+            maxAverageBucketSize = Math.max(maxAverageBucketSize, info.averageBucketSize);
             minLeafSize = Math.min(minLeafSize, info.leafSize);
             maxLeafSize = Math.max(maxLeafSize, info.leafSize);
             last = info;
         }
-        System.out.println("for loadFactor between " + minLoadFactor + " and " + maxLoadFactor);
+        System.out.println("for averageBucketSize between " + minAverageBucketSize + " and " + maxAverageBucketSize);
         System.out.println("and leafSize between " + minLeafSize + " and " + maxLeafSize);
         last = null;
-        System.out.println("bits/key leafSize loadFactor evalTime genTime tableBitsPerKey");
+        System.out.println("bits/key leafSize averageBucketSize evalTime genTime tableBitsPerKey");
         for (FunctionInfo info : list) {
             if (last != null && info.bitsPerKey > last.bitsPerKey) {
                 continue;
             }
-            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.loadFactor +
+            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.averageBucketSize +
                     " " + info.evaluateNanos + " " + info.generateNanos);
             last = info;
         }
@@ -124,22 +124,22 @@ public class RandomizedTest {
         ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
         for (int i = 2; i < 22; i++) {
             int leafSize = (int) Math.round(0.18 * i + 6.83);
-            int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
+            int averageBucketSize = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
             // FunctionInfo info =
-            test(leafSize, loadFactor, size / 10, true);
-            // System.out.println("leafSize " + leafSize + " " + loadFactor + " " +
+            test(leafSize, averageBucketSize, size / 10, true);
+            // System.out.println("leafSize " + leafSize + " " + averageBucketSize + " " +
             //        info.evaluateNanos + " " + info.generateNanos + " " + info.bitsPerKey);
         }
         for (int leafSize = 8; leafSize < 14; leafSize++) {
             System.out.println("leafSize " + leafSize);
             // int leafSize = (int) Math.round(0.18 * i + 6.83);
-            for (int loadFactor : new int[] { 4, 6, 8, 10, 12, 14, 16, 20, 24,
+            for (int averageBucketSize : new int[] { 4, 6, 8, 10, 12, 14, 16, 20, 24,
                     28, 32, 40, 48, 56, 64 }) {
-                // int loadFactor = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
-                test(leafSize, loadFactor, size, true);
-                FunctionInfo info = test(leafSize, loadFactor, size, true);
+                // int averageBucketSize = (int) Math.round(Math.pow(2, 0.3 * i + 2.79));
+                test(leafSize, averageBucketSize, size, true);
+                FunctionInfo info = test(leafSize, averageBucketSize, size, true);
                 if (info.bitsPerKey < 2.4 && info.evaluateNanos < 250) {
-                    System.out.println("leafSize " + leafSize + " loadFactor " + loadFactor +
+                    System.out.println("leafSize " + leafSize + " averageBucketSize " + averageBucketSize +
                             " " + info.evaluateNanos + " " + info.generateNanos +
                             " " + info.bitsPerKey);
                     list.add(info);
@@ -918,7 +918,7 @@ public class RandomizedTest {
         for (int i = 0; i < data.length; i += 5) {
             FunctionInfo info = new FunctionInfo();
             info.leafSize = (int) data[i];
-            info.loadFactor = (int) data[i + 1];
+            info.averageBucketSize = (int) data[i + 1];
             info.bitsPerKey = data[i + 2];
             info.generateNanos = data[i + 3];
             info.evaluateNanos = data[i + 4];
@@ -935,34 +935,34 @@ public class RandomizedTest {
 //                15, 512, 16, 16, 16, 20, 16, 28, 16, 32, 16, 64, 16, 128, 16,
 //                256, 16, 512, };
 //        for (int i = 0; i < pairs.length; i += 2) {
-//            int leafSize = pairs[i], loadFactor = pairs[i + 1];
+//            int leafSize = pairs[i], averageBucketSize = pairs[i + 1];
 //            double expectedBits = SpaceEstimator.getExpectedSpace(leafSize,
-//                    loadFactor);
+//                    averageBucketSize);
 //            if (expectedBits > 2.6) {
 //                continue;
 //            }
-//            FunctionInfo info = test(leafSize, loadFactor, size, true, 5, true);
+//            FunctionInfo info = test(leafSize, averageBucketSize, size, true, 5, true);
 //            if (info.bitsPerKey > 2.35) {
 //                continue;
 //            }
 //            if (info.evaluateNanos > 950) {
 //                continue;
 //            }
-//            System.out.println("  " + info.leafSize + ", " + info.loadFactor +
+//            System.out.println("  " + info.leafSize + ", " + info.averageBucketSize +
 //                    ", " + info.bitsPerKey + ", " + info.generateNanos + ", " +
 //                    info.evaluateNanos + ",");
 //            list.add(info);
 //        }
 
 //        for (int leafSize = 4; leafSize <= 17; leafSize++) {
-//            for (int loadFactor : new int[] {
+//            for (int averageBucketSize : new int[] {
 //                    10, 12, 14, 16, 18, 20, 24, 28, 32,
 //                    64, 96, 128, 192, 256, 512, 1024 }) {
-//                double expectedBits = SpaceEstimator.getExpectedSpace(leafSize, loadFactor);
+//                double expectedBits = SpaceEstimator.getExpectedSpace(leafSize, averageBucketSize);
 //                if (expectedBits > 3.2) {
 //                    continue;
 //                }
-//                FunctionInfo info = test(leafSize, loadFactor, size, true, 5, true);
+//                FunctionInfo info = test(leafSize, averageBucketSize, size, true, 5, true);
 //                if (info.bitsPerKey > 2.5) {
 //                    continue;
 //                }
@@ -970,7 +970,7 @@ public class RandomizedTest {
 //                    continue;
 //                }
 //                System.out.println("  " + info.leafSize + ", " +
-//                        info.loadFactor + ", " + info.bitsPerKey + ", " +
+//                        info.averageBucketSize + ", " + info.bitsPerKey + ", " +
 //                        info.generateNanos + ", " + info.evaluateNanos + ",");
 //                list.add(info);
 //            }
@@ -1069,12 +1069,12 @@ public class RandomizedTest {
                 if (comp != 0) {
                     return comp;
                 }
-                return Integer.compare(o1.loadFactor, o2.loadFactor);
+                return Integer.compare(o1.averageBucketSize, o2.averageBucketSize);
             }
         });
         System.out.println("All used");
         for (FunctionInfo info : usedList) {
-            System.out.println(info.leafSize + ", " + info.loadFactor + ", ");
+            System.out.println(info.leafSize + ", " + info.averageBucketSize + ", ");
         }
     }
 
@@ -1089,20 +1089,20 @@ public class RandomizedTest {
 
     private static void printTables(ArrayList<FunctionInfo> list, int type) {
         System.out.print(" ");
-        for (int loadFactor : new int[] { 10, 12, 16, 32, 64, 128, 256,
+        for (int averageBucketSize : new int[] { 10, 12, 16, 32, 64, 128, 256,
                 512, 1024 }) {
-            System.out.print(" & " + loadFactor);
+            System.out.print(" & " + averageBucketSize);
         }
         System.out.println(" \\\\");
         for (int leafSize = 5; leafSize <= 17; leafSize++) {
             System.out.print(leafSize);
-            for (int loadFactor : new int[] { 10, 12, 16, 32, 64, 128, 256,
+            for (int averageBucketSize : new int[] { 10, 12, 16, 32, 64, 128, 256,
                     512, 1024 }) {
                 boolean found = false;
                 System.out.print(" & ");
                 for (FunctionInfo info : list) {
                     if (leafSize != info.leafSize ||
-                            loadFactor != info.loadFactor) {
+                            averageBucketSize != info.averageBucketSize) {
                         continue;
                     }
                     if (type == 0) {
@@ -1131,12 +1131,12 @@ public class RandomizedTest {
         ArrayList<FunctionInfo> list = new ArrayList<FunctionInfo>();
         outer:
         for (int leafSize = 2; leafSize <= 20; leafSize++) {
-            int minLoadFactor = 16;
-            for (int loadFactor = minLoadFactor; loadFactor < 8 * 1024; loadFactor *= 2) {
-                System.out.println("leafSize " + leafSize + " " + loadFactor);
-                FunctionInfo info = test(leafSize, loadFactor, size, true);
+            int minAverageBucketSize = 16;
+            for (int averageBucketSize = minAverageBucketSize; averageBucketSize < 8 * 1024; averageBucketSize *= 2) {
+                System.out.println("leafSize " + leafSize + " " + averageBucketSize);
+                FunctionInfo info = test(leafSize, averageBucketSize, size, true);
                 if (info.generateNanos >= 1000000) {
-                    if (loadFactor == minLoadFactor) {
+                    if (averageBucketSize == minAverageBucketSize) {
                         // done
                         break outer;
                     }
@@ -1161,28 +1161,28 @@ public class RandomizedTest {
 
         });
         FunctionInfo last = null;
-        int minLoadFactor = Integer.MAX_VALUE, maxLoadFactor = 0;
+        int minAverageBucketSize = Integer.MAX_VALUE, maxAverageBucketSize = 0;
         int minLeafSize = Integer.MAX_VALUE, maxLeafSize = 0;
         for (FunctionInfo info : list) {
             if (last != null && info.bitsPerKey > last.bitsPerKey) {
                 continue;
             }
             System.out.println("        (" + info.bitsPerKey + ", " + info.generateNanos + ")");
-            minLoadFactor = Math.min(minLoadFactor, info.loadFactor);
-            maxLoadFactor = Math.max(maxLoadFactor, info.loadFactor);
+            minAverageBucketSize = Math.min(minAverageBucketSize, info.averageBucketSize);
+            maxAverageBucketSize = Math.max(maxAverageBucketSize, info.averageBucketSize);
             minLeafSize = Math.min(minLeafSize, info.leafSize);
             maxLeafSize = Math.max(maxLeafSize, info.leafSize);
             last = info;
         }
-        System.out.println("for loadFactor between " + minLoadFactor + " and " + maxLoadFactor);
+        System.out.println("for averageBucketSize between " + minAverageBucketSize + " and " + maxAverageBucketSize);
         System.out.println("and leafSize between " + minLeafSize + " and " + maxLeafSize);
         last = null;
-        System.out.println("bits/key leafSize loadFactor evalTime genTime");
+        System.out.println("bits/key leafSize averageBucketSize evalTime genTime");
         for (FunctionInfo info : list) {
             if (last != null && info.bitsPerKey > last.bitsPerKey) {
                 continue;
             }
-            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.loadFactor +
+            System.out.println(info.bitsPerKey + " " + info.leafSize + " " + info.averageBucketSize +
                     " " + info.evaluateNanos + " " + info.generateNanos);
             last = info;
         }
@@ -1229,21 +1229,21 @@ public class RandomizedTest {
         // System.out.println(RandomizedTest.test(25, 7500, 7500, true));
         // System.out.println(RandomizedTest.test(25, 15000, 15000, true));
 
-        // size: 1656 leafSize: 23 loadFactor: 1656 bitsPerKey: 1.517512077294686
+        // size: 1656 leafSize: 23 averageBucketSize: 1656 bitsPerKey: 1.517512077294686
         // generateSeconds: 907.279643 evaluateNanosPerKey: 554.3478260869565
-        // size: 1250 leafSize: 25 loadFactor: 1250 bitsPerKey: 1.5112
+        // size: 1250 leafSize: 25 averageBucketSize: 1250 bitsPerKey: 1.5112
         // generateSeconds: 7416.210937 evaluateNanosPerKey: 312.8
     }
 
     private static boolean verifyOneTest() {
         int size = 100_000;
         int leafSize = 11;
-        int loadFactor = 12;
+        int averageBucketSize = 12;
         for (int j = 0; j < 5; j++) {
             System.gc();
         }
-        System.out.println("  size " + size + " leafSize " + leafSize + " loadFactor " + loadFactor);
-        FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, true);
+        System.out.println("  size " + size + " leafSize " + leafSize + " averageBucketSize " + averageBucketSize);
+        FunctionInfo info = RandomizedTest.test(leafSize, averageBucketSize, size, true);
         System.out.println("  " + info.bitsPerKey + " bits/key");
         System.out.println("  " + info.generateNanos * size / 1_000_000_000 +
                 " seconds to generate");
@@ -1269,13 +1269,13 @@ public class RandomizedTest {
 //        experimentalResults(size, 4096);
     }
 
-    private static void experimentalResults(int size, int loadFactor) {
-        System.out.println("loadFactor " + loadFactor);
+    private static void experimentalResults(int size, int averageBucketSize) {
+        System.out.println("averageBucketSize " + averageBucketSize);
         System.out.println("leafSize, bits/key");
         System.out.println("calculated");
         double last = 10;
         for (int leafSize = 6; leafSize <= 18; leafSize++) {
-            double bitsPerKey = SpaceEstimator.getExpectedSpace(leafSize, loadFactor);
+            double bitsPerKey = SpaceEstimator.getExpectedSpace(leafSize, averageBucketSize);
             if (bitsPerKey > last) {
                 System.out.println("% increased");
             }
@@ -1285,7 +1285,7 @@ public class RandomizedTest {
         }
         System.out.println("experimental");
         for (int leafSize = 6; leafSize <= 18; leafSize++) {
-            FunctionInfo info = test(leafSize, loadFactor, size, false);
+            FunctionInfo info = test(leafSize, averageBucketSize, size, false);
             System.out.println("        (" + info.leafSize + ", " + info.bitsPerKey + ")");
         }
     }
@@ -1295,33 +1295,33 @@ public class RandomizedTest {
         int leafSize = 10;
         int size = 16 * 1024;
         System.out.println("(leafSize=" + leafSize + ", size=" + size +
-                "): loadFactor, generation time in nanos/key");
+                "): averageBucketSize, generation time in nanos/key");
         ArrayList<FunctionInfo> infos = new ArrayList<FunctionInfo>();
-        for (int loadFactor = 8; loadFactor <= 16 * 1024; loadFactor *= 2) {
-            FunctionInfo info = test(leafSize, loadFactor, 16 * 1024, true);
+        for (int averageBucketSize = 8; averageBucketSize <= 16 * 1024; averageBucketSize *= 2) {
+            FunctionInfo info = test(leafSize, averageBucketSize, 16 * 1024, true);
             infos.add(info);
-            System.out.println("        (" + info.loadFactor + ", " +
+            System.out.println("        (" + info.averageBucketSize + ", " +
                     info.generateNanos + ")");
         }
         System.out
-                .println("loadFactor, evaluation time in nanos/key");
+                .println("averageBucketSize, evaluation time in nanos/key");
         for (FunctionInfo info : infos) {
-            System.out.println("        (" + info.loadFactor + ", " +
+            System.out.println("        (" + info.averageBucketSize + ", " +
                     info.evaluateNanos + ")");
         }
         System.out
-                .println("loadFactor, bits/key");
+                .println("averageBucketSize, bits/key");
         for (FunctionInfo info : infos) {
-            System.out.println("        (" + info.loadFactor + ", " +
+            System.out.println("        (" + info.averageBucketSize + ", " +
                     info.bitsPerKey + ")");
         }
     }
 
     private static <T> long test(HashSet<T> set, UniversalHash<T> hash,
-            byte[] description, int leafSize, int loadFactor, int measureCount) {
+            byte[] description, int leafSize, int averageBucketSize, int measureCount) {
         BitSet known = new BitSet();
         RecSplitEvaluator<T> eval =
-                RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).
+                RecSplitBuilder.newInstance(hash).leafSize(leafSize).averageBucketSize(averageBucketSize).
                 buildEvaluator(new BitBuffer(description));
         // verify
         for (T x : set) {
@@ -1329,14 +1329,14 @@ public class RandomizedTest {
             if (index > set.size() || index < 0) {
                 Assert.fail("wrong entry: " + x + " " + index +
                         " leafSize " + leafSize +
-                        " loadFactor " + loadFactor +
+                        " averageBucketSize " + averageBucketSize +
                         " hash " + convertBytesToHex(description));
             }
             if (known.get(index)) {
                 eval.evaluate(x);
                 Assert.fail("duplicate entry: " + x + " " + index +
                         " leafSize " + leafSize +
-                        " loadFactor " + loadFactor +
+                        " averageBucketSize " + averageBucketSize +
                         " hash " + convertBytesToHex(description));
             }
             known.set(index);
@@ -1364,7 +1364,7 @@ public class RandomizedTest {
                     if (index > list.size() || index < 0) {
                         Assert.fail("wrong entry: " + x + " " + index +
                                 " leafSize " + leafSize +
-                                " loadFactor " + loadFactor +
+                                " averageBucketSize " + averageBucketSize +
                                 " hash " + convertBytesToHex(description));
                     }
                 }
@@ -1391,20 +1391,20 @@ public class RandomizedTest {
         return count;
     }
 
-    public static FunctionInfo testAndMeasure(int leafSize, int loadFactor, int size) {
-        return test(leafSize, loadFactor, size, true, 1_000_000_000 / size, false);
+    public static FunctionInfo testAndMeasure(int leafSize, int averageBucketSize, int size) {
+        return test(leafSize, averageBucketSize, size, true, 1_000_000_000 / size, false);
     }
 
-    public static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate) {
-        return test(leafSize, loadFactor, size, evaluate, 5, false);
+    public static FunctionInfo test(int leafSize, int averageBucketSize, int size, boolean evaluate) {
+        return test(leafSize, averageBucketSize, size, evaluate, 5, false);
     }
 
-    public static FunctionInfo test(int leafSize, int loadFactor, int size, boolean evaluate, int measureCount, boolean singleThreadedGeneration) {
+    public static FunctionInfo test(int leafSize, int averageBucketSize, int size, boolean evaluate, int measureCount, boolean singleThreadedGeneration) {
         HashSet<Long> set = createSet(size, 1);
         UniversalHash<Long> hash = new LongHash();
         long generateNanos = System.nanoTime();
         RecSplitBuilder<Long> builder = RecSplitBuilder.newInstance(hash).
-                leafSize(leafSize).loadFactor(loadFactor);
+                leafSize(leafSize).averageBucketSize(averageBucketSize);
         if (singleThreadedGeneration) {
             builder.parallelism(1);
         }
@@ -1426,12 +1426,12 @@ public class RandomizedTest {
                     e.printStackTrace();
                 }
             }
-            evaluateNanos = test(set, hash, data, leafSize, loadFactor, measureCount);
+            evaluateNanos = test(set, hash, data, leafSize, averageBucketSize, measureCount);
         }
         FunctionInfo info = new FunctionInfo();
         info.leafSize = leafSize;
         info.size = size;
-        info.loadFactor = loadFactor;
+        info.averageBucketSize = averageBucketSize;
         info.bitsPerKey = (double) bits / size;
 
         if (evaluate) {

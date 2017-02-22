@@ -16,52 +16,52 @@ public class Probability {
     private static final HashMap<String, Double> PROBABILITY_CACHE = new HashMap<String, Double>();
 
     public static void veryLargeBucketProbability() {
-        for (int loadFactor = 8; loadFactor < 16 * 1024; loadFactor *= 2) {
+        for (int averageBucketSize = 8; averageBucketSize < 16 * 1024; averageBucketSize *= 2) {
             for (int multiple = 2; multiple <= 20; multiple *= 10) {
-                double p = probabilityLargeBucket(loadFactor, multiple * loadFactor);
-                double p2 = probabilityLargeBucket2(loadFactor, multiple * loadFactor);
+                double p = probabilityLargeBucket(averageBucketSize, multiple * averageBucketSize);
+                double p2 = probabilityLargeBucket2(averageBucketSize, multiple * averageBucketSize);
                 double simulated = Double.NaN;
                 if (p > 0.000001) {
-                    simulated = simulateProbabilityBucketLargerOrEqualTo(loadFactor, multiple * loadFactor);
+                    simulated = simulateProbabilityBucketLargerOrEqualTo(averageBucketSize, multiple * averageBucketSize);
                 }
-                System.out.println("loadFactor " + loadFactor +
-                        " p[bucketSize >= " + multiple * loadFactor + "] ~ " +
+                System.out.println("averageBucketSize " + averageBucketSize +
+                        " p[bucketSize >= " + multiple * averageBucketSize + "] ~ " +
                         p2 + "; <= " + p + "; simulated " + simulated);
             }
         }
     }
 
-    private static double probabilityLargeBucket2(int loadFactor, int atLeast) {
+    private static double probabilityLargeBucket2(int averageBucketSize, int atLeast) {
         double p = 1.0;
-        if (loadFactor > 128) {
+        if (averageBucketSize > 128) {
             return Double.NaN;
         }
         for (int size = 0; size < atLeast; size++) {
-            p -= getProbabilityOfBucketSize(loadFactor, size);
+            p -= getProbabilityOfBucketSize(averageBucketSize, size);
         }
         return p;
     }
 
     public static void simulateKeyInOverflow() {
         int size = 1000000;
-        int loadFactor = 3;
+        int averageBucketSize = 3;
         int maxLoad = 5;
         System.out.println("size " + size);
         // calculated
         double pBalls = 0;
         double pTooLarge = 1;
         for (int i = 0; i <= maxLoad; i++) {
-            double p = getProbabilityOfBucketSize(loadFactor, i);
+            double p = getProbabilityOfBucketSize(averageBucketSize, i);
             System.out.println("bucket size " + i + ": p=" + p);
             pBalls += i * p;
             pTooLarge -= p;
         }
         System.out.println("average expected number of balls in regular buckets: " + pBalls);
         System.out.println("probability of bucket too large: " + pTooLarge);
-        System.out.println("probability of ball in overflow: " + (1. - (pBalls / loadFactor)));
+        System.out.println("probability of ball in overflow: " + (1. - (pBalls / averageBucketSize)));
         // simulated
         Random r = new Random();
-        int buckets = size / loadFactor;
+        int buckets = size / averageBucketSize;
         int[] counts = new int[buckets];
         for (int i = 0; i < size; i++) {
             counts[r.nextInt(buckets)]++;

@@ -20,15 +20,15 @@ public class Graphics {
         StringBuilder bits = new StringBuilder();
         System.out.println("4.4 Data Format");
         int leafSize = 6;
-        int loadFactor = 32;
+        int averageBucketSize = 32;
         int size = 70;
         HashSet<Long> set = RandomizedTest.createSet(size, 6);
         UniversalHash<Long> hash = new LongHash();
-        Settings settings = new Settings(leafSize, loadFactor);
+        Settings settings = new Settings(leafSize, averageBucketSize);
         boolean eliasFano = true;
         BitBuffer buff = RecSplitBuilder.newInstance(hash).
                 eliasFanoMonotoneLists(eliasFano).
-                leafSize(leafSize).loadFactor(loadFactor).generate(set);
+                leafSize(leafSize).averageBucketSize(averageBucketSize).generate(set);
         buff.seek(0);
         System.out.println("\\begin{tikzpicture}");
         System.out.println("\\node {}");
@@ -41,7 +41,7 @@ public class Graphics {
         boolean alternativeHashOption = buff.readBit() != 0;
         appendLastBits(bits, buff, 1);
         bits.append(" & alternativeHash: " + alternativeHashOption + " (0 false, 1 true)\\\\\n");
-        int bucketCount = (size + (loadFactor - 1)) / loadFactor;
+        int bucketCount = (size + (averageBucketSize - 1)) / averageBucketSize;
         int start = buff.position();
         int minOffsetDiff = (int) (buff.readEliasDelta() - 1);
         MonotoneList offsetList = MonotoneList.load(buff, eliasFano);
@@ -88,12 +88,12 @@ public class Graphics {
         StringBuilder bits = new StringBuilder();
         System.out.println("4.4 Data Format");
         int leafSize = 6;
-        int loadFactor = 32;
+        int averageBucketSize = 32;
         int size = 70;
         HashSet<Long> set = RandomizedTest.createSet(size, 6);
         UniversalHash<Long> hash = new LongHash();
-        Settings settings = new Settings(leafSize, loadFactor);
-        BitBuffer buff = RecSplitBuilder.newInstance(hash).leafSize(leafSize).loadFactor(loadFactor).generate(set);
+        Settings settings = new Settings(leafSize, averageBucketSize);
+        BitBuffer buff = RecSplitBuilder.newInstance(hash).leafSize(leafSize).averageBucketSize(averageBucketSize).generate(set);
         buff.seek(0);
         System.out.println("\\begin{tikzpicture}");
         System.out.println("\\node {}");
@@ -114,8 +114,8 @@ public class Graphics {
         int bitsPerEntry = (int) buff.readGolombRice(2);
         appendLastBits(bits, buff, buff.position() - startBitsPerEntry);
         bits.append(" & bits per offset array entry: " + bitsPerEntry + " (Rice code with k=2)\\\\\n");
-        int bucketCount = (size + (loadFactor - 1)) /
-                loadFactor;
+        int bucketCount = (size + (averageBucketSize - 1)) /
+                averageBucketSize;
         int tableStart = buff.position();
         int tableBits = (bitsPerEntry + bitsPerEntry) * (bucketCount - 1);
         int headerBits = tableStart + tableBits;

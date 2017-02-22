@@ -7,39 +7,39 @@ import java.util.Random;
  */
 public class TimeEstimator {
 
-    public static double getExpectedEvaluationSupplementalHashCalls(int leafSize, int loadFactor) {
-        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+    public static double getExpectedEvaluationSupplementalHashCalls(int leafSize, int averageBucketSize) {
+        // System.out.println("  Estimated space for leafSize " + leafSize + " / averageBucketSize " + averageBucketSize);
         // System.out.println("  Bucket sizes");
-        Settings s = new Settings(leafSize, loadFactor);
+        Settings s = new Settings(leafSize, averageBucketSize);
         double result = 0;
         for (int i = 0; i <= s.getMaxBucketSize(); i++) {
             double probBucketSize = Probability.getProbabilityOfBucketFallsIntoBinOfSize(
-                    loadFactor, i);
+                    averageBucketSize, i);
             if (probBucketSize <= 0) {
                 continue;
             }
             double r = getExpectedEvaluationSupplementalHashCalls(s, i, 0);
             result += r * probBucketSize;
         }
-        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " gen " + result);
+        // System.out.println("averageBucketSize " + averageBucketSize + " leafSize " + leafSize + " gen " + result);
         return result;
     }
 
-    public static double getExpectedGenerationTime(int leafSize, int loadFactor) {
-        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+    public static double getExpectedGenerationTime(int leafSize, int averageBucketSize) {
+        // System.out.println("  Estimated space for leafSize " + leafSize + " / averageBucketSize " + averageBucketSize);
         // System.out.println("  Bucket sizes");
-        Settings s = new Settings(leafSize, loadFactor);
+        Settings s = new Settings(leafSize, averageBucketSize);
         double result = 0;
         for (int i = 0; i <= s.getMaxBucketSize(); i++) {
             double probBucketSize = Probability.getProbabilityOfBucketSize(
-                    loadFactor, i);
+                    averageBucketSize, i);
             if (probBucketSize <= 0) {
                 continue;
             }
             double r = getExpectedGenerationTime(s, i, 0);
             result += r * probBucketSize;
         }
-        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " gen " + result);
+        // System.out.println("averageBucketSize " + averageBucketSize + " leafSize " + leafSize + " gen " + result);
         return result;
     }
 

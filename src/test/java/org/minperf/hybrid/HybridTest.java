@@ -39,9 +39,9 @@ public class HybridTest {
 
         int leafSize = 10;
 
-        for (int loadFactor = 32; loadFactor >= 8; loadFactor -= 4) {
+        for (int averageBucketSize = 32; averageBucketSize >= 8; averageBucketSize -= 4) {
 
-            Settings settings = new Settings(leafSize, loadFactor);
+            Settings settings = new Settings(leafSize, averageBucketSize);
             Generator<Long> generator;
 
             ConcurrencyTool pool = new ConcurrencyTool(8);
@@ -51,17 +51,17 @@ public class HybridTest {
             int bitCount0 = buffer0.position();
 
             BitBuffer buffer2 = RecSplitBuilder.newInstance(hash)
-                    .leafSize(leafSize).loadFactor(loadFactor).generate(set);
+                    .leafSize(leafSize).averageBucketSize(averageBucketSize).generate(set);
             int bitCount2 = buffer2.position();
 
-            System.out.println("size " + size + " loadFactor " + loadFactor +
+            System.out.println("size " + size + " averageBucketSize " + averageBucketSize +
                     " hybrid " + (double) bitCount0 / size +
                     " old " + +(double) bitCount2 /
                     size);
 
             buffer2.seek(0);
             RecSplitEvaluator<Long> evaluatorOld = RecSplitBuilder.newInstance(hash)
-                    .leafSize(leafSize).loadFactor(loadFactor).buildEvaluator(buffer2);
+                    .leafSize(leafSize).averageBucketSize(averageBucketSize).buildEvaluator(buffer2);
             long time = System.nanoTime();
             int sum = 0;
             for (int i = 0; i < 10; i++) {

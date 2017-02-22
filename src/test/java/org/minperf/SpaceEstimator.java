@@ -10,15 +10,15 @@ import java.util.HashMap;
  */
 public class SpaceEstimator {
 
-    private static final HashMap<String, Double> SPLIT_PROBABILITY_CACHE = new HashMap<String, Double>();
-
     public static final boolean OPTIMAL_SPLIT_RULE = false;
     public static final boolean EXACT_ASYMMETRIC_SPLIT = true;
 
-    public static double getExpectedSpace2(int leafSize, int loadFactor) {
-        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
+    private static final HashMap<String, Double> SPLIT_PROBABILITY_CACHE = new HashMap<String, Double>();
+
+    public static double getExpectedSpace(int leafSize, int averageBucketSize) {
+        // System.out.println("  Estimated space for leafSize " + leafSize + " / averageBucketSize " + averageBucketSize);
         // System.out.println("  Bucket sizes");
-        Settings s = new Settings(leafSize, loadFactor);
+        Settings s = new Settings(leafSize, averageBucketSize);
         double totalBits = 0;
         double inRegularBucket = 0;
         HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
@@ -27,63 +27,7 @@ public class SpaceEstimator {
         for (int i = 0; i <= s.getMaxBucketSize(); i++) {
             // System.out.println("size " + i);
             double probBucketSize = Probability.getProbabilityOfBucketSize(
-                    loadFactor, i);
-            double bits = getExpectedBucketSpace(s, i, 0, cache);
-            if (bits > 0 && bits / i > worst) {
-                worst = bits / i;
-                // worstSize = i;
-            }
-            inRegularBucket += probBucketSize * i;
-            totalBits += bits * probBucketSize;
-            // System.out.println("   " + i + ": " + bits * probBucketSize);
-        }
-        double bits = totalBits;
-//        System.out.println("total bits: " + totalBits + " rounded " + bits);
-        totalBits = 0;
-        // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
-
-        // worst case (disregarding probabilities)
-        // loadFactor 1024 leafSize 20 calc 1.5842701617288442
-        // leaf 20 lf 1024 **********
-        // totalBits = worst * loadFactor;
-
-        // System.out.println("  total average bits for a bucket: " + totalBits);
-        // System.out.println("  size > than max, p=" + overflow);
-        // System.out.println("  size > than max, p=" + overflow + " (adjusted)");
-        double pInOverflow = 1.0 - loadFactor / inRegularBucket;
-        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow);
-        // pInOverflow = Math.max(minP, pInOverflow);
-        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow + " (adjusted)");
-        double bitsPerEntryInOverflow = 4.0;
-        totalBits += pInOverflow * bitsPerEntryInOverflow;
-        double bitsPerBucket = 2 + bits;
-//        double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
-        double bitsPerBucketOffsetOverhead = 2 + Math.log(loadFactor) / Math.log(2);
-        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / loadFactor);
-        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / loadFactor);
-        double bitsPerKeyCalc =  (totalBits + bitsPerBucket + bitsPerBucketOffsetOverhead) / loadFactor;
-        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
-        // int size = 10000 * loadFactor;
-        // FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, false);
-        // int sizeBits = BitCodes.getEliasDelta(size).length();
-        // double bitsPerKeyReal = (info.bitsPerKey * size - sizeBits) / size;
-        // System.out.println(" real " + bitsPerKeyReal);
-        return bitsPerKeyCalc;
-    }
-
-    public static double getExpectedSpace(int leafSize, int loadFactor) {
-        // System.out.println("  Estimated space for leafSize " + leafSize + " / loadFactor " + loadFactor);
-        // System.out.println("  Bucket sizes");
-        Settings s = new Settings(leafSize, loadFactor);
-        double totalBits = 0;
-        double inRegularBucket = 0;
-        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
-        double worst = 0;
-        // int worstSize = -1;
-        for (int i = 0; i <= s.getMaxBucketSize(); i++) {
-            // System.out.println("size " + i);
-            double probBucketSize = Probability.getProbabilityOfBucketSize(
-                    loadFactor, i);
+                    averageBucketSize, i);
             double bits = getExpectedBucketSpace(s, i, 0, cache);
             if (bits > 0 && bits / i > worst) {
                 worst = bits / i;
@@ -97,27 +41,28 @@ public class SpaceEstimator {
         // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
 
         // worst case (disregarding probabilities)
-        // loadFactor 1024 leafSize 20 calc 1.5842701617288442
+        // averageBucketSize 1024 leafSize 20 calc 1.5842701617288442
         // leaf 20 lf 1024 **********
-        // totalBits = worst * loadFactor;
+        // totalBits = worst * averageBucketSize;
 
         // System.out.println("  total average bits for a bucket: " + totalBits);
         // System.out.println("  size > than max, p=" + overflow);
         // System.out.println("  size > than max, p=" + overflow + " (adjusted)");
-        double pInOverflow = 1.0 - loadFactor / inRegularBucket;
+        double pInOverflow = 1.0 - averageBucketSize / inRegularBucket;
         // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow);
         // pInOverflow = Math.max(minP, pInOverflow);
         // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow + " (adjusted)");
         double bitsPerEntryInOverflow = 4.0;
         totalBits += pInOverflow * bitsPerEntryInOverflow;
         double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
-        double bitsPerBucketOffsetOverhead = 2 + Math.log(loadFactor) / Math.log(2);
-        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / loadFactor);
-        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / loadFactor);
-        double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / loadFactor;
-        // System.out.println("loadFactor " + loadFactor + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
-        // int size = 10000 * loadFactor;
-        // FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, size, false);
+        double bitsPerBucketOffsetOverhead = 2 + Math.log(averageBucketSize) / Math.log(2);
+         System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / averageBucketSize);
+         System.out.println("start list overhead " + bitsPerBucketStartOverhead / averageBucketSize);
+System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBucketStartOverhead) / averageBucketSize);
+        double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / averageBucketSize;
+        // System.out.println("averageBucketSize " + averageBucketSize + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
+        // int size = 10000 * averageBucketSize;
+        // FunctionInfo info = RandomizedTest.test(leafSize, averageBucketSize, size, false);
         // int sizeBits = BitCodes.getEliasDelta(size).length();
         // double bitsPerKeyReal = (info.bitsPerKey * size - sizeBits) / size;
         // System.out.println(" real " + bitsPerKeyReal);
@@ -244,30 +189,30 @@ public class SpaceEstimator {
     public static void listEvalulationTimes() {
         System.out.println("4.5 Evaluation times");
         int size = 100000;
-        for (int loadFactor = 16; loadFactor <= 1024; loadFactor *= 8) {
+        for (int averageBucketSize = 16; averageBucketSize <= 1024; averageBucketSize *= 8) {
             System.out.println("    \\addplot");
             System.out.println("        plot coordinates {");
             double minBitsPerKey = 10, maxBitsPerKey = 0;
             for (int leafSize = 6; leafSize <= 12; leafSize++) {
-                FunctionInfo info = RandomizedTest.test(leafSize, loadFactor,
+                FunctionInfo info = RandomizedTest.test(leafSize, averageBucketSize,
                         size, true);
                 System.out.println("        (" + leafSize + ", " + info.evaluateNanos + ")");
                 minBitsPerKey = Math.min(minBitsPerKey, info.bitsPerKey);
                 maxBitsPerKey = Math.max(maxBitsPerKey, info.bitsPerKey);
             }
             System.out.println("   };");
-            System.out.printf("   \\addlegendentry{$loadFactor$ %d; from %.2f to %.2f bits/key}\n",
-                    loadFactor, maxBitsPerKey, minBitsPerKey);
+            System.out.printf("   \\addlegendentry{$averageBucketSize$ %d; from %.2f to %.2f bits/key}\n",
+                    averageBucketSize, maxBitsPerKey, minBitsPerKey);
         }
     }
 
     public static void listMaxRecursionDepth() {
         System.out.println("5.2 Time and Space Complexity of Evaluation - maximum recursion depth");
         int leafSize = 2;
-        for (int loadFactor = 8; loadFactor < 100000; loadFactor *= 2) {
+        for (int averageBucketSize = 8; averageBucketSize < 100000; averageBucketSize *= 2) {
             int recursionDepth = 1;
-            int size = loadFactor * 20;
-            Settings settings = new Settings(leafSize, loadFactor);
+            int size = averageBucketSize * 20;
+            Settings settings = new Settings(leafSize, averageBucketSize);
             while (size > leafSize) {
                 int split = settings.getSplit(size);
                 if (split < 0) {
@@ -276,7 +221,7 @@ public class SpaceEstimator {
                 size /= split;
                 recursionDepth++;
             }
-            System.out.println("loadFactor=" + loadFactor + " max recursion depth: " + recursionDepth);
+            System.out.println("averageBucketSize=" + averageBucketSize + " max recursion depth: " + recursionDepth);
         }
     }
 
@@ -300,20 +245,20 @@ public class SpaceEstimator {
         }
     }
 
-    public static void calcGoodLoadFactors() {
+    public static void calcGoodAverageBucketSizes() {
         ArrayList<FunctionInfo> bestPlans = new ArrayList<FunctionInfo>();
         int maxLeafSize = 12;
-        for (int loadFactor = 16; loadFactor <= 4 * 1024; loadFactor *= 2) {
-            System.out.println("loadFactor " + loadFactor);
+        for (int averageBucketSize = 16; averageBucketSize <= 4 * 1024; averageBucketSize *= 2) {
+            System.out.println("averageBucketSize " + averageBucketSize);
             for (int leafSize = 6; leafSize <= maxLeafSize; leafSize++) {
                 FunctionInfo info = new FunctionInfo();
                 info.leafSize = leafSize;
-                info.loadFactor = loadFactor;
-                info.bitsPerKey = SpaceEstimator.getExpectedSpace(leafSize, loadFactor);
+                info.averageBucketSize = averageBucketSize;
+                info.bitsPerKey = SpaceEstimator.getExpectedSpace(leafSize, averageBucketSize);
                 if (info.bitsPerKey > 2.4) {
                     continue;
                 }
-                info.generateNanos = TimeEstimator.getExpectedGenerationTime(leafSize, loadFactor);
+                info.generateNanos = TimeEstimator.getExpectedGenerationTime(leafSize, averageBucketSize);
                 boolean add = true;
                 for (int i = 0; i < bestPlans.size(); i++) {
                     FunctionInfo info2 = bestPlans.get(i);
@@ -340,7 +285,7 @@ public class SpaceEstimator {
                 if (o1.leafSize != o2.leafSize) {
                     return Integer.compare(o1.leafSize, o2.leafSize);
                 }
-                return Integer.compare(o1.loadFactor, o2.loadFactor);
+                return Integer.compare(o1.averageBucketSize, o2.averageBucketSize);
             }
 
         });
@@ -356,7 +301,7 @@ public class SpaceEstimator {
                 if (leafIndex > 0) {
                     last = minMax[leafIndex - 1][0];
                 }
-                if (last != null && last.loadFactor > info2.loadFactor) {
+                if (last != null && last.averageBucketSize > info2.averageBucketSize) {
                     info2 = null;
                 }
                 minMax[leafIndex][0] = info2;
@@ -369,7 +314,7 @@ public class SpaceEstimator {
             if (min == null) {
                 break;
             }
-            System.out.printf("    %d & %d & %1.2f \\\\\n", i, min.loadFactor, min.bitsPerKey);
+            System.out.printf("    %d & %d & %1.2f \\\\\n", i, min.averageBucketSize, min.bitsPerKey);
         }
     }
 

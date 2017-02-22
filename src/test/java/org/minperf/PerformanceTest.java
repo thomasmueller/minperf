@@ -21,12 +21,12 @@ public class PerformanceTest {
     // RecSplit with FastLongHash:
     // 1.97 bits/key, 163 nanoseconds/key evaluation time
     private int leafSize = 11;
-    private int loadFactor = 55;
+    private int averageBucketSize = 55;
 
     // RecSplit with FastLongHash:
     // 2.32 bits/key, 138 nanoseconds/key evaluation time
     // private int leafSize = 12;
-    // private int loadFactor = 26;
+    // private int averageBucketSize = 26;
 
     private int repeat = 100;
 
@@ -40,8 +40,8 @@ public class PerformanceTest {
                 size = Integer.parseInt(args[++i]);
             } else if ("-leafSize".equals(args[i])) {
                 leafSize = Integer.parseInt(args[++i]);
-            } else if ("-loadFactor".equals(args[i])) {
-                loadFactor = Integer.parseInt(args[++i]);
+            } else if ("-averageBucketSize".equals(args[i])) {
+                averageBucketSize = Integer.parseInt(args[++i]);
             } else if ("-repeat".equals(args[i])) {
                 repeat = Integer.parseInt(args[++i]);
             } else {
@@ -49,7 +49,7 @@ public class PerformanceTest {
             }
         }
         System.out.println("Settings: leafSize=" + leafSize +
-                ", loadFactor=" + loadFactor +
+                ", averageBucketSize=" + averageBucketSize +
                 ", size=" + size);
         for (int i = 0; i < 5; i++) {
             runMicroBenchmark(false);
@@ -64,7 +64,7 @@ public class PerformanceTest {
         System.out.println("Options:");
         System.out.println("-size <integer>  the number of randomly generated numbers, default " + size);
         System.out.println("-leafSize <integer>  leafSize parameter, default " + leafSize);
-        System.out.println("-loadFactor <integer>  loadFactor parameter, default " + loadFactor);
+        System.out.println("-averageBucketSize <integer>  averageBucketSize parameter, default " + averageBucketSize);
         System.out.println("-repeat <integer>  repeat count for the evalution benchmark loop, 0 to just verify; default " + repeat);
     }
 
@@ -81,7 +81,7 @@ public class PerformanceTest {
 
         long start = System.nanoTime();
         byte[] data = RecSplitBuilder.newInstance(hash).
-                leafSize(leafSize).loadFactor(loadFactor).
+                leafSize(leafSize).averageBucketSize(averageBucketSize).
                 generate(set).toByteArray();
         long time = System.nanoTime() - start;
 
@@ -93,7 +93,7 @@ public class PerformanceTest {
         CountingHash<Long> count = new CountingHash<Long>(hash);
         RecSplitEvaluator<Long> eval = RecSplitBuilder.
                 newInstance(count).
-                leafSize(leafSize).loadFactor(loadFactor).
+                leafSize(leafSize).averageBucketSize(averageBucketSize).
                 buildEvaluator(new BitBuffer(data));
         BitSet bitSet = new BitSet();
         for (Long x : set) {
@@ -114,7 +114,7 @@ public class PerformanceTest {
         if (repeat > 0) {
             eval = RecSplitBuilder.
                     newInstance(hash).
-                    leafSize(leafSize).loadFactor(loadFactor).
+                    leafSize(leafSize).averageBucketSize(averageBucketSize).
                     buildEvaluator(new BitBuffer(data));
             start = System.nanoTime();
             for (int i = 0; i < repeat; i++) {

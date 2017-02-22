@@ -10,7 +10,10 @@ public class Paper {
 
     public static void main(String... args) {
 
-         WikipediaTest.main();
+//        System.out.println(SpaceEstimator.getExpectedSpace(18, 1024));
+//        System.out.println(SpaceEstimator.getExpectedSpace(10, 1024));
+
+        WikipediaTest.main();
         RandomizedTest.printEvaluationAndGenerationTimeVersusSpace();
         LargeSetTest.main();
         RandomizedTest.experimentalResults();
@@ -73,8 +76,8 @@ public class Paper {
         // 6 Experimental Results
         RandomizedTest.experimentalResults();
 
-        for (int loadFactor = 64; loadFactor < 1024; loadFactor *= 2) {
-            SpaceEstimator.getExpectedSpace(8, loadFactor);
+        for (int averageBucketSize = 64; averageBucketSize < 1024; averageBucketSize *= 2) {
+            SpaceEstimator.getExpectedSpace(8, averageBucketSize);
         }
 
         supplementalHashPerfTest();

@@ -51,6 +51,9 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         // 24 .. 25
         { 27, 14}, { 31, 20, 12}};
 
+    /**
+     * Split rules used (size, number of subsets, rice code).
+     */
     private static final int[][] SPLIT_RULES = {
     // leafSize 0
     {  },
@@ -427,7 +430,7 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
     private static final int CACHE_SPLITS = 10 * 1024;
 
     private final int leafSize;
-    private final int loadFactor;
+    private final int averageBucketSize;
 
     private final int[] splits = new int[CACHE_SPLITS];
     private final int[] rice = new int[CACHE_SPLITS];
@@ -436,9 +439,9 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
      * Constructor for settings.
      *
      * @param leafSize
-     * @param loadFactor the load factor, at most 65536
+     * @param averageBucketSize the load factor, at most 65536
      */
-    public Settings(int leafSize, int loadFactor) {
+    public Settings(int leafSize, int averageBucketSize) {
         if (IMPROVED_SPLIT_RULES) {
             if (leafSize < 1 || leafSize > 32) {
                 throw new IllegalArgumentException("leafSize out of range: " + leafSize);
@@ -448,11 +451,11 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
             throw new IllegalArgumentException("leafSize out of range: " + leafSize);
         }
         }
-        if (loadFactor < 2 || loadFactor > 65536) {
-            throw new IllegalArgumentException("loadFactor out of range: " + loadFactor);
+        if (averageBucketSize < 2 || averageBucketSize > 65536) {
+            throw new IllegalArgumentException("averageBucketSize out of range: " + averageBucketSize);
         }
         this.leafSize = leafSize;
-        this.loadFactor = loadFactor;
+        this.averageBucketSize = averageBucketSize;
         if (IMPROVED_SPLIT_RULES) {
             int[] splitRules = SPLIT_RULES[leafSize];
             for (int i = 0; i < splitRules.length; i += 3) {
@@ -482,8 +485,8 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
     }
 
     public int getMaxBucketSize() {
-        // return loadFactor * 20;
-        return 200 + loadFactor * 15 / 10;
+        // return averageBucketSize * 20;
+        return 200 + averageBucketSize * 15 / 10;
     }
 
     public static int calcRiceParamSplitByTwo(int size) {
@@ -565,8 +568,8 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         return leafSize;
     }
 
-    public int getLoadFactor() {
-        return loadFactor;
+    public int getAverageBucketSize() {
+        return averageBucketSize;
     }
 
     public static int supplementalHash(long hash, long index) {
@@ -591,8 +594,8 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         return x;
     }
 
-    public static int getBucketCount(long size, int loadFactor) {
-        return (int) ((size + loadFactor - 1) / loadFactor);
+    public static int getBucketCount(long size, int averageBucketSize) {
+        return (int) ((size + averageBucketSize - 1) / averageBucketSize);
     }
 
     public static int reduce(int hash, int n) {

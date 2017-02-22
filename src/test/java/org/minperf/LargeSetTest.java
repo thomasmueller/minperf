@@ -29,12 +29,12 @@ public class LargeSetTest {
     private static void test(boolean eliasFano) {
         System.out.println(eliasFano ? "EliasFano" : "Fast");
         int leafSize = 8;
-        // int loadFactor = 128;
-        // int loadFactor = 4096;
-        int loadFactor = 1024;
-        System.out.println("leafSize " + leafSize + ", loadFactor " + loadFactor +
+        // int averageBucketSize = 128;
+        // int averageBucketSize = 4096;
+        int averageBucketSize = 1024;
+        System.out.println("leafSize " + leafSize + ", averageBucketSize " + averageBucketSize +
                 ", calcualted " +
-                SpaceEstimator.getExpectedSpace(leafSize, loadFactor) + " bits/key");
+                SpaceEstimator.getExpectedSpace(leafSize, averageBucketSize) + " bits/key");
         for (long len = 1_000; len <= 1_000_000_000; len *= 10) {
             LongSet set = createSet((int) len, 1);
             LargeLongList list = LargeLongList.create(set);
@@ -43,7 +43,7 @@ public class LargeSetTest {
             long time = System.nanoTime();
             BitBuffer buff = RecSplitBuilder.
                     newInstance(hash).
-                    leafSize(leafSize).loadFactor(loadFactor).
+                    leafSize(leafSize).averageBucketSize(averageBucketSize).
                     eliasFanoMonotoneLists(eliasFano).
                     maxChunkSize(MAX_CHUNK_SIZE).
                     generate(list);
@@ -55,7 +55,7 @@ public class LargeSetTest {
             System.out.println("...generated " + (double) time / len + " ns/key");
             RecSplitEvaluator<Long> eval = RecSplitBuilder.
                     newInstance(hash).
-                    leafSize(leafSize).loadFactor(loadFactor).
+                    leafSize(leafSize).averageBucketSize(averageBucketSize).
                     eliasFanoMonotoneLists(eliasFano).
                     buildEvaluator(buff);
             BitSet known = new BitSet();

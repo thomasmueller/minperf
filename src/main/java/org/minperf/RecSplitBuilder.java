@@ -14,7 +14,7 @@ import org.minperf.universal.UniversalHash;
 public class RecSplitBuilder<T> {
 
     private final UniversalHash<T> hash;
-    private int loadFactor = 256;
+    private int averageBucketSize = 256;
     private int leafSize = 10;
     private boolean eliasFanoMonotoneLists = true;
     private int parallelism = Runtime.getRuntime().availableProcessors();
@@ -35,11 +35,11 @@ public class RecSplitBuilder<T> {
         return new RecSplitBuilder<T>(hash);
     }
 
-    public RecSplitBuilder<T> loadFactor(int loadFactor) {
-        if (loadFactor < 4 || loadFactor > 64 * 1024) {
-            throw new IllegalArgumentException("loadFactor out of range: " + loadFactor);
+    public RecSplitBuilder<T> averageBucketSize(int averageBucketSize) {
+        if (averageBucketSize < 4 || averageBucketSize > 64 * 1024) {
+            throw new IllegalArgumentException("averageBucketSize out of range: " + averageBucketSize);
         }
-        this.loadFactor = loadFactor;
+        this.averageBucketSize = averageBucketSize;
         return this;
     }
 
@@ -74,7 +74,7 @@ public class RecSplitBuilder<T> {
      * @return the hash function description
      */
     public BitBuffer generate(Collection<T> collection) {
-        Settings s = new Settings(leafSize, loadFactor);
+        Settings s = new Settings(leafSize, averageBucketSize);
         ConcurrencyTool pool = new ConcurrencyTool(parallelism);
         Generator<T> g = new Generator<T>(
                 pool, hash, s,
@@ -84,7 +84,7 @@ public class RecSplitBuilder<T> {
     }
 
     public RecSplitEvaluator<T> buildEvaluator(BitBuffer description) {
-        Settings s = new Settings(leafSize, loadFactor);
+        Settings s = new Settings(leafSize, averageBucketSize);
         return new RecSplitEvaluator<T>(new BitBuffer(description), hash, s, eliasFanoMonotoneLists);
     }
 

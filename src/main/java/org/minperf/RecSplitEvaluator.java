@@ -29,7 +29,7 @@ public class RecSplitEvaluator<T> {
         this.hash = hash;
         this.buffer = buffer;
         this.size = (int) (buffer.readEliasDelta() - 1);
-        this.bucketCount = Settings.getBucketCount(size, settings.getLoadFactor());
+        this.bucketCount = Settings.getBucketCount(size, settings.getAverageBucketSize());
         boolean alternative = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
         this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);

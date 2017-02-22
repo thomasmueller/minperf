@@ -17,7 +17,7 @@ import org.minperf.utils.Text;
 public class TextFileTest {
 
     private int leafSize = 8;
-    private int loadFactor = 14;
+    private int averageBucketSize = 14;
 
     private String textFile;
     private String hashFile;
@@ -37,8 +37,8 @@ public class TextFileTest {
         for (int i = 0; i < args.length; i++) {
             if ("-leafSize".equals(args[i])) {
                 leafSize = Integer.parseInt(args[++i]);
-            } else if ("-loadFactor".equals(args[i])) {
-                loadFactor = Integer.parseInt(args[++i]);
+            } else if ("-averageBucketSize".equals(args[i])) {
+                averageBucketSize = Integer.parseInt(args[++i]);
             } else if ("-textFile".equals(args[i])) {
                 textFile = args[++i];
             } else if ("-hashFile".equals(args[i])) {
@@ -54,7 +54,7 @@ public class TextFileTest {
                 printUsage(threadCount);
             }
         }
-        System.out.println("Settings: leafSize=" + leafSize + ", loadFactor=" + loadFactor);
+        System.out.println("Settings: leafSize=" + leafSize + ", averageBucketSize=" + averageBucketSize);
         if (textFile != null) {
             System.out.println("Generating MPHF from text file: " + textFile);
             if (hashFile == null) {
@@ -80,7 +80,7 @@ public class TextFileTest {
         final RecSplitEvaluator<Text> eval = RecSplitBuilder.
                 newInstance(new Text.UniversalTextHash()).
                 leafSize(leafSize).
-                loadFactor(loadFactor).
+                averageBucketSize(averageBucketSize).
                 buildEvaluator(new BitBuffer(desc));
         final ArrayList<Text> list = readTextFile(indexFile);
         final int[] indices = new int[list.size()];
@@ -199,7 +199,7 @@ public class TextFileTest {
                 newInstance(new Text.UniversalTextHash()).
                 parallelism(threadCount).
                 leafSize(leafSize).
-                loadFactor(loadFactor).
+                averageBucketSize(averageBucketSize).
                 generate(list).toByteArray();
         nanoSeconds = System.nanoTime() - nanoSeconds;
         int seconds = (int) (nanoSeconds / 1000 / 1000000);
@@ -221,8 +221,8 @@ public class TextFileTest {
         System.out.println("Options:");
         System.out.println("-leafSize <integer>  " +
                 "leafSize parameter, default " + leafSize);
-        System.out.println("-loadFactor <integer>  " +
-                "loadFactor parameter, default " + loadFactor);
+        System.out.println("-averageBucketSize <integer>  " +
+                "averageBucketSize parameter, default " + averageBucketSize);
         System.out.println("-textFile <fileName>  " +
                 "read from the file, store the hash function in hashFile");
         System.out.println("-hashFile <fileName>  " +

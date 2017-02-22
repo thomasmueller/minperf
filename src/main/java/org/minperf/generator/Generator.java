@@ -220,12 +220,12 @@ public class Generator<T> {
 
     public BitBuffer generate(Collection<T> collection) {
         long size = collection.size();
-        int bucketCount = Settings.getBucketCount(size, settings.getLoadFactor());
+        int bucketCount = Settings.getBucketCount(size, settings.getAverageBucketSize());
         ArrayList<Bucket> buckets = new ArrayList<Bucket>(bucketCount);
-        int loadFactor = settings.getLoadFactor();
+        int averageBucketSize = settings.getAverageBucketSize();
         if (size <= maxChunkSize || bucketCount == 1) {
             for (int i = 0; i < bucketCount; i++) {
-                buckets.add(new Bucket(loadFactor));
+                buckets.add(new Bucket(averageBucketSize));
             }
             for (T t : collection) {
                 int b;
@@ -243,14 +243,14 @@ public class Generator<T> {
             processBuckets(size, bucketCount, buckets);
         } else {
             // split into chunks
-            int bucketsPerChunk = Math.max(1, maxChunkSize / loadFactor);
+            int bucketsPerChunk = Math.max(1, maxChunkSize / averageBucketSize);
             int remaining = bucketCount;
             for (int bucketOffset = 0; bucketOffset < bucketCount; bucketOffset += bucketsPerChunk) {
                 int chunkSize = Math.min(bucketsPerChunk, remaining);
                 remaining -= chunkSize;
                 ArrayList<Bucket> buckets2 = new ArrayList<Bucket>(chunkSize);
                 for (int i = 0; i < chunkSize; i++) {
-                    buckets2.add(new Bucket(loadFactor));
+                    buckets2.add(new Bucket(averageBucketSize));
                 }
                 for (T t : collection) {
                     int b;
@@ -419,8 +419,8 @@ public class Generator<T> {
         int entryCount;
         boolean alternative;
 
-        Bucket(int loadFactor) {
-            list = new ArrayList<T>(loadFactor * 11 / 10);
+        Bucket(int averageBucketSize) {
+            list = new ArrayList<T>(averageBucketSize * 11 / 10);
         }
 
         @Override

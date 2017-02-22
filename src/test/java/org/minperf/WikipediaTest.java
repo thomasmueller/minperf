@@ -28,7 +28,7 @@ public class WikipediaTest {
                 largeFile(System.getProperty("user.home") + "/data/hash/mphf/" +
                         "enwiki-20160305-all-titles");
             }
-//            FunctionInfo info = RandomizedTest.test(leafSize, loadFactor, list.size(), false);
+//            FunctionInfo info = RandomizedTest.test(leafSize, averageBucketSize, list.size(), false);
 //            System.out.println("random data: " + info.bitsPerKey + " bits/key");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -109,8 +109,8 @@ public class WikipediaTest {
           };
 
         for (int i = 0; i < pairs.length; i += 2) {
-            int leafSize = pairs[i], loadFactor = pairs[i + 1];
-            test(list, leafSize, loadFactor);
+            int leafSize = pairs[i], averageBucketSize = pairs[i + 1];
+            test(list, leafSize, averageBucketSize);
         }
 
 
@@ -195,13 +195,13 @@ public class WikipediaTest {
         test(set, 8, 12);
     }
 
-    private static void test(Collection<Text> set, int leafSize, int loadFactor) {
+    private static void test(Collection<Text> set, int leafSize, int averageBucketSize) {
         long size = set.size();
         long time = System.nanoTime();
         byte[] desc = RecSplitBuilder.
                 newInstance(new Text.UniversalTextHash()).
                 leafSize(leafSize).
-                loadFactor(loadFactor).
+                averageBucketSize(averageBucketSize).
                 generate(set).toByteArray();
         time = System.nanoTime() - time;
         long generateNanos = time / size;
@@ -210,16 +210,16 @@ public class WikipediaTest {
         double bitsPerKey = (double) bits / set.size();
         RecSplitEvaluator<Text> eval = RecSplitBuilder
                 .newInstance(new Text.UniversalTextHash()).leafSize(leafSize)
-                .loadFactor(loadFactor).buildEvaluator(new BitBuffer(desc));
+                .averageBucketSize(averageBucketSize).buildEvaluator(new BitBuffer(desc));
         long evaluateNanos = test(set, eval);
         System.out.println("  " + leafSize + ", " +
-                loadFactor + ", " + bitsPerKey + ", " +
+                averageBucketSize + ", " + bitsPerKey + ", " +
                 generateNanos + ", " + evaluateNanos + ",");
 //        System.out.println("evaluate");
-//        System.out.println("        % leafSize " + leafSize + " loadFactor " + loadFactor);
+//        System.out.println("        % leafSize " + leafSize + " averageBucketSize " + averageBucketSize);
 //        System.out.println("        (" + bitsPerKey + ", " + evaluateNanos + ")");
 //        System.out.println("generate");
-//        System.out.println("        % leafSize " + leafSize + " loadFactor " + loadFactor);
+//        System.out.println("        % leafSize " + leafSize + " averageBucketSize " + averageBucketSize);
 //        System.out.println("        (" + bitsPerKey + ", " + generateNanos + ")");
     }
 

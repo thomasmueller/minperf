@@ -9,7 +9,7 @@ public class FunctionInfo {
     int split;
     int firstPartSize;
     int leafSize;
-    int loadFactor;
+    int averageBucketSize;
     double bitsPerKey;
     double generateNanos;
     double evaluateNanos;
@@ -21,8 +21,8 @@ public class FunctionInfo {
                 " bits/key " + bitsPerKey +
                 " generate " + generateNanos +
                 " evaluate " + evaluateNanos;
-        if (loadFactor > 0) {
-            s += " loadFactor " + loadFactor;
+        if (averageBucketSize > 0) {
+            s += " averageBucketSize " + averageBucketSize;
         }
         if (split != 0) {
             s += " split " +
@@ -33,7 +33,7 @@ public class FunctionInfo {
 
     @Override
     public int hashCode() {
-        return leafSize ^ loadFactor ^ (int) Double.doubleToLongBits(bitsPerKey);
+        return leafSize ^ averageBucketSize ^ (int) Double.doubleToLongBits(bitsPerKey);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class FunctionInfo {
         if (leafSize != other.leafSize) {
             return false;
         }
-        if (loadFactor != other.loadFactor) {
+        if (averageBucketSize != other.averageBucketSize) {
             return false;
         }
         return true;
