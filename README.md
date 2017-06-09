@@ -8,4 +8,5 @@ A Minimal Perfect Hash Function Library.
 * Two parameters to configure space needed, generation time, and evaluation time.
 * Performance very similar than the [Sux4J](https://github.com/vigna/Sux4J) CHD and GOV algorithms, but configurable, with ability to use less space.
 
-This library should already be usable, but it is still work in progress. The plan is to publish a paper in 2017.
+This library should already be usable, but it is still work in progress. The plan is to publish a paper.
+The algorithm used is [described here](https://github.com/thomasmueller/minperf/blob/master/src/test/java/org/minperf/simple/recsplit.pdf).
