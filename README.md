@@ -10,4 +10,5 @@ A Minimal Perfect Hash Function Library.
 
 This library should already be usable, but it is still work in progress. The plan is to publish a paper.
 
-The algorithm used is [described here](https://github.com/thomasmueller/minperf/raw/master/src/test/java/org/minperf/simple/recsplit.pdf) ([also available on SlideShare](https://www.slideshare.net/ThomasMueller12/recsplit-minimal-perfect-hashing)).
+The algorithm used is described [here as text](https://github.com/thomasmueller/minperf/blob/master/src/test/java/org/minperf/simple/recsplit.md), and
+[here as slideshow](https://github.com/thomasmueller/minperf/raw/master/src/test/java/org/minperf/simple/recsplit.pdf) ([also available on SlideShare](https://www.slideshare.net/ThomasMueller12/recsplit-minimal-perfect-hashing)).
