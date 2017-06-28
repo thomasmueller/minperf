@@ -1,6 +1,6 @@
 ## Minimal Perfect Hashing with RecSplit
 
-## Use Cases
+### Use Cases
 
 This could be a Facebook interview question:
 Your task is to find which users didn't ever create a post with an emoji.
@@ -32,7 +32,7 @@ are sometimes used in compilers, to index entries in a "switch" statement.
 The main benefit is that case is the speed of hash functions,
 and not the small size of the index.
 
-## Minimal Perfect Hashing
+### Minimal Perfect Hashing
 
 What is minimal perfect hashing exactly, and how is it different from regular hashing?
 
@@ -59,7 +59,7 @@ You can detect with high probability if a key is not in the set,
 for example using a Bloom filter, or, even faster and more space saving,
 by keeping hash fingerprints, for example 8 bit per key for a detection rate of 99%.
 
-## Universal Hashing
+### Universal Hashing
 
 How can we construct a (minimal) perfect hash function?
 A simple way, which unfortunately only works for small sets, is to use a technique
@@ -111,7 +111,7 @@ generation, and constant time evaluation.
 
 All existing algorithms for "large" MPHFs internally use universal hashing.
 
-## Best Algorithms
+### Best Algorithms
 
 There is a proven theoretical lower bound for MPHFs, which is around 1.44 bits per key.
 The best algorithms that work well for large sets 
@@ -124,7 +124,7 @@ The best algorithms that work well for large sets
 This is assuming somewhat reasonable generation time; both RecSplit and
 CHD can approach the theoretical lower bound given enough time.
 
-## RecSplit Algorithm Explained
+### RecSplit Algorithm Explained
 
 We now explain how the RecSplit algorithm works.
 The algorithm has three phases: partitioning, bucket processing, and storing.
