@@ -6,6 +6,7 @@ A Minimal Perfect Hash Function Library.
 * Concurrent generation.
 * Tested up to 1 billion keys.
 * Two parameters to configure space needed, generation time, and evaluation time.
+* Can be used as a static bloom filter, by storing a hash fingerprint per key.
 * Performance very similar than the [Sux4J](https://github.com/vigna/Sux4J) CHD and GOV algorithms, but configurable, with ability to use less space.
 
 This library should already be usable, but it is still work in progress. The plan is to publish a paper.
