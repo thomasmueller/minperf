@@ -1,6 +1,6 @@
 ## Minimal Perfect Hashing with RecSplit
 
-### Use Cases
+### Use Cases
 
 This could be a Facebook interview question:
 Your task is to find which users didn't ever create a post with an emoji.
@@ -89,7 +89,7 @@ Assuming we use this hash function for the keys  "a", "b", "c", and "d",
 we get the following results for the formula
 universalHash(k, index) mod 4:
 
-Index: | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+Index: | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 ------ | - | - | - | - | - | - | - | -
 Key: "a" | 1 | 2 | 3 | 2 | 3 | 2 | 3 | 2
 Key: "b" | 0 | 1 | 2 | 2 | 2 | 2 | 2 | 1
@@ -111,7 +111,7 @@ generation, and constant time evaluation.
 
 All existing algorithms for "large" MPHFs internally use universal hashing.
 
-### Best Algorithms
+### Best Algorithms
 
 There is a proven theoretical lower bound for MPHFs, which is around 1.44 bits per key.
 The best algorithms that work well for large sets 
@@ -124,7 +124,7 @@ The best algorithms that work well for large sets
 This is assuming somewhat reasonable generation time; both RecSplit and
 CHD can approach the theoretical lower bound given enough time.
 
-### RecSplit Algorithm Explained
+### RecSplit Algorithm Explained
 
 We now explain how the RecSplit algorithm works.
 The algorithm has three phases: partitioning, bucket processing, and storing.
