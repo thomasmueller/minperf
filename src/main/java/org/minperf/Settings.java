@@ -528,13 +528,13 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         return calcSplit(size, leafSize);
     }
 
-    private static int calcGolombRiceShift(int size, int leafSize) {
+    public static int calcGolombRiceShift(int size, int leafSize) {
         if (size <= leafSize) {
             return RICE_LEAF[size];
         }
         int index = 0;
         for (int x = leafSize, f = x;;) {
-            f = Settings.calcNextSplit(f);
+            f = calcNextSplit(f);
             if (f <= 2) {
                 break;
             }

@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.minperf.Probability;
 import org.minperf.universal.StringHash;
 
 public class Simple {
 
     public static void main(String... args) {
         example();
+        printProbabilityOfLargeBucket();
         printAbcKeySample();
         printMonthSample();
         test();
@@ -27,6 +29,23 @@ public class Simple {
             System.out.println(s + " -> " +
                     SimpleRecSplit.Evaluator.evaluate(s, desc));
         }
+    }
+
+    private static void printProbabilityOfLargeBucket() {
+        int average = 100;
+        int max = 2000;
+        double p = Probability.probabilityLargeBucket2(average, max);
+        double p2 = Probability.probabilityLargeBucket(average, max);
+        double p3 = 1.0;
+        for (int i = 0; i < max; i++) {
+            double ps = Probability.getProbabilityOfBucketFallsIntoBinOfSize(average, i);
+            p3 -= ps;
+            if ((ps == 0 && i > average) || p3 <= 0) {
+                System.out.println("not measurable at bucket size " + i);
+                break;
+            }
+        }
+        System.out.println("Probability of large bucket size: " + p + " / " + p2 + " / " + p3);
     }
 
     private static void printAbcKeySample() {

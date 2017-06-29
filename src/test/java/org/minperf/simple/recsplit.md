@@ -25,7 +25,7 @@ Some use cases for minimal perfect hashing are:
     "near matches" (tracking is very inaccurate)
 
 For the above use cases, you could use a database of some kind,
-but that requires much more space and IO.
+but that requires much more space and I/O.
 
 In addition to the above, minimum perfect hash tables 
 are sometimes used in compilers, to index entries in a "switch" statement.
@@ -66,7 +66,7 @@ A simple way, which unfortunately only works for small sets, is to use a techniq
 called "Universal Hashing". This is basically a seeded hash function.
 As an example, a regular hash function is (Java code):
 
-    public static int hashCode(byte a[]) {
+    public static int hashCode(byte[] a) {
         int result = 1;
         for (byte element : a)
             result = 31 * result + element;
@@ -75,7 +75,7 @@ As an example, a regular hash function is (Java code):
     
 A seeded hash function, on the other hand, is something like this:
 
-    public static int universalHash(byte a[], int index) {
+    public static int universalHash(byte[] a, int index) {
         int result = index;
         for (byte element : a)
             result = 31 * result + element + index;
@@ -87,7 +87,7 @@ It is better to use a different algorithms, such as
 seeded Murmur Hash, or SpookyHash, or SipHash.
 Assuming we use this hash function for the keys  "a", "b", "c", and "d",
 we get the following results for the formula
-universalHash(k, index) mod 4:
+`universalHash(k, index) mod 4`:
 
 Index: | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 ------ | - | - | - | - | - | - | - | -
@@ -97,12 +97,12 @@ Key: "c" | 0 | 3 | 2 | 2 | 3 | 1 | 1 | 0
 Key: "d" | 2 | 1 | 2 | 2 | 0 | 1 | 0 | 0
 
 We see that at index 6, the result for each key is different.
-Therefore, f(k) = universalHash(k, 6) mod 4 
+Therefore, `f(k) = universalHash(k, 6) mod 4`
 is actually a MPHF (minimal perfect hash function) for these keys!
 The only thing we need to store is the set size, and the index (the seed value).
 
 Finding a MPHF for a set in this way is brute force: 
-find the first index where universalHash(key, index) mod size
+find the first index where `universalHash(key, index) mod size`
 has no collision.
 This works well for small sets, but quickly get very slow.
 
@@ -142,6 +142,16 @@ except if the hash function is broken.
 Having this fallback guarantees that generation is strictly O(n), 
 and lookups are strictly O(1).
 
+As an example, say we want to partition the set of 12 month name abbreviations,
+`jan`,`feb`,..., `dec`, into 4 buckets, numbered 0 to 3.
+That would be an average bucket size of 4.
+Say the method `universalHash(k, 0) modulo 4` maps
+the keys `feb`, `mar`, `may`,`jun`, `jul`, `dec` to bucket 0.
+The keys `jan`, `nov` go to bucket 1,
+the keys `apr`, `aug`, `sep`, `oct` go to bucket 2,
+and bucket 3 is empty.
+the overflow is empty as there are no overly large buckets.
+
 ### Bucket Processing
 
 In this phase, the entries of each bucket are split into small sets
@@ -156,11 +166,25 @@ There are three cases:
 
 * Larger sets of size s are split as follows:
   in a brute force loop, we find the first x such that
-  universalHash(key, index) modulo 2 is 0 in half the cases
+ `universalHash(key, index) modulo 2` is 0 in half the cases
   (therefore splits into two subsets, the first one of size s/2, and the second one the rest).
   We store that index, and then process the subsets recursively.
  
 The bucket description is then the list of indexes that split the set.
+ 
+As an example, say the bucket contains `feb`, `mar`, `may`,`jun`, `jul`, `dec`
+(bucket 0 from above).
+Instead of using the limit 8 as described above, we use the limit 4.
+We are looking for an x so that  `universalHash(key, x) modulo 2`
+splits the set into two subsets of size 3 each.
+(For an odd set size, the first subset would have one entry more than the second).
+The first x that does that is 3, and we have the two subsets
+`feb`, `mar`, `jun` and `may`, `jul`, `dec`.
+Now we process the subsets recursively.
+We find that  `universalHash(key, 6) modulo 3`
+maps the first subset without conflict, and
+ `universalHash(key, 0) modulo 3` maps the second subset.
+ The bucket description is therefore 3, 6, 0.
 
 ### Storing
 
@@ -180,14 +204,15 @@ The indexes are stored using the Rice code, so that
  
 ### Observations
 
-Most time of the RecSplit algorithm is spend in the Bucket Processing phase.
+For an MPHF size of less than 2 bits/key,
+most time of the RecSplit algorithm is spend in the Bucket Processing phase.
 That part is easy to parallelize, as buckets are independent of each other.
 It also allows to generate the MPHF incrementally if needed,
 without having to keep it fully in memory all the time.
 
 Time can be traded for space. If larger sets are processed
 directly (without splitting them first into smaller subsets),
-then the space used shrinks, even below 1.52 bits per key. 
+then the space used shrinks, even below 1.52 bits per key.
 However, this will slow down generation a lot.
 
 ### Perfect Hashing and k-Perfect Hashing
@@ -198,18 +223,28 @@ still without conflicts.
 The algorithm described above can be easily modified for this case,
 all that is needed is to change the the last stage,
 how sets up to size 8 are processed, to use a larger modulo 
-(for example modulo 9, in which case m is 1.125 n).
+(for example modulo 9, in which case m is 1.125n).
 This reduces space usage and speeds up generation.
 
 k-perfect hashing allows for conflicts, so that at most k keys map to the same value.
 The algorithm described can also be modified for this case,
 by changing the last stage to for example use modulo 4.
 
-### Comparison to Competing Algorithms
+### Comparison to CHD and BDZ
 
-The most space saving competing algorithms, CHD and BDZ,
-are not easily to parallelize, because they don't partition the set
-in the same way, and require processing in a certain order.
-Also, they require more memory during construction.
-When generating the hash function sequentially,
-they both require more CPU time for the same space usage.
+For the most space saving competing algorithms, CHD and BDZ,
+generation is hard to parallelize for two reasons:
+buckets need to be processed in a certain order,
+and processing a bucket depends on the result of processing all previous buckets.
+Generation using the RecSplit algorithm, on the other hand,
+is very easy to parallelize,
+because buckets can be processed concurrently, in any order,
+and independently of each other.
+
+Both CHD and BDZ need to keep the complete set in memory during generation,
+while the RecSplit algorithm can work incrementally
+(only keep, as an example, 1% of all buckets in memory at a time).
+
+According to our tests, the RecSplit algorithm is faster than
+both CHD and BDZ for both generation and evaluation,
+if configured for the same space usage.

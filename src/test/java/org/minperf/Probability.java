@@ -31,7 +31,7 @@ public class Probability {
         }
     }
 
-    private static double probabilityLargeBucket2(int averageBucketSize, int atLeast) {
+    public static double probabilityLargeBucket2(int averageBucketSize, int atLeast) {
         double p = 1.0;
         if (averageBucketSize > 128) {
             return Double.NaN;
@@ -107,7 +107,7 @@ public class Probability {
         return (double) larger / testCount;
     }
 
-    private static double probabilityLargeBucket(int lambda, int x) {
+    public static double probabilityLargeBucket(int lambda, int x) {
         // Poisson distribution, tail probability
         return Math.exp(-lambda) * Math.pow(Math.E * lambda, x) / Math.pow(x, x);
     }
@@ -275,6 +275,12 @@ public class Probability {
         }
         i = n / 2;
         return recursiveFactorial(start, i).multiply(recursiveFactorial(start + i, n - i));
+    }
+
+    public static double probabilityOfDuplicates(long n, int bits) {
+        double x = Math.pow(2, bits);
+        double p = 1.0 - Math.pow(Math.E, -(double) n * n / 2 / x);
+        return p;
     }
 
 }

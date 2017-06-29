@@ -239,7 +239,7 @@ System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBuc
     public static void spaceUsageEstimate() {
         System.out.println("4.9 Space Usage and Generation Time");
         System.out.println("Reality");
-        for (int leafSize = 6; leafSize < 14; leafSize++) {
+        for (int leafSize = 4; leafSize < 14; leafSize++) {
             FunctionInfo info = RandomizedTest.test(leafSize, 4 * 1024, 4 * 1024, false);
             System.out.printf("        (%d, %.4f)\n", (long) info.generateNanos * 221, info.bitsPerKey);
         }
