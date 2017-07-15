@@ -69,7 +69,7 @@ System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBuc
         return bitsPerKeyCalc;
     }
 
-    private static double getExpectedBucketSpace(Settings s, int size, int indent, HashMap<Integer, Double> cache) {
+    public static double getExpectedBucketSpace(Settings s, int size, int indent, HashMap<Integer, Double> cache) {
         if (size <= 1) {
             return 0;
         }
