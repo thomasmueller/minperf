@@ -18,29 +18,30 @@ public class CHDTest<T> {
         // 8/8: 2.21
         // 16/16: 2.04
         // 16/64: 1.786
-        int leafSize = 16;
-        int bucketSize = 64;
+        int leafSize = 18;
+        int bucketSize = 1024;
         Settings s = new Settings(leafSize, bucketSize);
         HashMap<Integer, Double> cache = new HashMap<>();
         double space = SpaceEstimator.getExpectedBucketSpace(s, bucketSize, 0, cache);
-        System.out.println("space: " + space / bucketSize);
-        for (int size = 128; size <= 100000; size *= 2) {
-            testSize8(size);
+        double bitsPerKey = space / bucketSize;
+        System.out.println("space: " + bitsPerKey + " (just one bucket)");
+        for (int size = 1024; size <= 100000; size *= 2) {
+            double p = testSizeK(size, bucketSize);
+            System.out.println("space: " + (bitsPerKey + p) + " bits/key");
         }
         for (int size = 10; size <= 100000; size *= 10) {
             testSize(size);
         }
     }
 
-    private static void testSize8(int size) {
+    private static double testSizeK(int size, int k) {
         Set<Long> set = RandomizedTest.createSet(size, 1);
-        test8(set, Long.class);
+        return testK(set, k, Long.class);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> void test8(Set<T> set, Class<T> clazz) {
+    private static <T> double testK(Set<T> set, int k, Class<T> clazz) {
         int lambda = 10;
-        int k = 64;
         int size = set.size();
         BitBuffer buff = new BitBuffer(1000 + size * 1000);
         UniversalHash<T> hash = null;
@@ -50,11 +51,13 @@ public class CHDTest<T> {
         CHD2<T> chd = new CHD2<T>(hash, buff, lambda, k);
         chd.generate(set);
         long totalBits = buff.position();
-        System.out.println("size " + size + " bits/key " + (double) totalBits / size);
+        double bitsPerKey = (double) totalBits / size;
+        // System.out.println("size " + size + " bits/key " + bitsPerKey);
         buff.seek(0);
         chd = new CHD2<T>(hash, buff, lambda, k);
         chd.load();
         verifyK(chd, set, k);
+        return bitsPerKey;
     }
 
     private static void testSize(int size) {
