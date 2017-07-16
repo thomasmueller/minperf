@@ -94,14 +94,16 @@ public class LargeLongList extends AbstractList<Long> {
             try {
                 File file = File.createTempFile("list", ".tmp");
                 file.deleteOnExit();
-                FileChannel channel = new RandomAccessFile(file, "rw").getChannel();
-                MappedByteBuffer map = channel
-                        .map(MapMode.READ_WRITE, 0, size * 8L);
-                for (int i = 0; i < size; i++) {
-                    long x = iterator.next();
-                    map.putLong(x);
+                try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+                    FileChannel channel = raf.getChannel();
+                    MappedByteBuffer map = channel
+                            .map(MapMode.READ_WRITE, 0, size * 8L);
+                    for (int i = 0; i < size; i++) {
+                        long x = iterator.next();
+                        map.putLong(x);
+                    }
+                    return new LargeLongArray(size, file, channel, map);
                 }
-                return new LargeLongArray(size, file, channel, map);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
