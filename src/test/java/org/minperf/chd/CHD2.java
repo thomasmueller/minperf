@@ -16,6 +16,7 @@ public class CHD2<T> {
     final int k;
     final BitBuffer buff;
     int size;
+    int targetLen;
     EliasFanoList arrayList;
     int bucketCount;
 
@@ -32,6 +33,7 @@ public class CHD2<T> {
 
 	public void generate(Collection<T> set) {
 		int size = set.size();
+		int targetLen = (int) (size + k - 1) / k;
 		buff.writeEliasDelta(size + 1);
 		int bucketCount = (size + lambda - 1) / lambda;
 		class Bucket {
@@ -45,7 +47,6 @@ public class CHD2<T> {
 		for (int i = 0; i < bucketCount; i++) {
 			buckets.add(new Bucket(i));
 		}
-		int targetLen = size / k;
 		int[] counters = new int[targetLen];
 		for (T x : set) {
 			long h = hash.universalHash(x, 0);
@@ -99,6 +100,7 @@ public class CHD2<T> {
 
     public void load() {
         size = (int) buff.readEliasDelta() - 1;
+        targetLen = (int) (size + k - 1) / k;
         bucketCount = (size + lambda - 1) / lambda;
         arrayList = EliasFanoList.load(buff);
     }
@@ -108,7 +110,6 @@ public class CHD2<T> {
         int b = Settings.reduce((int) h, bucketCount);
         int d = arrayList.get(b + 1);
         h = hash.universalHash(x, d);
-        int targetLen = size / k;
         return Settings.reduce((int) h, targetLen);
     }
 

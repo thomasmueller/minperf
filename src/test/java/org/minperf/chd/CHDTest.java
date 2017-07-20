@@ -15,9 +15,14 @@ import org.minperf.universal.UniversalHash;
 public class CHDTest<T> {
 
     public static void main(String... args) {
-        // 8/8: 2.21
-        // 16/16: 2.04
-        // 16/64: 1.786
+        for(int lambda = 3; lambda <= 6; lambda++) {
+            for (int size = 1000; size <= 100000; size *= 10) {
+                for(double factor = 1.0; factor < 1.11; factor += 0.5) {
+                    testSize(size, lambda, factor);
+                }
+            }
+        }
+        // space for CHD-k + RecSplit
         int leafSize = 18;
         int bucketSize = 1024;
         Settings s = new Settings(leafSize, bucketSize);
@@ -26,22 +31,18 @@ public class CHDTest<T> {
         double bitsPerKey = space / bucketSize;
         System.out.println("space: " + bitsPerKey + " (just one bucket)");
         for (int size = 1024; size <= 100000; size *= 2) {
-            double p = testSizeK(size, bucketSize);
-            System.out.println("space: " + (bitsPerKey + p) + " bits/key");
-        }
-        for (int size = 10; size <= 100000; size *= 10) {
-            testSize(size);
+            double p = testSizeK(size, 6, bucketSize);
+            System.out.println("space for CHD-k + RecSplit: " + (bitsPerKey + p) + " bits/key");
         }
     }
 
-    private static double testSizeK(int size, int k) {
+    private static double testSizeK(int size, int lambda, int k) {
         Set<Long> set = RandomizedTest.createSet(size, 1);
-        return testK(set, k, Long.class);
+        return testK(set, k, lambda, Long.class);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> double testK(Set<T> set, int k, Class<T> clazz) {
-        int lambda = 10;
+    private static <T> double testK(Set<T> set, int k, int lambda, Class<T> clazz) {
         int size = set.size();
         BitBuffer buff = new BitBuffer(1000 + size * 1000);
         UniversalHash<T> hash = null;
@@ -60,25 +61,30 @@ public class CHDTest<T> {
         return bitsPerKey;
     }
 
-    private static void testSize(int size) {
+    private static void testSize(int size, int lambda, double factor) {
         Set<Long> set = RandomizedTest.createSet(size, 1);
-        test(set, Long.class);
+        test(set, lambda, factor, Long.class);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> void test(Set<T> set, Class<T> clazz) {
+    private static <T> void test(Set<T> set, int lambda, double factor, Class<T> clazz) {
         int size = set.size();
         BitBuffer buff = new BitBuffer(1000 + size * 1000);
         UniversalHash<T> hash = null;
         if (clazz == Long.class) {
             hash = (UniversalHash<T>) new LongHash();
         }
-        CHD<T> chd = new CHD<T>(hash, buff);
+        CHD<T> chd = new CHD<T>(hash, buff, lambda, factor);
+        long time = System.nanoTime();
         chd.generate(set);
+        time = System.nanoTime() - time;
         long totalBits = buff.position();
-        System.out.println("size " + size + " bits/key " + (double) totalBits / size);
+        System.out.println("size: " + size + " lambda: " + lambda +
+                " factor: " + factor +
+                " bits/key: " + (double) totalBits / size + // " hashCalls: " + chd.hashCalls +
+                " ns/key: " + time / size);
         buff.seek(0);
-        chd = new CHD<T>(hash, buff);
+        chd = new CHD<T>(hash, buff, lambda, factor);
         chd.load();
         verify(chd, set);
     }
@@ -107,7 +113,7 @@ public class CHDTest<T> {
             }
             if (count[index] > k) {
                 eval.evaluate(x);
-                Assert.fail("duplicate entry: " + x + " " + index);
+                Assert.fail("too often: " + x + " " + index + " count=" + count[index]);
             }
             count[index]++;
         }

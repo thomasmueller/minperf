@@ -10,9 +10,10 @@ public class FunctionInfo {
     int firstPartSize;
     int leafSize;
     int averageBucketSize;
-    double bitsPerKey;
-    double generateNanos;
+    public double bitsPerKey;
+    public double generateNanos;
     double evaluateNanos;
+    public long hashCalls;
 
     @Override
     public String toString() {
