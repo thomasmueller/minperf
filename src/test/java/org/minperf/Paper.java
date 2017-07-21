@@ -10,6 +10,23 @@ public class Paper {
 
     public static void main(String... args) {
 
+        // -mx4g, Java 8: minGen 9982.65602 minEval 277.78663
+        // -mx8g, Java 7: minGen 10098.0 minEval 283.86
+        double minGen = Double.POSITIVE_INFINITY, minEval = Double.POSITIVE_INFINITY;
+        for (int i = 0; i < 10; i++) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            FunctionInfo info = RandomizedTest.test(10, 256, 100000, true, 3, true);
+            minGen = Math.min(minGen, info.generateNanos);
+            minEval = Math.min(minEval, info.evaluateNanos);
+            System.out.println(info);
+        }
+        System.out.println("minGen " + minGen + " minEval " + minEval);
+
 //        System.out.println(SpaceEstimator.getExpectedSpace(18, 1024));
 //        System.out.println(SpaceEstimator.getExpectedSpace(10, 1024));
 
