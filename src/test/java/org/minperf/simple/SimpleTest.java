@@ -12,7 +12,7 @@ import java.util.Set;
 import org.minperf.Probability;
 import org.minperf.universal.StringHash;
 
-public class Simple {
+public class SimpleTest {
 
     public static void main(String... args) {
         example();
@@ -20,6 +20,16 @@ public class Simple {
         printAbcKeySample();
         printMonthSample();
         test();
+    }
+
+    private static void compareSpace() {
+        Set<String> set = new HashSet<>(Arrays.asList("a", "b", "c", "d", "e"));
+        int[] desc = SimpleRecSplit.Generator.generate(set);
+        for(String s : set) {
+            System.out.println(s + " -> " +
+                    SimpleRecSplit.Evaluator.evaluate(s, desc));
+        }
+
     }
 
     private static void example() {
