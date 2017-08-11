@@ -104,12 +104,12 @@ public class BitCodes {
                 Math.log(m) / Math.log(2);
     }
 
-    static double calcAverageRiceGolombBits(int k, double p) {
+    public static double calcAverageRiceGolombBits(int k, double p) {
         double alpha = 1 - p;
         return k + (1 / (1 - Math.pow(alpha, Math.pow(2, k))));
     }
 
-    static int calcBestGolombRiceShift(double p) {
+    public static int calcBestGolombRiceShift(double p) {
         double goldenRatio = (Math.sqrt(5) + 1) / 2;
 
         // variant a
