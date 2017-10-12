@@ -31,13 +31,16 @@ void fixEndian(uint64_t* longArray, uint64_t byteCount) {
     }
 }
 
-int loadFile(char* fileName, uint64_t** target) {
-    if (!fileName) {
+int loadFile(char* directory, char* fileName, uint64_t** target) {
+    if (!fileName || !directory) {
         printf("No file\n");
         return 0;
     }
-    printf("Loading file %s\n", fileName);
-    FILE* fp = fopen(fileName, "r");
+    char* fullFileName = malloc(strlen(directory) + strlen(fileName) + 2);
+    sprintf(fullFileName, "%s/%s", directory, fileName);
+    printf("Loading file %s\n", fullFileName);
+    FILE* fp = fopen(fullFileName, "r");
+    free(fullFileName);
     if (!fp) {
         printf("Could not open file\n");
         return 0;
@@ -52,7 +55,7 @@ int loadFile(char* fileName, uint64_t** target) {
         return 0;
     }
     fclose(fp);
-    printf("File %s len=%lld\n", fileName, fileSize);
+    printf("(%lld bytes)\n", fileSize);
     fixEndian(*target, fileSize);
     return 1;
 }
@@ -298,16 +301,15 @@ void Settings_load(struct Settings* this) {
     this->leafSize = readEliasDelta() - 1;
     this->averageBucketSize = readEliasDelta() - 1;
     uint32_t len = readEliasDelta() - 1;
-    printf("leafSize: %d, averageBucketSize: %d, len: %d\n", 
+    printf("Loading settings: leafSize: %d, averageBucketSize: %d, maxBucketSize: %d\n", 
 	    this->leafSize,
 	    this->averageBucketSize,
 	    len);
     for(int i=0; i<len && i < MAX_SIZE; i++) {
         this->splits[i] = unfoldSigned(readEliasDelta() - 1);
         this->rice[i] = readEliasDelta() - 1;
-        if (i < 32)
-        printf("  %d: rice=%d, splits: %d\n", i, this->rice[i], this->splits[i]);
-        
+		//         if (i < 32)
+        // printf("  %d: rice=%d, splits: %d\n", i, this->rice[i], this->splits[i]);
     }
 }
 
@@ -338,14 +340,14 @@ uint32_t getBucketCount(uint64_t size, int averageBucketSize) {
 
 void RecSplitEvaluator_load(struct RecSplitEvaluator* this) {
 	this->size = readEliasDelta() - 1;
-	printf("hash size %lld\n", this->size);
+	printf("Hash size %lld\n", this->size);
 	
 	this->bucketCount = getBucketCount(this->size, settings.averageBucketSize);
-	printf("buckets: %d\n", this->bucketCount);
+	printf("Buckets: %d\n", this->bucketCount);
     int alternative = readBit() != 0;
     if (alternative) {
         // not supported
-        printf("not supported: alternative\n");
+        printf("Not supported: alternative hash\n");
         return;
     }
     this->minOffsetDiff = (uint32_t) (readEliasDelta() - 1);
@@ -412,8 +414,7 @@ uint32_t evaluate2(struct RecSplitEvaluator* this, uint64_t pos, char* obj, uint
         if (size <= settings.leafSize) {
             int h = supplementalHash(hashCode, index);
             h = reduce(h, size);
-//printf("shift %d q %d value %lld oldX %lld x %lld size %d h %d add %d\n", shift, q, value, oldX, x, size, h, add);
-            
+			//printf("shift %d q %d value %lld oldX %lld x %lld size %d h %d add %d\n", shift, q, value, oldX, x, size, h, add);
             return add + h;
         }
         int split = settings.splits[size];
@@ -449,14 +450,14 @@ uint32_t evaluate2(struct RecSplitEvaluator* this, uint64_t pos, char* obj, uint
 
 uint64_t evaluate(struct RecSplitEvaluator* this, char* obj) {
 	uint64_t hashCode = universalHash(obj, 0);
-//printf("  hashCode %s = %lld\n", obj, hashCode); 	
+	//printf("  hashCode %s = %lld\n", obj, hashCode); 	
 	uint32_t b;
     if (this->bucketCount == 1) {
         b = 0;
     } else {
         b = reduce((uint32_t) hashCode, this->bucketCount);
     }
-//printf("  bucket %d\n", b); 	
+	//printf("  bucket %d\n", b); 	
 	uint32_t startPos;
     uint64_t offsetPair = MultiStageMonotoneList_getPair(&this->offsetList, b);
     uint32_t offset = (uint32_t) (offsetPair >> 32) + b * this->minOffsetDiff;
@@ -469,43 +470,35 @@ uint64_t evaluate(struct RecSplitEvaluator* this, char* obj) {
     startPos = this->startBuckets +
             getMinBitCount(offset) +
             MultiStageMonotoneList_get(&this->startList, b) + b * this->minStartDiff;
-// printf("  startPos %d offset %d bucketSize %d\n", startPos, offset, bucketSize); 	
+	// printf("  startPos %d offset %d bucketSize %d\n", startPos, offset, bucketSize); 	
     return evaluate2(this, startPos, obj, hashCode, 0, offset, bucketSize);
 }
 
 // demo
 
 int main(int argc, char** argv) {
-    char* settingsFile = 0;
-    char* hashFile = 0;
-    char* keyFile = 0;
+    char* directory = ".";
     
     ++argv;
     --argc;
     if (argc > 0) {
-        settingsFile = argv[0];
+        directory = argv[0];
         ++argv;
         --argc;
-        if (argc > 0) {
-            hashFile = argv[0];
-            ++argv;
-            --argc;
-            if (argc > 0) {
-                keyFile = argv[0];
-                ++argv;
-                --argc;
-            }    
-        }
     }
+    printf("Directory %s\n", directory);
     
+    char* settingsFile = "settings.bin";
+    char* hashFile = "hash.bin";
+    char* keyFile = "keys.txt";
     
-    if (!loadFile(settingsFile, &data)) {
+    if (!loadFile(directory, settingsFile, &data)) {
         return 0;
     }
 	Settings_load(&settings);
     
     free(data);
-    if (!loadFile(hashFile, &data)) {
+    if (!loadFile(directory, hashFile, &data)) {
         return 0;
     }
     
@@ -513,7 +506,11 @@ int main(int argc, char** argv) {
     if(!keyFile) {
         input = stdin;
     } else {
-        input = fopen(keyFile, "rb");
+        char* fullFileName = malloc(strlen(directory) + strlen(keyFile) + 2);
+        sprintf(fullFileName, "%s/%s", directory, keyFile);
+        printf("Loading file %s\n", fullFileName);
+        input = fopen(fullFileName, "rb");
+        free(fullFileName);
         if (!input) {
             printf("Could not open file %s\n", keyFile);
             return 0;
@@ -564,7 +561,7 @@ int main(int argc, char** argv) {
     // with leafSize 6 and averageBucketSize 18 and 10 million keys,
     // that is 2.33 bits/key, average key length 55 bits/key,
     // evaluate takes about 140 ns/key with -O3
-    printf("sum: %lld sec: %ld %d\n", sum, time, CLOCKS_PER_SEC);
+    printf("sum: %lld time: %ld ticks, at %d ticks/second\n", sum, time, CLOCKS_PER_SEC);
     
     free(data);
     

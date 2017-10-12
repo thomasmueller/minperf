@@ -242,7 +242,7 @@ public class BitBuffer {
         }
         int q = 64 - Long.numberOfLeadingZeros(value);
         int qq = 31 - Integer.numberOfLeadingZeros(q);
-        int len = qq + qq+ q;
+        int len = qq + qq + q;
         return len;
     }
 

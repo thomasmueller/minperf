@@ -22,6 +22,8 @@ public class RecSplitEvaluator<T> {
     private final int minOffsetDiff;
     private final MonotoneList offsetList;
     private final int startBuckets;
+    private final int endHeader;
+    private final int endOffsetList;
     private final BDZ<T> alternative;
 
     public RecSplitEvaluator(BitBuffer buffer, UniversalHash<T> hash, Settings settings, boolean eliasFanoMonotoneLists) {
@@ -32,8 +34,10 @@ public class RecSplitEvaluator<T> {
         this.bucketCount = Settings.getBucketCount(size, settings.getAverageBucketSize());
         boolean alternative = buffer.readBit() != 0;
         this.minOffsetDiff = (int) (buffer.readEliasDelta() - 1);
-        this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
         this.minStartDiff = (int) (buffer.readEliasDelta() - 1);
+        this.endHeader = buffer.position();
+        this.offsetList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
+        this.endOffsetList = buffer.position();
         this.startList = MonotoneList.load(buffer, eliasFanoMonotoneLists);
         this.startBuckets = buffer.position();
         if (alternative) {
@@ -49,14 +53,28 @@ public class RecSplitEvaluator<T> {
         }
     }
 
+    public int getHeaderSize() {
+        return endHeader;
+    }
+
+    public int getOffsetListSize() {
+        return endOffsetList - endHeader;
+    }
+
+    public int getStartListSize() {
+        return startBuckets - endOffsetList;
+    }
+
     public int evaluate(T obj) {
         int b;
         long hashCode = hash.universalHash(obj, 0);
+//System.out.println("hashCode " + obj + " =" + hashCode);
         if (bucketCount == 1) {
             b = 0;
         } else {
             b = Settings.reduce((int) hashCode, bucketCount);
         }
+//System.out.println("bucket " + b);
         int startPos;
         long offsetPair = offsetList.getPair(b);
         int offset = (int) (offsetPair >>> 32) + b * minOffsetDiff;
@@ -73,6 +91,7 @@ public class RecSplitEvaluator<T> {
         startPos = startBuckets +
                 Generator.getMinBitCount(offset) +
                 startList.get(b) + b * minStartDiff;
+//System.out.println("startPos " + startPos + " offset " + offset + " bucketSize " + bucketSize);
         return evaluate(startPos, obj, hashCode, 0, offset, bucketSize);
     }
 
@@ -122,6 +141,7 @@ public class RecSplitEvaluator<T> {
             if (size <= settings.getLeafSize()) {
                 int h = Settings.supplementalHash(hashCode, index);
                 h = Settings.reduce(h, size);
+//System.out.printf("shift %d q %lld value %d oldX %d x %d size %d h %d add %d\n", shift, q, value, oldX, x, size, h, add);
                 return add + h;
             }
             int split = settings.getSplit(size);
