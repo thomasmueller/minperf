@@ -1,7 +1,7 @@
 # minperf
 A Minimal Perfect Hash Function Library.
 
-* Written in Java.
+* Mainly written in Java. Includes a C version (currently only evaluation of a MPHF).
 * Can generate, in linear time, MPHFs that need less than 1.58 bits per key.
 * Concurrent generation.
 * Tested up to 1 billion keys.
