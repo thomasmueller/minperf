@@ -5,9 +5,7 @@ package org.minperf.universal;
  */
 public class LongHash implements UniversalHash<Long> {
 
-    @Override
-    public long universalHash(Long key, long index) {
-        long x = key.longValue();
+    public static long universalHash(long x, long index) {
         long v0 = index ^ 0x736f6d6570736575L;
         long v1 = index ^ 0x646f72616e646f6dL;
         long v2 = index ^ 0x6c7967656e657261L;
@@ -31,6 +29,11 @@ public class LongHash implements UniversalHash<Long> {
         }
         v0 ^= x;
         return v0 ^ v1 ^ v2 ^ v3;
+    }
+
+    @Override
+    public long universalHash(Long key, long index) {
+        return universalHash((long) key, index);
     }
 
     @Override
