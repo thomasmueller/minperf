@@ -3,6 +3,7 @@ A Minimal Perfect Hash Function Library.
 
 * Mainly written in Java. Includes a C version (currently only evaluation of a MPHF).
 * Can generate, in linear time, MPHFs that need less than 1.58 bits per key.
+* Can generate MPHFs in less than 100 ns/key, evaluation faster than 100 ns/key, at less than 3 bits per key.
 * Concurrent generation.
 * Tested up to 1 billion keys.
 * Two parameters to configure space needed, generation time, and evaluation time.
