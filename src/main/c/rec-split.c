@@ -88,6 +88,54 @@ uint64_t getScaleFactor(uint32_t multiply, uint32_t divide) {
     return divide == 0 ? 0 : ((uint64_t) multiply << 32) / divide + 1;
 }
 
+// from https://stackoverflow.com/questions/11656241/how-to-print-uint128-t-number-using-gcc/11660651#11660651
+typedef unsigned __int128 uint128_t;
+
+uint128_t getSipHash24b128(char* b, int start, int end, uint64_t k0, uint64_t k1) {
+    uint64_t v0 = k0 ^ 0x736f6d6570736575L;
+    uint64_t v1 = k1 ^ 0x646f72616e646f6dL;
+    uint64_t v2 = k0 ^ 0x6c7967656e657261L;
+    uint64_t v3 = k1 ^ 0x7465646279746573L;
+    int repeat;
+    for (int off = start; off <= end + 8; off += 8) {
+        long m;
+        if (off <= end) {
+            m = 0;
+            int i = 0;
+            for (; i < 8 && off + i < end; i++) {
+                m |= ((uint64_t) b[off + i] & 255) << (8 * i);
+            }
+            if (i < 8) {
+                m |= ((uint64_t) end - start) << 56;
+            }
+            v3 ^= m;
+            repeat = 2;
+        } else {
+            m = 0;
+            v2 ^= 0xff;
+            repeat = 4;
+        }
+        for (int i = 0; i < repeat; i++) {
+            v0 += v1;
+            v2 += v3;
+            v1 = rotateLeft64(v1, 13);
+            v3 = rotateLeft64(v3, 16);
+            v1 ^= v0;
+            v3 ^= v2;
+            v0 = rotateLeft64(v0, 32);
+            v2 += v1;
+            v0 += v3;
+            v1 = rotateLeft64(v1, 17);
+            v3 = rotateLeft64(v3, 21);
+            v1 ^= v2;
+            v3 ^= v0;
+            v2 = rotateLeft64(v2, 32);
+        }
+        v0 ^= m;
+    }
+    return ((uint128_t) (v0 ^ v1) << 64) ^ v2 ^ v3;
+}
+
 uint64_t getSipHash24b(char* b, int start, int end, uint64_t k0, uint64_t k1) {
     uint64_t v0 = k0 ^ 0x736f6d6570736575L;
     uint64_t v1 = k1 ^ 0x646f72616e646f6dL;
