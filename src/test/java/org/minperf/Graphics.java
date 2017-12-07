@@ -19,15 +19,15 @@ public class Graphics {
     }
 
     public static void generateSplitTrees() {
-        int leafSize = 6;
-        int columns = 6;
+        int leafSize = 8;
+        int columns = 5;
         System.out.print("\\begin{tabular}{");
         for (int i = 0; i < columns; i++) {
             System.out.print("|c");
         }
         System.out.println("|}");
         HashMap<Integer, Double> cache = new HashMap<>();
-        for (int size = 0; size < 36; size++) {
+        for (int size = 0; size < 30; size++) {
             if (size % columns == 0) {
                 System.out.println("\\hline");
             } else {
