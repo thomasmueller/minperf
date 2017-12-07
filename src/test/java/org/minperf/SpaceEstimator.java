@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+
+import org.minperf.universal.LongHash;
+import org.minperf.universal.UniversalHash;
 
 /**
  * Methods to estimate the space needed to generate a MPHF.
@@ -15,13 +19,81 @@ public class SpaceEstimator {
 
     private static final HashMap<String, Double> SPLIT_PROBABILITY_CACHE = new HashMap<String, Double>();
 
+    public static void main(String... args) {
+        int size = 100000;
+        for(int leafSize = 3; leafSize < 10; leafSize++) {
+            for(int averageBucketSize = 4; averageBucketSize < 4 * 1024; averageBucketSize *= 2) {
+                int testCount = 10;
+                long offsetListSum = 0;
+                long startListSum = 0;
+                long bucketBitsSum = 0;
+                for(int test = 0; test < testCount; test++) {
+                    HashSet<Long> set = RandomizedTest.createSet(size, size);
+                    UniversalHash<Long> hash = new LongHash();
+                    RecSplitBuilder<Long> builder = RecSplitBuilder.newInstance(hash).
+                            leafSize(leafSize).averageBucketSize(averageBucketSize);
+                    BitBuffer buff;
+                    buff = builder.generate(set);
+                    int bits = buff.position();
+                    byte[] description = buff.toByteArray();
+                    RecSplitEvaluator<Long> eval =
+                            RecSplitBuilder.newInstance(hash).leafSize(leafSize).averageBucketSize(averageBucketSize).
+                            buildEvaluator(new BitBuffer(description));
+                    int headerBits = eval.getHeaderSize();
+                    int offsetListSize = eval.getOffsetListSize();
+                    int startListSize = eval.getStartListSize();
+                    int bucketBits = bits - offsetListSize - startListSize - headerBits;
+                    offsetListSum += offsetListSize;
+                    startListSum += startListSize;
+                    bucketBitsSum += bucketBits;
+                }
+                System.out.println(leafSize + " " + averageBucketSize + " " +
+                        (double) bucketBitsSum / size / testCount + " " +
+                        (double) offsetListSum / size / testCount + " " +
+                        (double) startListSum / size / testCount);
+            }
+        }
+    }
+
+    public static double getExpectedSpaceEstimate(int leafSize, int averageBucketSize) {
+        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
+        Settings s = new Settings(leafSize, averageBucketSize);
+        double totalBits = 0;
+        for (int i = 0; i <= s.getMaxBucketSize(); i++) {
+            double probBucketSize = Probability.getProbabilityOfBucketSize(
+                    averageBucketSize, i);
+            double bits = getExpectedBucketSpace(s, i, 0, cache);
+            totalBits += bits * probBucketSize;
+        }
+        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow);
+        // pInOverflow = Math.max(minP, pInOverflow);
+        // System.out.println("  probability that an entry is in an overflow bucket: " + pInOverflow + " (adjusted)");
+        double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
+        double bitsPerBucketOffsetOverhead = 2 + Math.log(averageBucketSize) / Math.log(2);
+        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / averageBucketSize);
+        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / averageBucketSize);
+        // System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBucketStartOverhead) / averageBucketSize);
+        double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / averageBucketSize;
+        // System.out.println("averageBucketSize " + averageBucketSize + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
+        // int size = 10000 * averageBucketSize;
+        // FunctionInfo info = RandomizedTest.test(leafSize, averageBucketSize, size, false);
+        // int sizeBits = BitCodes.getEliasDelta(size).length();
+        // double bitsPerKeyReal = (info.bitsPerKey * size - sizeBits) / size;
+        // System.out.println(" real " + bitsPerKeyReal);
+        return bitsPerKeyCalc;
+    }
+
     public static double getExpectedSpace(int leafSize, int averageBucketSize) {
+        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
+        return getExpectedSpace(leafSize, averageBucketSize, cache);
+    }
+
+    public static double getExpectedSpace(int leafSize, int averageBucketSize, HashMap<Integer, Double> cache) {
         // System.out.println("  Estimated space for leafSize " + leafSize + " / averageBucketSize " + averageBucketSize);
         // System.out.println("  Bucket sizes");
         Settings s = new Settings(leafSize, averageBucketSize);
         double totalBits = 0;
         double inRegularBucket = 0;
-        HashMap<Integer, Double> cache = new HashMap<Integer, Double>();
         double worst = 0;
         // int worstSize = -1;
         for (int i = 0; i <= s.getMaxBucketSize(); i++) {
@@ -35,8 +107,8 @@ public class SpaceEstimator {
             }
             inRegularBucket += probBucketSize * i;
             totalBits += bits * probBucketSize;
-//            if(bits * probBucketSize > 1)
-//             System.out.println("   " + i + " " + bits * probBucketSize);
+            // if(bits * probBucketSize > 1)
+            //     System.out.println("   " + i + " " + bits * probBucketSize);
         }
         // System.out.println("worst case space: " + worst + " at size " + worstSize + " max " + s.getMaxBucketSize());
 
@@ -56,9 +128,9 @@ public class SpaceEstimator {
         totalBits += pInOverflow * bitsPerEntryInOverflow;
         double bitsPerBucketStartOverhead = 2 + Math.log(totalBits) / Math.log(2);
         double bitsPerBucketOffsetOverhead = 2 + Math.log(averageBucketSize) / Math.log(2);
-         System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / averageBucketSize);
-         System.out.println("start list overhead " + bitsPerBucketStartOverhead / averageBucketSize);
-System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBucketStartOverhead) / averageBucketSize);
+        // System.out.println("offset list overhead " + bitsPerBucketOffsetOverhead / averageBucketSize);
+        // System.out.println("start list overhead " + bitsPerBucketStartOverhead / averageBucketSize);
+        // System.out.println("lists overhead " + (bitsPerBucketOffsetOverhead + bitsPerBucketStartOverhead) / averageBucketSize);
         double bitsPerKeyCalc =  (totalBits + bitsPerBucketStartOverhead + bitsPerBucketOffsetOverhead) / averageBucketSize;
         // System.out.println("averageBucketSize " + averageBucketSize + " leafSize " + leafSize + " calc " + bitsPerKeyCalc);
         // int size = 10000 * averageBucketSize;

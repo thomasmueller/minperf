@@ -71,7 +71,7 @@ public class EstimateTimeForHugeSets {
 //        }
 //        System.out.println();
 
-        for (long size = 10_000_000_000L; size <= 1_000_000_000_000L; size *= 10) {
+        for (long size = 10_000_000_000L; size < 1_000_000_000_000L; size *= 10) {
             System.out.println();
             System.out.printf("size: %,d \n", size);
             long keyBits = bitsPerKey * size;
@@ -99,8 +99,6 @@ public class EstimateTimeForHugeSets {
                 int bitsPerGap = bitsPerGapEliasFano(avgGap);
                 long entriesWithGap = ramBits / bitsPerGap;
                 int gapChunks = (int) ((size + entriesWithGap - 1) / entriesWithGap);
-
-
 
 
                 long signatureWriteSeconds = signatureBits / signatureWriteBitsPerSecond;
@@ -299,7 +297,7 @@ public class EstimateTimeForHugeSets {
         }
     }
 
-    private static int getBitsForProbability(long size, double d) {
+    public static int getBitsForProbability(long size, double d) {
         for (int bits = 1;; bits++) {
             double p = Probability.probabilityOfDuplicates(size, bits);
             if (p < d) {

@@ -36,6 +36,10 @@ public class RandomizedTest {
         }
     }
 
+    public static void main(String... args) {
+        printLargeSet();
+    }
+
     public static void printLargeSet() {
         for (int i = 10; i <= 100_000_000; i *= 10) {
             FunctionInfo info = RandomizedTest.test(8, 128, i, false);
@@ -1269,7 +1273,7 @@ public class RandomizedTest {
 //        experimentalResults(size, 4096);
     }
 
-    private static void experimentalResults(int size, int averageBucketSize) {
+    static void experimentalResults(int size, int averageBucketSize) {
         System.out.println("averageBucketSize " + averageBucketSize);
         System.out.println("leafSize, bits/key");
         System.out.println("calculated");
