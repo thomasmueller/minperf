@@ -9,8 +9,6 @@ public class SplitRuleTest {
 
     public static void main(String... args) {
         generateSplitRules();
-        // calcBest();
-        generateSplitRules();
     }
 
     static void generateSplitRules() {
@@ -20,9 +18,9 @@ public class SplitRuleTest {
                 System.out.println(",");
             }
             System.out.println("    // leafSize " + leafSize);
-            System.out.print("    { ");
+            System.out.print("    splitIntegerList(\"");
             generateSplitRules(leafSize);
-            System.out.print(" }");
+            System.out.print("\")");
         }
         System.out.println();
         System.out.println("    };");
@@ -32,37 +30,26 @@ public class SplitRuleTest {
         if (leafSize < 2) {
             return;
         }
-        int max = 4 * 1024;
+        int max = 1024;
         double[] bitsPerKeyList = new double[max];
         for (int i = 2; i <= leafSize; i++) {
             bitsPerKeyList[i] = getBitsPerKey(bitsPerKeyList, i, i);
         }
         int[] splitList = new int[max];
         splitList[leafSize] = leafSize;
-        double pLeaf = Probability.probabilitySplitIntoMSubsetsOfSizeN(
-                leafSize, 1);
-        int lineLen = 0;
         boolean first = true;
         for (int size = leafSize + 1; size < max; size++) {
             int bestSplit = 0;
-            double bestBits = 0;
+            double bestBits = Double.POSITIVE_INFINITY;
             for (int i = size - 1; i >= leafSize; i--) {
-                if (splitList[i] > 0) {
+                double b = getBitsPerKey(bitsPerKeyList, size, -i);
+                if (b < bestBits) {
                     bestSplit = -i;
-                    bestBits = getBitsPerKey(bitsPerKeyList, size, -i);
-                    // System.out.println("        " + size + " " + -bestSplit + ":" + (size+bestSplit) + " " + bestBits);
-                    break;
+                    bestBits = b;
                 }
             }
             for (int split = 2; split < leafSize; split++) {
                 if (size % split != 0) {
-                    continue;
-                }
-                double pSplit = Probability.probabilitySplitIntoMSubsetsOfSizeN(
-                        split, size / split);
-                if (size / pSplit > leafSize / pLeaf) {
-                    // average operations of split should be less than
-                    // average operations of leaf processing
                     continue;
                 }
                 double bits = getBitsPerKey(bitsPerKeyList, size, split);
@@ -73,29 +60,13 @@ public class SplitRuleTest {
             }
             splitList[size] = bestSplit;
             bitsPerKeyList[size] = getBitsPerKey(bitsPerKeyList, size, bestSplit);
-            //System.out.println(" " + size + ", " + bestSplit + ", ");
-            // if(bestSplit > 0) {
-            //    System.out.println(" " + size + " /" + bestSplit + " " + bitsPerKeyList[size]);
-            // } else {
-            //    System.out.println(" " + size + " " + -bestSplit + ":" + (size+bestSplit) + " " + bitsPerKeyList[size]);
-            // }
-            if (bestSplit > 0) {
-                double p = getProbabilitySplit(size, bestSplit);
-                int k = BitCodes.calcBestGolombRiceShift(p);
-                if (!first) {
-                    System.out.print(", ");
-                }
-                if (lineLen > 3) {
-                    System.out.println();
-                    System.out.print("        ");
-                    lineLen = 0;
-                }
-                lineLen++;
-                first = false;
-                System.out.print(size + ", " + bestSplit + ", " + k);
-            } else {
-//                System.out.println("        " + size + " " + -bestSplit + ":" + (size+bestSplit) + " " + bestBits);
+            double p = getProbabilitySplit(size, bestSplit);
+            int k = BitCodes.calcBestGolombRiceShift(p);
+            if (!first) {
+                System.out.print(", ");
             }
+            first = false;
+            System.out.print(size + ", " + bestSplit + ", " + k);
         }
     }
 
