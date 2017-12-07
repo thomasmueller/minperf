@@ -51,20 +51,6 @@ public class MediumTest {
                 Assert.assertArrayEquals(description, d2);
                 buff = compressBucketData(settings, false, false, description);
                 int bitCountListMin = buff.position();
-//
-//                int totalSize = description[0];
-//                int averageBucketSize = settings.getAverageBucketSize();
-//                int bucketCount = (totalSize + averageBucketSize - 1) / averageBucketSize;
-//                int pos = 1 + 2 * bucketCount;
-//                int[] bucketData = new int[description.length - pos];
-//                System.arraycopy(description, pos, bucketData, 0, bucketData.length);
-//
-//                BitBuffer buff = new BitBuffer(10 * size);
-//                EliasFanoList.generate(bucketData, buff);
-//                double efl = (double) buff.position() / size;
-//
-//                buff = new BitBuffer(10 * size);
-//                eliasFanoList2(bucketData, buff);
 
                 double efMonotone= (double) bitCountMonotone / size;
                 double efList = (double) bitCountList / size;
@@ -73,7 +59,6 @@ public class MediumTest {
 
                 FunctionInfo info = RandomizedTest.test(leafSize, avgBucketSize, size, false);
                 double regular = info.bitsPerKey;
-//
                 System.out.println("leafSize " + leafSize + " avg " + avgBucketSize + " regular " + regular +
                         " efm " + efMonotoneMin + " ..  " + efMonotone + " efl " + efListMin + " .. " + efList);
             }
@@ -82,7 +67,6 @@ public class MediumTest {
 
     private static BitBuffer compressBucketData(Settings settings, boolean monotone, boolean includeStart, int[] description) {
         int size = description[0];
-// ;System.out.println(Arrays.toString(description));
         int averageBucketSize = settings.getAverageBucketSize();
         int bucketCount = (size + averageBucketSize - 1) / averageBucketSize;
         int bucketPos = 1 + 2 * bucketCount;
