@@ -38,7 +38,14 @@ public class BitBuffer {
     public void write(BitBuffer bits) {
         int count = bits.pos;
         bits.pos = 0;
-        for (int i = 0; i < count; i++) {
+        // for (int i = 0; i < count; i++) {
+        //     writeBit(bits.readBit());
+        // }
+        int i = 0;
+        for (; i < count - 31; i += 32) {
+            writeNumber(bits.readNumber(32), 32);
+        }
+        for (; i < count; i++) {
             writeBit(bits.readBit());
         }
     }
@@ -51,6 +58,12 @@ public class BitBuffer {
         this.pos = pos;
     }
 
+    /**
+     * Read a number.
+     *
+     * @param bitCount the number of bits, at most 63
+     * @return the value
+     */
     public long readNumber(int bitCount) {
         long x = readNumber(pos, bitCount);
         pos += bitCount;
@@ -61,6 +74,13 @@ public class BitBuffer {
         return (readNumber(32) << 32) | readNumber(32);
     }
 
+    /**
+     * Read a number.
+     *
+     * @param pos the position
+     * @param bitCount the number of bits, at most 63
+     * @return the value
+     */
     public long readNumber(int pos, int bitCount) {
         if (bitCount == 0) {
             return 0;
@@ -139,6 +159,10 @@ public class BitBuffer {
     }
 
     public void writeGolombRice(int shift, long value) {
+        writeGolombRiceFast(shift, value);
+    }
+
+    public void writeGolombRiceSlow(int shift, long value) {
         long q = value >>> shift;
         for (int i = 0; i < q; i++) {
             writeBit(1);
@@ -148,6 +172,48 @@ public class BitBuffer {
             writeBit((value >>> i) & 1);
         }
     }
+
+    public void writeGolombRiceFast(int shift, long value) {
+        long q = value >>> shift;
+        if (q < 63) {
+            long m = (2L << q) - 2;
+            writeNumber(m, (int) (q + 1));
+        } else {
+            for (int i = 0; i < q; i++) {
+                writeBit(1);
+            }
+            writeBit(0);
+        }
+        writeNumber(value & ((1L << shift) - 1), shift);
+        // for (int i = shift - 1; i >= 0; i--) {
+        //     writeBit((value >>> i) & 1);
+        // }
+    }
+
+
+//    public void writeVarLong(long x) {
+//        while ((x & ~0x7f) != 0) {
+//            writeNumber((0x80 | (x & 0x7f)) & 0xff, 8);
+//            x >>>= 7;
+//        }
+//        writeNumber(x & 0xff, 8);
+//    }
+
+//    public long readVarLong() {
+//        long x = buff.get();
+//        if (x >= 0) {
+//            return x;
+//        }
+//        x &= 0x7f;
+//        for (int s = 7; s < 64; s += 7) {
+//            long b = buff.get();
+//            x |= (b & 0x7f) << s;
+//            if (b >= 0) {
+//                break;
+//            }
+//        }
+//        return x;
+//    }
 
     public long readGolombRice(int pos, int shift) {
         int q = readUntilZero(pos);
@@ -214,12 +280,24 @@ public class BitBuffer {
      * Write a number of bits. The most significant bit is written first.
      *
      * @param x the number
-     * @param bitCount the number of bits
+     * @param bitCount the number of bits, at most 63
      */
     public void writeNumber(long x, int bitCount) {
-        while (bitCount-- > 0) {
-            writeBit((x >>> bitCount) & 1);
+        // while (bitCount-- > 0) {
+        //     writeBit((x >>> bitCount) & 1);
+        // }
+        if (bitCount == 0) {
+            return;
         }
+        int remainingBits = 64 - (pos & 63);
+        int index = pos >>> 6;
+        if (bitCount <= remainingBits) {
+            data[index] |= x << (remainingBits - bitCount);
+        } else {
+            data[index] |= x >>> (bitCount - remainingBits);
+            data[index + 1] = x << (64 - bitCount + remainingBits);
+        }
+        pos += bitCount;
     }
 
     public byte[] toByteArray() {
@@ -230,6 +308,10 @@ public class BitBuffer {
             return d;
         }
         return Arrays.copyOf(d, (pos + 7) / 8);
+    }
+
+    public void clear() {
+        Arrays.fill(data, 0);
     }
 
     public static int getGolombRiceSize(int shift, long value) {

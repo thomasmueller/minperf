@@ -1,10 +1,9 @@
 package org.minperf;
 
-import static junit.framework.Assert.assertEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.Random;
-
-import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -110,10 +109,14 @@ public class BitCodes {
     }
 
     public static int calcBestGolombRiceShift(double p) {
-        double goldenRatio = (Math.sqrt(5) + 1) / 2;
-
-        // variant a
         double mean = (1 - p) / p;
+        // double p = 1 / (mean + 1);
+        return calcBestGolombRiceShiftFromMean(mean);
+    }
+
+    public static int calcBestGolombRiceShiftFromMean(double mean) {
+        // variant a
+        double goldenRatio = (Math.sqrt(5) + 1) / 2;
         double logGoldenRatioMinus1 = Math.log(goldenRatio - 1);
         double k = 1 + (Math.log(logGoldenRatioMinus1 /
                 Math.log(mean / (mean + 1))) / Math.log(2));
@@ -156,7 +159,7 @@ public class BitCodes {
             System.out.println("  try " + j + ": simulated " + px +
                     " calculated " + pFormula);
             if (Math.abs(px - pFormula) > px / 2) {
-                Assert.fail();
+                fail();
             }
         }
         System.out.println("  Best Rice parameter");
@@ -167,7 +170,7 @@ public class BitCodes {
         System.out.println("  mu:" + mu);
         System.out.println("  mu2:" + mu2);
         if (Math.abs(mu - mu2) > mu / 10) {
-            Assert.fail();
+            fail();
         }
         double logGoldenRatio = Math.log(goldenRatio - 1);
         double logMu = Math.log(mu / (mu + 1));
@@ -194,7 +197,7 @@ public class BitCodes {
         double averageBits2 = calcAverageRiceGolombBits(test, p);
         System.out.println("  averageBits calculated " + averageBits2);
         if (Math.abs(averageBits - averageBits2) > averageBits / 10) {
-            Assert.fail();
+            fail();
         }
     }
 
@@ -226,6 +229,35 @@ public class BitCodes {
             assertEquals(val, buff.readEliasDelta());
             assertEquals(123, buff.readNumber(10));
             assertEquals(pos, buff.position());
+        }
+    }
+
+    @Test
+    public void testNumberRoundtrip() {
+        Random r = new Random(1);
+        BitBuffer buff = new BitBuffer(8 * 1024 * 1024);
+        buff.writeNumber(-1L, 64);
+        buff.writeNumber(0, 64);
+        for (int i = 0; i < 1000; i++) {
+            long val = r.nextLong();
+            int bitCount = r.nextInt(65);
+            if (bitCount < 64) {
+                val &= ((1L << bitCount) - 1);
+            }
+            buff.writeNumber(val, bitCount);
+        }
+        buff.seek(0);
+        r = new Random(1);
+        assertEquals(-1L, buff.readNumber(64));
+        assertEquals(0, buff.readNumber(64));
+        for (int i = 0; i < 1000; i++) {
+            long val = r.nextLong();
+            int bitCount = r.nextInt(65);
+            if (bitCount < 64) {
+                val &= ((1L << bitCount) - 1);
+            }
+            long x = buff.readNumber(bitCount);
+            assertEquals(val, x);
         }
     }
 
@@ -274,6 +306,35 @@ public class BitCodes {
         buff.seek(0);
         for (int i = 1; i < 100; i++) {
             assertEquals(i, buff.readEliasDelta());
+        }
+    }
+
+    @Test
+    public void testWriteBuffer2() {
+        BitBuffer buff = new BitBuffer(8000);
+        for (int i = 1; i < 100; i++) {
+            BitBuffer b = new BitBuffer(100);
+//            b.writeEliasDelta(i);
+//            assertEquals(b.position(), BitBuffer.getEliasDeltaSize(i));
+            for (int j = 0; j < i; j++) {
+                b.writeBit(1);
+            }
+            b.writeBit(0);
+            buff.write(b);
+        }
+        buff.seek(0);
+        for (int i = 1; i < 100; i++) {
+//            if (i != buff.readEliasDelta()) {
+//                System.out.println("??");
+//            }
+//            assertEquals(i, buff.readEliasDelta());
+            for (int j = 0; j < i; j++) {
+              if (1 != buff.readBit()) {
+              System.out.println("??");
+          }
+//                assertEquals(1, buff.readBit());
+            }
+            assertEquals(0, buff.readBit());
         }
     }
 
