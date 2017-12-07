@@ -9,6 +9,11 @@ import org.minperf.BitBuffer;
 import org.minperf.Settings;
 import org.minperf.universal.UniversalHash;
 
+/**
+ * This implementation does not use holes.
+ *
+ * @param <T> the key type
+ */
 public class CHD2<T> {
 
     final UniversalHash<T> hash;

@@ -11,6 +11,12 @@ import org.minperf.Settings;
 import org.minperf.monotoneList.EliasFanoMonotoneList;
 import org.minperf.universal.UniversalHash;
 
+/**
+ * This implementation supports holes, that is, the internal array is
+ * potentially larger than the set size.
+ *
+ * @param <T> the key type
+ */
 public class CHD<T> {
 
     final UniversalHash<T> hash;
