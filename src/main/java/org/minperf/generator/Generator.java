@@ -323,8 +323,8 @@ public class Generator<T> {
         int bitCount = BitBuffer.getEliasDeltaSize(size + 1);
         bitCount += 1;
         bitCount += BitBuffer.getEliasDeltaSize(minOffsetDiff + 1);
-        bitCount += MonotoneList.getSize(offsetList, eliasFanoMonotoneLists);
         bitCount += BitBuffer.getEliasDeltaSize(minStartDiff + 1);
+        bitCount += MonotoneList.getSize(offsetList, eliasFanoMonotoneLists);
         bitCount += MonotoneList.getSize(startList, eliasFanoMonotoneLists);
         bitCount += start;
         if (alt != null) {
@@ -335,8 +335,8 @@ public class Generator<T> {
         all.writeEliasDelta(size + 1);
         all.writeBit(alternativeList.isEmpty() ? 0 : 1);
         all.writeEliasDelta(minOffsetDiff + 1);
-        MonotoneList.generate(offsetList, all, eliasFanoMonotoneLists);
         all.writeEliasDelta(minStartDiff + 1);
+        MonotoneList.generate(offsetList, all, eliasFanoMonotoneLists);
         MonotoneList.generate(startList, all, eliasFanoMonotoneLists);
         for (int i = 0; i < buckets.size(); i++) {
             Bucket b = buckets.get(i);
@@ -381,7 +381,7 @@ public class Generator<T> {
         });
     }
 
-    void shrinkList(int[] targetList, int[] sourceList) {
+    public static void shrinkList(int[] targetList, int[] sourceList) {
         int sum = 0;
         for (int i = 1; i < sourceList.length; i++) {
             int d = sourceList[i] - sourceList[i - 1];
@@ -393,7 +393,7 @@ public class Generator<T> {
         }
     }
 
-    int shrinkList(int[] list) {
+    public static int shrinkList(int[] list) {
         int min = Integer.MAX_VALUE;
         for (int i = 0; i < list.length - 1; i++) {
             int d = list[i + 1] - list[i];
@@ -406,7 +406,7 @@ public class Generator<T> {
     }
 
     public static int getMinBitCount(int size) {
-        // assume at least 1.375 bits per key
+        // at least 1.375 bits per key (if it is less, fill with zeroes)
         return (size  * 11 + 7) >> 3;
     }
 
@@ -468,7 +468,11 @@ public class Generator<T> {
                         Settings.getUniversalHashIndex(startIndex));
             }
             // this is very conservative; less memory could be allocated
-            buff = new BitBuffer(minSize * 4);
+            int bufferSize = 8 * size;
+            if (settings.getLeafSize() < 6) {
+                bufferSize *= 4;
+            }
+            buff = new BitBuffer(bufferSize);
             generate(data, hashes, startIndex, buff);
             if (buff.position() < minSize) {
                 while (buff.position() < minSize) {
