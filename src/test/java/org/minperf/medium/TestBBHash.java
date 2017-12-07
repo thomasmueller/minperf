@@ -12,6 +12,15 @@ import org.minperf.universal.LongHash;
 public class TestBBHash {
 
     public static void main(String... args) {
+        for (long size = 1_000_000_000_000L; size <= 1_000_000_000_000L; size *= 10) {
+            double probDuplicates = 1.0 / 100;
+            int bitPerSignature = EstimateTimeForHugeSets.getBitsForProbability(size, probDuplicates);
+            System.out.println(
+                    size + " 1:" + 1 / probDuplicates + " prob of a duplicate bits/signature: " + bitPerSignature);
+            long signatureBits = bitPerSignature * size;
+            System.out.println("  signature size: " + EstimateTimeForHugeSets.formatBits(signatureBits));
+        }
+
         for (int len = 10; len <= 100000000; len *= 10) {
             test(len);
         }
@@ -22,13 +31,12 @@ public class TestBBHash {
         HashSet<Long> set = RandomizedTest.createSet(size, 1);
         TestBBHash t = new TestBBHash();
         t.generate(set);
-        System.out.println("card: " + t.bits.cardinality());
+        System.out.println("cardinality " + t.bits.cardinality());
     }
 
     BitSet bits;
     ArrayList<Integer> remainder;
     private static final double LEVEL_BITS = 1 / Math.log(2);
-    private static final LongHash HASH = new LongHash();
 
     public void generate(Collection<Long> set) {
         int size = set.size();
@@ -47,14 +55,14 @@ public class TestBBHash {
                 boolean wasAdded = false;
                 if (level > 0) {
                     wasAdded = true;
-                    long hash = HASH.universalHash(x, level - 1);
+                    long hash = LongHash.universalHash(x, level - 1);
                     int index = lastOffset + Settings.reduce((int) hash, lastLen);
                     wasAdded = !duplicates.get(index);
                 }
                 if (wasAdded) {
                     continue;
                 }
-                long hash = HASH.universalHash(x, level);
+                long hash = LongHash.universalHash(x, level);
                 int index = offset + Settings.reduce((int) hash, len);
                 if (duplicates.get(index)) {
                     // nothing to do
@@ -71,7 +79,7 @@ public class TestBBHash {
             lastLen = len;
             len /= 2;
             level++;
-            System.out.println("level " + level + " len " + len + " card " + bits.cardinality() + " dups " + duplicates.cardinality());
+            System.out.println("level " + level + " len " + len + " cardinality " + bits.cardinality() + " duplicates " + duplicates.cardinality());
         } while (newDuplicates);
     }
 
