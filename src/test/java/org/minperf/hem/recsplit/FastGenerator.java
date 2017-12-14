@@ -1,5 +1,7 @@
 package org.minperf.hem.recsplit;
 
+import java.util.Arrays;
+
 import org.minperf.BitBuffer;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
@@ -30,31 +32,19 @@ public class FastGenerator {
         bucketBuff = new BitBuffer(len * 10 / bucketCount);
         int bucketBitCount = 31 - Integer.numberOfLeadingZeros(bucketCount);
         int bucketShift = 64 - bucketBitCount - shift;
-        int currentBucket = 0;
-        int startBucket = start;
-        int[] startList = new int[bucketCount ];
+        int[] startList = new int[bucketCount];
         int[] offsetList = new int[bucketCount + 1];
-        for (int i = start; i < end; i++) {
-            long x = keys[i];
-            int bucketId = bucketShift == 64 ? 0 : (int) (x >>> bucketShift);
-            if (bucketId > currentBucket) {
-                generateBucket(keys, startBucket, i, startList, currentBucket);
-                do {
-                    currentBucket++;
-                    offsetList[currentBucket] = i;
-                    startList[currentBucket] = buff.position();
-                } while (currentBucket < bucketId);
-                startBucket = i;
-            }
+        sortIntoBuckets(keys, bucketShift, bucketCount, offsetList, startList);
+        Arrays.fill(startList, 0);
+        // move to the right (this could be avoided)
+        System.arraycopy(offsetList, 0, offsetList, 1, bucketCount);
+        offsetList[0] = 0;
+        int startBucket = 0;
+        for (int i = 0; i < bucketCount; i++) {
+            int endBucket = offsetList[i + 1];
+            generateBucket(keys, startBucket, endBucket, startList, i);
+            startBucket = endBucket;
         }
-        generateBucket(keys, startBucket, end, startList, currentBucket);
-        do {
-            currentBucket++;
-            offsetList[currentBucket] = end;
-            if (currentBucket < bucketCount - 1) {
-                startList[currentBucket] = buff.position();
-            }
-        } while (currentBucket < bucketCount);
         BitBuffer buff2 = new BitBuffer(keys.length * 10);
         buff2.writeEliasDelta(len + 1);
         MultiStageMonotoneList.generate(startList, buff2);
@@ -63,7 +53,65 @@ public class FastGenerator {
         buff = buff2;
     }
 
+    private static void sortIntoBuckets(long[] keys, int shift, int bucketCount, int[] offsetList, int[] array2) {
+        if (bucketCount == 1) {
+            offsetList[0] = keys.length;
+            // in this case, shift is 64, which is problematic
+            return;
+        }
+        boolean monotone = true;
+        int last = 0;
+        int[] pos = offsetList;
+        for(long x : keys) {
+            int b = (int) (x >>> shift);
+            pos[b]++;
+            if (b < last) {
+                monotone = false;
+            }
+            last = b;
+        }
+        int[] stop = array2;
+        int sum = 0;
+        for (int i = 0; i < bucketCount; i++) {
+            int count = pos[i];
+            pos[i] = sum;
+            sum += count;
+            stop[i] = sum;
+        }
+        if (monotone) {
+            // shortcut if the list is already sorted
+            return;
+        }
+        int i = 0;
+        long x = keys[i];
+        for(int bucket = 0;;) {
+            int targetBucket = (int) (x >>> shift);
+            int index = pos[targetBucket]++;
+            long next = keys[index];
+            keys[index] = x;
+            x = next;
+            if (index == i) {
+                while (true) {
+                    index = pos[bucket];
+                    if (index < stop[bucket]) {
+                        break;
+                    }
+                    bucket++;
+                    if (bucket >= bucketCount) {
+                        return;
+                    }
+                }
+                i = index;
+                x = keys[index];
+            }
+        }
+    }
+
     private void generateBucket(long[] keys, int start, int end, int[] startList, int bucketId) {
+        if (end == start) {
+            startList[bucketId] = buff.position();
+            return;
+        }
         bucketBuff.clear();
         bucketBuff.seek(0);
         generateSet(keys, start, end, 0);
@@ -117,7 +165,7 @@ public class FastGenerator {
             }
         }
         if (len > 64) {
-            // TODO
+            // TODO not supported currently
             throw new IllegalArgumentException("len " + len);
         }
         generateSetHalf(keys, start, end, index);

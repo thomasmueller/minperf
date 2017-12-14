@@ -98,12 +98,16 @@ public class Sort extends RecursiveAction {
         this.level = level;
     }
 
-    public static void parallelSort(long[] data) {
-        if (data.length < BUCKETS) {
-            sortUnsignedSimple(data);
+    public static void parallelSort(long[] data, int offset, int len) {
+        if (len < BUCKETS) {
+            sortUnsignedSimple(data, offset, len);
             return;
         }
-        ForkJoinPool.commonPool().invoke(new Sort(data, 0, data.length, 64 - S, 0));
+        ForkJoinPool.commonPool().invoke(new Sort(data, offset, offset + len, 64 - S, 0));
+    }
+
+    public static void parallelSort(long[] data) {
+        parallelSort(data, 0, data.length);
     }
 
     @Override
@@ -166,8 +170,8 @@ public class Sort extends RecursiveAction {
         }
     }
 
-    static void sortUnsignedSimple(long[] data) {
-        int left = 0, right = data.length - 1;
+    static void sortUnsignedSimple(long[] data, int offset, int len) {
+        int left = offset, right = offset + len - 1;
         while(true) {
             while (left < data.length && data[left] >= 0) {
                 left++;
@@ -182,8 +186,8 @@ public class Sort extends RecursiveAction {
             data[left++] = data[right];
             data[right--] = temp;
         }
-        Arrays.parallelSort(data, 0, left);
-        Arrays.parallelSort(data, left, data.length);
+        Arrays.parallelSort(data, offset, left);
+        Arrays.parallelSort(data, left, len);
     }
 
     static void sort(long[] data) {

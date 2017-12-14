@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
-import org.minperf.utils.RandomSetGenerator;
+import org.minperf.utils.RandomSetGeneratorSlow;
 
 public class PartitionIntoSimilarSizedSets {
 
@@ -150,7 +150,7 @@ public class PartitionIntoSimilarSizedSets {
 //        while (set.size() < size) {
 //            set.add(r.nextLong());
 //        }
-        Iterable<Long> set = RandomSetGenerator.randomSequence(size);
+        Iterable<Long> set = RandomSetGeneratorSlow.randomSequence(size);
 //        long sum = 0;
 //        for(long x : set) {
 //            sum += x;
