@@ -50,7 +50,7 @@ public class RandomSetGenerator {
         }
     }
 
-    private static RandomBlockProducer randomHashProducer(Random r, long size) {
+    public static RandomBlockProducer randomHashProducer(Random r, long size) {
         return randomProducer(r, size, 63);
     }
 
@@ -204,7 +204,8 @@ public class RandomSetGenerator {
         return x & 0xffff;
     }
 
-    static interface RandomBlockProducer {
+    public interface RandomBlockProducer {
+
         int produce(long[] data, int offset, int len, long add);
 
         long remaining();

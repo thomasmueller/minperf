@@ -7,6 +7,7 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
 
 public class FastGenerator {
 
+    private static final int MAX_BUCKET_SIZE = 64;
     private final int leafSize;
     private final int averageBucketSize;
     private BitBuffer buff;
@@ -18,23 +19,21 @@ public class FastGenerator {
     }
 
     BitBuffer generate(long[] keys) {
-        generate(keys, 0, keys.length, 0);
-        return buff;
+        return generate(keys, keys.length);
     }
 
-    void generate(long[] keys, int start, int end, int shift) {
-        buff = new BitBuffer(keys.length * 10);
-        int len = end - start;
+    BitBuffer generate(long[] keys, int len) {
+        buff = new BitBuffer(len * 10);
         if (len <= 1) {
-            return;
+            return buff;
         }
         int bucketCount = Builder.getBucketCount(len, averageBucketSize);
         bucketBuff = new BitBuffer(len * 10 / bucketCount);
         int bucketBitCount = 31 - Integer.numberOfLeadingZeros(bucketCount);
-        int bucketShift = 64 - bucketBitCount - shift;
+        int bucketShift = 64 - bucketBitCount;
         int[] startList = new int[bucketCount];
         int[] offsetList = new int[bucketCount + 1];
-        sortIntoBuckets(keys, bucketShift, bucketCount, offsetList, startList);
+        sortIntoBuckets(keys, len, bucketShift, bucketCount, offsetList, startList);
         Arrays.fill(startList, 0);
         // move to the right (this could be avoided)
         System.arraycopy(offsetList, 0, offsetList, 1, bucketCount);
@@ -45,15 +44,16 @@ public class FastGenerator {
             generateBucket(keys, startBucket, endBucket, startList, i);
             startBucket = endBucket;
         }
-        BitBuffer buff2 = new BitBuffer(keys.length * 10);
+        BitBuffer buff2 = new BitBuffer(len * 10);
         buff2.writeEliasDelta(len + 1);
         MultiStageMonotoneList.generate(startList, buff2);
         MultiStageMonotoneList.generate(offsetList, buff2);
         buff2.write(buff);
         buff = buff2;
+        return buff;
     }
 
-    private static void sortIntoBuckets(long[] keys, int shift, int bucketCount, int[] offsetList, int[] array2) {
+    private static void sortIntoBuckets(long[] keys, int len, int shift, int bucketCount, int[] offsetList, int[] array2) {
         if (bucketCount == 1) {
             offsetList[0] = keys.length;
             // in this case, shift is 64, which is problematic
@@ -62,7 +62,8 @@ public class FastGenerator {
         boolean monotone = true;
         int last = 0;
         int[] pos = offsetList;
-        for(long x : keys) {
+        for (int i = 0; i < len; i++) {
+            long x = keys[i];
             int b = (int) (x >>> shift);
             pos[b]++;
             if (b < last) {
@@ -72,11 +73,16 @@ public class FastGenerator {
         }
         int[] stop = array2;
         int sum = 0;
+        int maxCount = 0;
         for (int i = 0; i < bucketCount; i++) {
             int count = pos[i];
+            maxCount = Math.max(maxCount, count);
             pos[i] = sum;
             sum += count;
             stop[i] = sum;
+        }
+        if (maxCount > MAX_BUCKET_SIZE) {
+            throw new IllegalArgumentException("max=" + maxCount);
         }
         if (monotone) {
             // shortcut if the list is already sorted
@@ -164,10 +170,6 @@ public class FastGenerator {
                 return;
             }
         }
-        if (len > 64) {
-            // TODO not supported currently
-            throw new IllegalArgumentException("len " + len);
-        }
         generateSetHalf(keys, start, end, index);
     }
 
@@ -188,11 +190,23 @@ public class FastGenerator {
             if (count == size - first) {
                 break;
             }
+            if ((index & 0xffff) == 0xffff) {
+                checkDuplicateKey(keys, start, end);
+            }
         }
         sort(keys, start, end, bits);
         emit(size, index - oldIndex);
         generateSet(keys, start, start + size - count, index + 1);
         generateSet(keys, start + size - count, start + size, index + 1);
+    }
+
+    private void checkDuplicateKey(long[] keys, int start, int end) {
+        Arrays.sort(keys, start, end);
+        for (int i = start + 1; i < end; i++) {
+            if (keys[i - 1] == keys[i]) {
+                throw new IllegalArgumentException("Duplicate key");
+            }
+        }
     }
 
     private static void sort(long[] keys, int start, int end, long bits) {

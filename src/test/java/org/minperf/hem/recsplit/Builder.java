@@ -26,6 +26,10 @@ public class Builder {
         return new FastGenerator(leafSize, averageBucketSize).generate(keys);
     }
 
+    public BitBuffer generate(long[] keys, int len) {
+        return new FastGenerator(leafSize, averageBucketSize).generate(keys, len);
+    }
+
     public FastEvaluator evaluator(BitBuffer buff) {
         return new FastEvaluator(buff, averageBucketSize, leafSize, 0);
     }
