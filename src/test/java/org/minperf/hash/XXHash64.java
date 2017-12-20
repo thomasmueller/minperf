@@ -7,24 +7,18 @@ import java.nio.ByteOrder;
 
 public class XXHash64 {
 
-    static final int PRIME1 = -1640531535;
-    static final int PRIME2 = -2048144777;
-    static final int PRIME3 = -1028477379;
-    static final int PRIME4 = 668265263;
-    static final int PRIME5 = 374761393;
+    private static final long PRIME64_1 = -7046029288634856825L;
+    private static final long PRIME64_2 = -4417276706812531889L;
+    private static final long PRIME64_3 = 1609587929392839161L;
+    private static final long PRIME64_4 = -8796714831421723037L;
+    private static final long PRIME64_5 = 2870177450012600261L;
 
-    static final long PRIME64_1 = -7046029288634856825L;
-    static final long PRIME64_2 = -4417276706812531889L;
-    static final long PRIME64_3 = 1609587929392839161L;
-    static final long PRIME64_4 = -8796714831421723037L;
-    static final long PRIME64_5 = 2870177450012600261L;
-
-    public static long hash(byte[] buf, int off, int len, long seed) {
+    public static long hash64(byte[] buf, int off, int len, long seed) {
         checkRange(buf, off, len);
-        final int end = off + len;
+        int end = off + len;
         long h64;
         if (len >= 32) {
-            final int limit = end - 32;
+            int limit = end - 32;
             long v1 = seed + PRIME64_1 + PRIME64_2;
             long v2 = seed + PRIME64_2;
             long v3 = seed + 0;
@@ -99,16 +93,16 @@ public class XXHash64 {
         return h64;
     }
 
-    public long hash(ByteBuffer buf, int off, int len, long seed) {
+    public static long hash64(ByteBuffer buf, int off, int len, long seed) {
         if (buf.hasArray()) {
-            return hash(buf.array(), off + buf.arrayOffset(), len, seed);
+            return hash64(buf.array(), off + buf.arrayOffset(), len, seed);
         }
         checkRange(buf, off, len);
         buf = inLittleEndianOrder(buf);
-        final int end = off + len;
+        int end = off + len;
         long h64;
         if (len >= 32) {
-            final int limit = end - 32;
+            int limit = end - 32;
             long v1 = seed + PRIME64_1 + PRIME64_2;
             long v2 = seed + PRIME64_2;
             long v3 = seed + 0;

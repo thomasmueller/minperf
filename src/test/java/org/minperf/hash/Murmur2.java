@@ -4,13 +4,13 @@ public class Murmur2 {
 
     public static final long UINT_MASK = 0xFFFFFFFFl;
 
-    public static long hash(final byte[] data, int length, long seed) {
-        final long m = 0x5bd1e995l;
-        final int r = 24;
+    public static long hash(byte[] data, int length, long seed) {
+        long m = 0x5bd1e995l;
+        int r = 24;
         long hash = ((seed ^ length) & UINT_MASK);
         int length4 = length >>> 2;
         for (int i = 0; i < length4; i++) {
-            final int i4 = i << 2;
+            int i4 = i << 2;
             long k = (data[i4] & 0xff);
             k |= (data[i4 + 1] & 0xff) << 8;
             k |= (data[i4 + 2] & 0xff) << 16;
@@ -37,17 +37,21 @@ public class Murmur2 {
         return hash;
     }
 
-    public static long hash64(final byte[] data, int length, long seed) {
-        final long m = 0xc6a4a7935bd1e995L;
-        final int r = 47;
+    public static long hash64(byte[] data, int length, long seed) {
+        long m = 0xc6a4a7935bd1e995L;
+        int r = 47;
         long h = (seed & UINT_MASK) ^ (length * m);
         int length8 = length >> 3;
         for (int i = 0; i < length8; i++) {
-            final int i8 = i << 3;
-            long k = ((long) data[i8] & 0xff) + (((long) data[i8 + 1] & 0xff) << 8)
-                    + (((long) data[i8 + 2] & 0xff) << 16) + (((long) data[i8 + 3] & 0xff) << 24)
-                    + (((long) data[i8 + 4] & 0xff) << 32) + (((long) data[i8 + 5] & 0xff) << 40)
-                    + (((long) data[i8 + 6] & 0xff) << 48) + (((long) data[i8 + 7] & 0xff) << 56);
+            int i8 = i << 3;
+            long k = ((long) data[i8] & 0xff) +
+                    (((long) data[i8 + 1] & 0xff) << 8) +
+                    (((long) data[i8 + 2] & 0xff) << 16) +
+                    (((long) data[i8 + 3] & 0xff) << 24) +
+                    (((long) data[i8 + 4] & 0xff) << 32) +
+                    (((long) data[i8 + 5] & 0xff) << 40) +
+                    (((long) data[i8 + 6] & 0xff) << 48) +
+                    (((long) data[i8 + 7] & 0xff) << 56);
             k *= m;
             k ^= k >>> r;
             k *= m;
@@ -77,17 +81,21 @@ public class Murmur2 {
         return h;
     }
 
-    public static long hash64_blocksOf8(final byte[] data, int length, long seed) {
-        final long m = 0xc6a4a7935bd1e995L;
-        final int r = 47;
+    public static long hash64x8(byte[] data, int length, long seed) {
+        long m = 0xc6a4a7935bd1e995L;
+        int r = 47;
         long h = seed;
         int length8 = length >> 3;
         for (int i = 0; i < length8; i++) {
-            final int i8 = i << 3;
-            long k = ((long) data[i8] & 0xff) + (((long) data[i8 + 1] & 0xff) << 8)
-                    + (((long) data[i8 + 2] & 0xff) << 16) + (((long) data[i8 + 3] & 0xff) << 24)
-                    + (((long) data[i8 + 4] & 0xff) << 32) + (((long) data[i8 + 5] & 0xff) << 40)
-                    + (((long) data[i8 + 6] & 0xff) << 48) + (((long) data[i8 + 7] & 0xff) << 56);
+            int i8 = i << 3;
+            long k = ((long) data[i8] & 0xff) +
+                    (((long) data[i8 + 1] & 0xff) << 8) +
+                    (((long) data[i8 + 2] & 0xff) << 16) +
+                    (((long) data[i8 + 3] & 0xff) << 24) +
+                    (((long) data[i8 + 4] & 0xff) << 32) +
+                    (((long) data[i8 + 5] & 0xff) << 40) +
+                    (((long) data[i8 + 6] & 0xff) << 48) +
+                    (((long) data[i8 + 7] & 0xff) << 56);
             k *= m;
             k ^= k >>> r;
             k *= m;
