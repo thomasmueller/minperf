@@ -2,9 +2,7 @@ package org.minperf.hem;
 
 import java.io.File;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.PrimitiveIterator;
-import java.util.UUID;
 
 import org.minperf.BitCodes;
 import org.minperf.FunctionInfo;
