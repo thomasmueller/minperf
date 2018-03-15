@@ -3,10 +3,10 @@ package org.minperf.utils;
 import java.util.Random;
 
 /**
- * A PRNG that returns unique (distinct) entries in somewhat sorted order. Not
- * fully sorted, for speed, but the largest entry of a block is guaranteed to be
- * smaller of the smallest entry of the next block. The set doesn't need to be
- * kept fully in memory.
+ * A PRNG that returns unique (distinct) 64-bit entries in somewhat sorted
+ * order. Not fully sorted, for speed, but the largest entry of a block is
+ * guaranteed to be smaller of the smallest entry of the next block. The set
+ * doesn't need to be kept fully in memory.
  */
 public class RandomSetGenerator {
 
