@@ -32,7 +32,8 @@ public class TestFast {
                 for (int len = 1048576; len <= 1048576; len *= 4) {
                     long time;
                     time = System.nanoTime();
-                    long[] list = RandomGenerator.createRandomUniqueListFast(len, len);
+                    long[] list = new long[len];
+                    RandomGenerator.createRandomUniqueListFast(list, len);
                     time = System.nanoTime() - time;
                     // System.out.println("create " + time / len);
                     Builder builder = new Builder().leafSize(leafSize).averageBucketSize(averageBucketSize);
