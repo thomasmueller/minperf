@@ -1,7 +1,10 @@
 package org.minperf.hem;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Random;
@@ -14,15 +17,20 @@ import org.minperf.utils.RandomSetGenerator.RandomBlockProducer;
 public class HemGenerator {
 
     public static void main(String... args) throws Exception {
-        new HemGenerator().test();
+        new HemGenerator().test_10_12_64();
     }
 
-    public void test() throws Exception {
+    public void test_10_12_64() throws Exception {
+        // generate a MPHF with 10^12 keys, each 64 bit
+        // 10^12 would take around 16 hours to generate
+        // 2.87 bits/key, that is around 335 GB
         String userHome = System.getProperty("user.home");
-        FileOutputStream fOut = new FileOutputStream(userHome + "/temp/hash.bin");
-        // ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        String fileName = userHome + "/temp/hash.bin";
+        FileOutputStream fOut = new FileOutputStream(fileName);
         out = new DataOutputStream(new BufferedOutputStream(fOut));
         totalSize = 1_000_000_000_000L;
+        // totalSize = 1_000_000_00L;
+        out.writeLong(totalSize);
         generator = new RandomHashGenerator(totalSize);
         lowBitCount = 64;
         long expectedBlockSize = totalSize;
@@ -60,7 +68,32 @@ public class HemGenerator {
         for (Thread t : threads) {
             t.join();
         }
+        out.writeLong(-1);
+        out.writeInt(-1);
+        out.close();
         System.out.println("done");
+        testRead(fileName);
+    }
+
+    static void testRead(String fileName) throws IOException {
+        FileInputStream fIn = new FileInputStream(fileName);
+        DataInputStream in;
+        in = new DataInputStream(new BufferedInputStream(fIn));
+        long totalSize = in.readLong();
+        System.out.println("total size " + totalSize);
+        while(true) {
+            long high = in.readLong();
+            int len = in.readInt();
+            byte[] data = new byte[len];
+            // System.out.println("read high: " + high + " len: " + len);
+            if (high == -1) {
+                break;
+            }
+            in.readFully(data);
+        }
+        in.close();
+        fIn.close();
+        // System.out.println("done");
     }
 
     long totalSize;
@@ -81,8 +114,7 @@ public class HemGenerator {
         double percentDone = 100. * total / totalSize;
         System.out.println(time / total + " ns/key " + (totalBits / 8 / 1024 / 1024) + " MB " + percentDone + "% "
                 + (double) totalBits / total + " bits/key");
-        // System.out.println("write " + info.high + " len " + info.len + " "
-        // +data.length);
+        // System.out.println("write " + info.high + " len " + info.len + " " + data.length);
         try {
             out.writeLong(info.high);
             out.writeInt(info.len);
