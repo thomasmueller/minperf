@@ -295,7 +295,7 @@ public class BitBuffer {
             data[index] |= x << (remainingBits - bitCount);
         } else {
             data[index] |= x >>> (bitCount - remainingBits);
-            data[index + 1] = x << (64 - bitCount + remainingBits);
+            data[index + 1] |= x << (64 - bitCount + remainingBits);
         }
         pos += bitCount;
     }
