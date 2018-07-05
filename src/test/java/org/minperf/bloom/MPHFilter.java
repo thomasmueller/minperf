@@ -13,36 +13,32 @@ public class MPHFilter {
 
     public static void test(int bitsPerKey) {
         int testCount = 1;
-        int len = 1 * 1024 * 1024;
-        // System.out.println("MPHFilter " + len);
+        int len = 4 * 1024 * 1024;
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
         MPHFilter f = new MPHFilter(list, len, bitsPerKey);
-        time = System.nanoTime() - time;
-        // System.out.println("add: " + time / len + " ns/key");
+        long addTime = (System.nanoTime() - time) / len;
         time = System.nanoTime();
-        int falsePositives = 0, falseNegatives = 0;
+        int falsePositives = 0;
         for (int test = 0; test < testCount; test++) {
+            for (int i = 0; i < len; i++) {
+                if (!f.mayContain(list[i])) {
+                    f.mayContain(list[i]);
+                    throw new AssertionError();
+                }
+            }
             for (int i = len; i < len * 2; i++) {
                 if (f.mayContain(list[i])) {
                     falsePositives++;
                 }
             }
-            for (int i = 0; i < len; i++) {
-                if (!f.mayContain(list[i])) {
-                    f.mayContain(list[i]);
-                    falseNegatives++;
-                }
-            }
         }
-        time = System.nanoTime() - time;
-        if (falseNegatives > 0) {
-            throw new AssertionError("false negatives: " + falseNegatives);
-        }
-        // System.out.println("get: " + time / len / testCount + " ns/key");
-        System.out.println("false positives: " + (100. / testCount / len * falsePositives) +
-                "% " + (double) f.getBitCount() / len + " bits/key");
+        long getTime = (System.nanoTime() - time) / len / testCount;
+        double falsePositiveRate = (100. / testCount / len * falsePositives);
+        System.out.println("MPHF false positives: " + falsePositiveRate +
+                "% " + (double) f.getBitCount() / len + " bits/key " +
+                "add: " + addTime + " get: " + getTime + " ns/key");
     }
 
     private final int mask;
@@ -50,7 +46,7 @@ public class MPHFilter {
     private final int bitCount;
 
     MPHFilter(long[] hashes, int len, int bits) {
-        int averageBucketSize = 10;
+        int averageBucketSize = 16;
         int leafSize = 6;
         mask = (1 << bits) - 1;
         BitBuffer fingerprints = new BitBuffer(bits * len);

@@ -18,10 +18,9 @@ public class BloomFilter {
         int m = n * bitsPerKey;
         int k = getBestK(m, n);
         int testCount = 1;
-        int len = 1 * 1024 * 1024;
+        int len = 4 * 1024 * 1024;
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
-        // System.out.println("BloomFilter " + len + " bits/key " + bitsPerKey + " k " + k);
         BloomFilter f = new BloomFilter(len, bitsPerKey, k);
         long time = System.nanoTime();
         for (int test = 0; test < testCount; test++) {
@@ -29,29 +28,28 @@ public class BloomFilter {
                 f.add(list[i]);
             }
         }
-        time = System.nanoTime() - time;
-        // System.out.println("generate: " + time / len / testCount + " ns/key");
+        long addTime = (System.nanoTime() - time) / len;
         time = System.nanoTime();
-        int falsePositives = 0, falseNegatives = 0;
+        int falsePositives = 0;
         for (int test = 0; test < testCount; test++) {
+            for (int i = 0; i < len; i++) {
+                if (!f.mayContain(list[i])) {
+                    f.mayContain(list[i]);
+                    throw new AssertionError();
+                }
+            }
             for (int i = len; i < len * 2; i++) {
                 if (f.mayContain(list[i])) {
                     falsePositives++;
                 }
             }
-            for (int i = 0; i < len; i++) {
-                if (!f.mayContain(list[i])) {
-                    falseNegatives++;
-                }
-            }
         }
-        time = System.nanoTime() - time;
-        if (falseNegatives > 0) {
-            throw new AssertionError("false negatives: " + falseNegatives);
-        }
-        // System.out.println("get: " + time / len / testCount + " ns/key");
-        System.out.println("BloomFilter falsePositives: " + (100. / testCount / len * falsePositives) +
-                "% " + (double) f.getBitCount() / len + " bits/key " + k + " k");
+        long getTime = (System.nanoTime() - time) / len / testCount;
+        double falsePositiveRate = (100. / testCount / len * falsePositives);
+        System.out.println("Bloom false positives: " + falsePositiveRate +
+                "% " + (double) f.getBitCount() / len + " bits/key " +
+                "add: " + addTime + " get: " + getTime + " ns/key");
+
     }
 
     static void testBloomFilter() {

@@ -135,7 +135,7 @@ Xorshift128*
             System.out.println("read time: " + time / count + " ns/key, count=" + count);
             Thread.sleep(1000);
             time = System.nanoTime();
-            Sort.parallelSort(data);
+            Sort.parallelSortUnsigned(data);
             // Sort.sortUnsignedSimple(data);
             time = System.nanoTime() - time;
             System.out.println("sort time: " + time / count + " ns/key");

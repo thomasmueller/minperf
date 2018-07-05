@@ -59,7 +59,7 @@ public class RandomGenerator {
         }
         ArrayList<Integer> duplicateIndexList = new ArrayList<Integer>();
         duplicateIndexList.clear();
-        Sort.parallelSort(list);
+        Sort.parallelSortUnsigned(list);
         for (int i = 1; i < len; i++) {
             if (list[i - 1] == list[i]) {
                 duplicateIndexList.add(i);
@@ -81,7 +81,7 @@ public class RandomGenerator {
             }
             break;
         }
-        Sort.parallelSort(list);
+        Sort.parallelSortUnsigned(list);
         for (int i = 1; i < len; i++) {
             if (list[i - 1] == list[i]) {
                 throw new AssertionError();

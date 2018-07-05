@@ -25,7 +25,7 @@ public class Sort extends RecursiveAction {
             }
             long time = System.nanoTime();
 
-            parallelSort(data);
+            parallelSortUnsigned(data);
             // 16M: sorted in 0.497069951 secs
             // 128M: sorted in 2.943904999 secs
             // 256M: sorted in 5.710293362 secs
@@ -70,7 +70,7 @@ public class Sort extends RecursiveAction {
             for (int i = 0; i < len; i++) {
                 data[i] = r.nextInt(5) - 2;
             }
-            parallelSort(data);
+            parallelSortUnsigned(data);
             // sortUnsignedSimple(data);
             for (int i = 1; i < data.length; i++) {
                 if (Long.compareUnsigned(data[i - 1], data[i]) > 0) {
@@ -98,7 +98,7 @@ public class Sort extends RecursiveAction {
         this.level = level;
     }
 
-    public static void parallelSort(long[] data, int offset, int len) {
+    public static void parallelSortUnsigned(long[] data, int offset, int len) {
         if (len < BUCKETS) {
             sortUnsignedSimple(data, offset, len);
             return;
@@ -106,8 +106,8 @@ public class Sort extends RecursiveAction {
         ForkJoinPool.commonPool().invoke(new Sort(data, offset, offset + len, 64 - S, 0));
     }
 
-    public static void parallelSort(long[] data) {
-        parallelSort(data, 0, data.length);
+    public static void parallelSortUnsigned(long[] data) {
+        parallelSortUnsigned(data, 0, data.length);
     }
 
     @Override
