@@ -1,20 +1,22 @@
 package org.minperf.bloom;
 
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashSet;
-import java.util.LinkedList;
 
 import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
 
 /**
- * An improved Cuckoo filter. Unlike the regular Cuckoo filter, it needs 1.23
- * log(1/fpp). It basically combines a Cuckoo filter with BDZ (a minimal perfect
- * hash function algorithm, see http://cmph.sourceforge.net/papers/wads07.pdf
- * "Simple and Space-Efficient Minimal Perfect Hash Functions"). See also
- * https://brilliant.org/wiki/cuckoo-filter/.
+ * The Cuckoo plus filter, a new algorithm that can replace a bloom filter.
+ *
+ * Unlike the regular Cuckoo filter [1][2], it needs 1.23 log(1/fpp) bits per
+ * key. It basically combines a Cuckoo filter with BDZ [3][4] (a minimal perfect
+ * hash function algorithm). See also https://brilliant.org/wiki/cuckoo-filter/.
+ *
+ * [1] paper: Cuckoo Filter: Practically Better Than Bloom
+ * [2] http://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
+ * [3] paper: Simple and Space-Efficient Minimal Perfect Hash Functions
+ * [4] http://cmph.sourceforge.net/papers/wads07.pdf
  */
 public class CuckooPlusFilter {
 
@@ -25,8 +27,8 @@ public class CuckooPlusFilter {
     }
 
     public static void test(int bitsPerKey) {
+        int len = 4 * 1024 * 1024;
         int testCount = 1;
-        int len = 1024 * 1024;
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
@@ -55,16 +57,12 @@ public class CuckooPlusFilter {
 
     }
 
-//    private static final int HASHES = 3;
-//    private static final int FACTOR_TIMES_100 = 123;
-//    CuckooPlus false positives: 1.5738487243652344% 7.380014419555664 bits/key add: 2813 get: 44 ns/key
-//    CuckooPlus false positives: 0.7904052734375% 8.610016822814941 bits/key add: 3038 get: 50 ns/key
-
     private static final int HASHES = 3;
     private static final int FACTOR_TIMES_100 = 123;
 
     private final int size;
     private final int arrayLength;
+    private final int blockLength;
     private final int bitsPerKey;
     private int hashIndex;
     private BitBuffer fingerprints;
@@ -81,75 +79,68 @@ public class CuckooPlusFilter {
         this.size = entryCount;
         this.bitsPerKey = bitsPerKey;
         arrayLength = getArrayLength(size);
+        blockLength = arrayLength / HASHES;
         int m = arrayLength;
-        ArrayList<Long> order = new ArrayList<Long>();
-        HashSet<Long> done = new HashSet<Long>();
+        long[] order = new long[size];
+        int orderPos;
         long[] at;
         int hashIndex = 0;
         while (true) {
-            order.clear();
-            done.clear();
+            orderPos = 0;
             at = new long[m];
-            ArrayList<HashSet<Long>> list2 = new ArrayList<HashSet<Long>>();
-            for (int i = 0; i < m; i++) {
-                list2.add(new HashSet<Long>());
-            }
+            long[] l2 = new long[m];
+            int[] l2c = new int[m];
             for (int i = 0; i < size; i++) {
                 long x = list[i];
                 for (int hi = 0; hi < HASHES; hi++) {
-                    int h = getHash(x, hashIndex, hi, arrayLength);
-                    HashSet<Long> l = list2.get(h);
-                    l.add(x);
+                    int h = getHash(x, hashIndex, hi);
+                    l2[h] ^= x;
+                    l2c[h]++;
                 }
             }
-            LinkedList<Integer> alone = new LinkedList<Integer>();
+            int[] alone = new int[arrayLength];
+            int alonePos = 0;
             for (int i = 0; i < arrayLength; i++) {
-                if (list2.get(i).size() == 1) {
-                    alone.add(i);
+                if (l2c[i] == 1) {
+                    alone[alonePos++] = i;
                 }
             }
-            while (!alone.isEmpty()) {
-                int i = alone.removeFirst();
-                HashSet<Long> l = list2.get(i);
-                if (l.isEmpty()) {
+            while (alonePos > 0) {
+                int i = alone[--alonePos];
+                if (l2c[i] == 0) {
                     continue;
                 }
-                long x = l.iterator().next();
-                if (done.contains(x)) {
-                    continue;
-                }
-                order.add(x);
-                done.add(x);
+                long x = l2[i];
+                order[orderPos++] = x;
                 boolean found = false;
                 for (int hi = 0; hi < HASHES; hi++) {
-                    int h = getHash(x, hashIndex, hi, arrayLength);
-                    l = list2.get(h);
-                    l.remove(x);
-                    if (l.isEmpty()) {
+                    int h = getHash(x, hashIndex, hi);
+                    l2[h] ^= x;
+                    l2c[h]--;
+                    if (l2c[h] == 0) {
                         if (!found) {
                             at[h] = x;
                             found = true;
                         }
-                    } else if (l.size() == 1) {
-                        alone.add(h);
+                    } else if (l2c[h] == 1) {
+                        alone[alonePos++] = h;
                     }
                 }
             }
-            if (order.size() == size) {
+            if (orderPos == size) {
                 break;
             }
             hashIndex++;
-System.out.println("new hash");
         }
         this.hashIndex = hashIndex;
         BitSet visited = new BitSet();
         long[] fp = new long[m];
-        for (int i = order.size() - 1; i >= 0; i--) {
-            long x = order.get(i);
+        for (int i = orderPos - 1; i >= 0; i--) {
+            long x = order[i];
             long sum = fingerprint(x);
             int change = 0;
             for (int hi = 0; hi < HASHES; hi++) {
-                int h = getHash(x, hashIndex, hi, arrayLength);
+                int h = getHash(x, hashIndex, hi);
                 if (visited.get(h)) {
                     sum ^= fp[h];
                 } else {
@@ -168,19 +159,19 @@ System.out.println("new hash");
     }
 
     public boolean mayContain(long key) {
-        long x = 0;
-        long fp = fingerprint(key);
+        long x = fingerprint(key);
         for (int hi = 0; hi < HASHES; hi++) {
-            int h = getHash(key, hashIndex, hi, arrayLength);
+            int h = getHash(key, hashIndex, hi);
             x ^= fingerprints.readNumber(h * bitsPerKey, bitsPerKey);
         }
-        return x == fp;
+        return x == 0;
     }
 
-    private static <T> int getHash(long x, int hashIndex, int index, int arrayLength) {
+    private int getHash(long x, int hashIndex, int index) {
         long r = supplementalHash(x, hashIndex + index);
-        r = reduce((int) r, arrayLength / HASHES);
-        r = r + index * arrayLength / HASHES;
+        r = reduce((int) r, arrayLength);
+        // r = reduce((int) r, blockLength);
+        // r = r + index * blockLength;
         return (int) r;
     }
 
