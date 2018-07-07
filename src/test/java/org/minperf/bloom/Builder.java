@@ -52,7 +52,7 @@ public class Builder {
             // TODO can save one multiplication for generation
             //System.out.println("   " + x + " [" + index + "]");
             return Mix.supplementalHashWeyl(x, index);
-        }
+    }
 
     public static int reduce(int hash, int n) {
         // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/

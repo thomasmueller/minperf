@@ -1,8 +1,5 @@
 package org.minperf.bloom;
 
-import java.util.HashSet;
-import java.util.Random;
-
 import org.minperf.hem.RandomGenerator;
 
 public class BloomFilter {
@@ -14,11 +11,11 @@ public class BloomFilter {
     }
 
     public static void test(int bitsPerKey) {
+        int len = 4 * 1024 * 1024;
         int n = 1024 * 1024;
         int m = n * bitsPerKey;
         int k = getBestK(m, n);
         int testCount = 1;
-        int len = 4 * 1024 * 1024;
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         BloomFilter f = new BloomFilter(len, bitsPerKey, k);
@@ -49,41 +46,6 @@ public class BloomFilter {
         System.out.println("Bloom false positives: " + falsePositiveRate +
                 "% " + (double) f.getBitCount() / len + " bits/key " +
                 "add: " + addTime + " get: " + getTime + " ns/key");
-
-    }
-
-    static void testBloomFilter() {
-        int len = 1000;
-        BloomFilter f = new BloomFilter(len);
-        Random r = new Random(1);
-        HashSet<Integer> set = new HashSet<Integer>();
-        while (set.size() < len) {
-            set.add(r.nextInt());
-        }
-        for (int x : set) {
-            f.add(x);
-        }
-        for (int x : set) {
-            if (!f.mayContain(x)) {
-                throw new Error();
-            }
-        }
-        int wrong = 0;
-        int test = 0;
-        for (int i = 0; i < len * 100;) {
-            int x = r.nextInt();
-            if (set.contains(x)) {
-                continue;
-            }
-            test++;
-            if (f.mayContain(x)) {
-                wrong++;
-            }
-            i++;
-        }
-        System.out.println("wrong: " + wrong + " test: " + test);
-        double percentWrong = 100.0 * wrong / (len * 100);
-        System.out.println(percentWrong + "%");
 
     }
 

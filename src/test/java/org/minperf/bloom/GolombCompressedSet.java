@@ -38,9 +38,10 @@ public class GolombCompressedSet {
         }
         long getTime = (System.nanoTime() - time) / len / testCount;
         double falsePositiveRate = (100. / testCount / len * falsePositives);
+        double bitsPerKeyResult = (double) f.getBitCount() / len;
         System.out.println("GCS false positives: " + falsePositiveRate +
-                "% " + (double) f.getBitCount() / len + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key");
+                "% " + bitsPerKeyResult + " bits/key " +
+                "add: " + addTime + " get: " + getTime + " ns/key overhead " + (bitsPerKeyResult - bitsPerKey));
     }
 
     private final BitBuffer buff;
@@ -63,7 +64,7 @@ public class GolombCompressedSet {
         if (bucketShift <= 0 || bucketShift >= 64) {
             throw new IllegalArgumentException();
         }
-        this.golombShift = bits - 1;
+        this.golombShift = bits;
         BitBuffer buckets = new BitBuffer(10 * bits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;
