@@ -129,7 +129,10 @@ public class CuckooPlusFilter {
     }
 
     /**
-     * Construct the filter. See the BDZ algorithm, as it almost matches it.
+     * Construct the filter. This is basically the BDZ algorithm. The
+     * implementation is overly complicated I think. The algorithm itself is
+     * basically the same as BDZ, except that xor is used to store the
+     * fingerprints.
      *
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
@@ -140,12 +143,16 @@ public class CuckooPlusFilter {
         arrayLength = getArrayLength(size);
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
-        long[] order = new long[size];
-        int orderPos;
+        // the order in which the fingerprints are calculated
+        // keys[reverseOrder[0]] is the last entry to insert,
+        // keys[reverseOrder[1]] the second to last
+        long[] reverseOrder = new long[size];
+        // current index in the reverseOrder list
+        int reverseOrderPos;
         long[] at;
         int hashIndex = 0;
         while (true) {
-            orderPos = 0;
+            reverseOrderPos = 0;
             at = new long[m];
             long[] l2 = new long[m];
             int[] l2c = new int[m];
@@ -170,10 +177,11 @@ public class CuckooPlusFilter {
                     continue;
                 }
                 long x = l2[i];
-                order[orderPos++] = x;
+                reverseOrder[reverseOrderPos++] = x;
                 boolean found = false;
                 for (int hi = 0; hi < HASHES; hi++) {
                     int h = getHash(x, hashIndex, hi);
+                    // this is yet another xor trick
                     l2[h] ^= x;
                     l2c[h]--;
                     if (l2c[h] == 0) {
@@ -186,22 +194,25 @@ public class CuckooPlusFilter {
                     }
                 }
             }
-            if (orderPos == size) {
+            if (reverseOrderPos == size) {
                 break;
             }
             hashIndex++;
         }
         this.hashIndex = hashIndex;
         BitSet visited = new BitSet();
+        // fingerprints (array, then converted to a bit buffer)
         long[] fp = new long[m];
-        for (int i = orderPos - 1; i >= 0; i--) {
-            long x = order[i];
-            long sum = fingerprint(x);
+        for (int i = reverseOrderPos - 1; i >= 0; i--) {
+            long x = reverseOrder[i];
+            long xor = fingerprint(x);
             int change = 0;
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(x, hashIndex, hi);
                 if (visited.get(h)) {
-                    sum ^= fp[h];
+                    // this is different from BDZ: using xor to calculate the
+                    // fingerprint
+                    xor ^= fp[h];
                 } else {
                     visited.set(h);
                     if (at[h] == x) {
@@ -209,7 +220,7 @@ public class CuckooPlusFilter {
                     }
                 }
             }
-            fp[change] = sum;
+            fp[change] = xor;
         }
         fingerprints = new BitBuffer(bitsPerFingerprint * m);
         for(long f : fp) {
