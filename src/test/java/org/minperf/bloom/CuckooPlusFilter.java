@@ -7,7 +7,8 @@ import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
 
 /**
- * The Xor Filter, a new algorithm that can replace a bloom filter.
+ * The Cuckoo Plus / BDZ / Xor Filter, a new algorithm that can replace a bloom
+ * filter.
  *
  * It needs 1.23 log(1/fpp) bits per key. It is related to the BDZ algorithm [1]
  * (a minimal perfect hash function algorithm).
@@ -86,20 +87,21 @@ public class CuckooPlusFilter {
     // the number of hashes per key (see the BDZ algorithm)
     private static final int HASHES = 3;
 
-    // the table needs to be 1.23 times the number of entries
+    // the table needs to be 1.23 times the number of keys to store
     private static final int FACTOR_TIMES_100 = 123;
 
-    // the number of entries in the filter
+    // the number of keys in the filter
     private final int size;
 
     // the table (array) length, that is size * 1.23
     private final int arrayLength;
 
     // if the table is divided into 3 blocks (one block for each hash)
-    // this would allow to better compress the filter
+    // this allows to better compress the filter,
+    // because the last block contains more zero entries than the first two
     private final int blockLength;
 
-    // the fingerprint size
+    // the fingerprint size in bits
     private final int bitsPerFingerprint;
 
     // usually 0, but in case the table can't be constructed (which is very
@@ -129,10 +131,19 @@ public class CuckooPlusFilter {
     }
 
     /**
-     * Construct the filter. This is basically the BDZ algorithm. The
-     * implementation is overly complicated I think. The algorithm itself is
-     * basically the same as BDZ, except that xor is used to store the
+     * Construct the filter. This is basically the BDZ algorithm. The algorithm
+     * itself is basically the same as BDZ, except that xor is used to store the
      * fingerprints.
+     *
+     * We use cuckoo hashing, so that each key is stored in one entry in the
+     * hash table. We use 3 hash functions: h0, h1, h2. But we don't want to use
+     * any additional bits per entry to calculate which of the entries in the
+     * table contains the key. For this, we ensure that the fingerprint of each
+     * key can be calculated as table[h0(key)] xor table[h1(key)] xor
+     * table[h2(key)]. If we insert the entries in the right order, this is
+     * possible, as one the 3 possible entries for the key can be set as we
+     * like. So we first need to find the right order to insert the keys. Once
+     * we have that, we can insert the data.
      *
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
@@ -143,57 +154,81 @@ public class CuckooPlusFilter {
         arrayLength = getArrayLength(size);
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
-        // the order in which the fingerprints are calculated
+
+        // the order in which the fingerprints are inserted, where
         // keys[reverseOrder[0]] is the last entry to insert,
         // keys[reverseOrder[1]] the second to last
         long[] reverseOrder = new long[size];
         // current index in the reverseOrder list
         int reverseOrderPos;
+
+        // keys are stored in this array as if it were a regular cuckoo hash
+        // table (we only need this during construction time)
         long[] at;
+
+        // == mapping step ==
+        // hashIndex is usually 0; only if we detect a cycle
+        // (which is extremely unlikely) we would have to use a larger hashIndex
         int hashIndex = 0;
         while (true) {
-            reverseOrderPos = 0;
             at = new long[m];
-            long[] l2 = new long[m];
-            int[] l2c = new int[m];
-            for (int i = 0; i < size; i++) {
-                long x = keys[i];
+
+            // we use an second table t2 to keep the list of all keys that map
+            // to a given entry (with a broken hash function, all keys could map
+            // to entry zero).
+            // t2count: the number of keys in a given location
+            int[] t2count = new int[m];
+            // t2 is the table - but we don't store each key, only the xor of
+            // all keys this is possible as when removing a key, we simply xor
+            // again, and once only one is remaining, we know which one it was
+            long[] t2 = new long[m];
+            // now we loop over all keys and insert them into the t2 table
+            for(long k : keys) {
                 for (int hi = 0; hi < HASHES; hi++) {
-                    int h = getHash(x, hashIndex, hi);
-                    l2[h] ^= x;
-                    l2c[h]++;
+                    int h = getHash(k, hashIndex, hi);
+                    t2[h] ^= k;
+                    t2count[h]++;
                 }
             }
+
+            // == generate the queue ==
+            // the list of indexes in the table that are "alone", that is,
+            // only have one key pointing to them - those are the simple cases
             int[] alone = new int[arrayLength];
             int alonePos = 0;
             for (int i = 0; i < arrayLength; i++) {
-                if (l2c[i] == 1) {
+                if (t2count[i] == 1) {
                     alone[alonePos++] = i;
                 }
             }
+            // for each entry that is alone,
+            // we remove it from t2, and add it to the reverseOrder list
+            reverseOrderPos = 0;
             while (alonePos > 0) {
                 int i = alone[--alonePos];
-                if (l2c[i] == 0) {
+                if (t2count[i] == 0) {
                     continue;
                 }
-                long x = l2[i];
-                reverseOrder[reverseOrderPos++] = x;
+                long k = t2[i];
+                reverseOrder[reverseOrderPos++] = k;
                 boolean found = false;
                 for (int hi = 0; hi < HASHES; hi++) {
-                    int h = getHash(x, hashIndex, hi);
-                    // this is yet another xor trick
-                    l2[h] ^= x;
-                    l2c[h]--;
-                    if (l2c[h] == 0) {
+                    int h = getHash(k, hashIndex, hi);
+                    // remove this key from the t2 table, using xor
+                    t2[h] ^= k;
+                    t2count[h]--;
+                    if (t2count[h] == 0) {
                         if (!found) {
-                            at[h] = x;
+                            at[h] = k;
                             found = true;
                         }
-                    } else if (l2c[h] == 1) {
+                    } else if (t2count[h] == 1) {
+                        // we found a key that is _now_ alone
                         alone[alonePos++] = h;
                     }
                 }
             }
+            // this means there was no loop
             if (reverseOrderPos == size) {
                 break;
             }
@@ -201,21 +236,27 @@ public class CuckooPlusFilter {
         }
         this.hashIndex = hashIndex;
         BitSet visited = new BitSet();
+
+        // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
         long[] fp = new long[m];
         for (int i = reverseOrderPos - 1; i >= 0; i--) {
-            long x = reverseOrder[i];
-            long xor = fingerprint(x);
+            // the key we insert next
+            long k = reverseOrder[i];
+            // which entry in the table we can change
             int change = 0;
+            // we set table[change] to the fingerprint of the key,
+            // unless the other two entries are already occupied
+            long xor = fingerprint(k);
             for (int hi = 0; hi < HASHES; hi++) {
-                int h = getHash(x, hashIndex, hi);
+                int h = getHash(k, hashIndex, hi);
                 if (visited.get(h)) {
                     // this is different from BDZ: using xor to calculate the
                     // fingerprint
                     xor ^= fp[h];
                 } else {
                     visited.set(h);
-                    if (at[h] == x) {
+                    if (at[h] == k) {
                         change = h;
                     }
                 }
@@ -235,12 +276,12 @@ public class CuckooPlusFilter {
      * @return true if the key may be in the filter
      */
     public boolean mayContain(long key) {
-        long x = fingerprint(key);
+        long f = fingerprint(key);
         for (int hi = 0; hi < HASHES; hi++) {
             int h = getHash(key, hashIndex, hi);
-            x ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
+            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
         }
-        return x == 0;
+        return f == 0;
     }
 
     /**
@@ -253,11 +294,14 @@ public class CuckooPlusFilter {
      */
     private int getHash(long key, int hashIndex, int index) {
         long r = supplementalHash(key, hashIndex + index);
-        r = reduce((int) r, arrayLength);
-        // the following would use one distinct block of entries for each hash
-        // index:
-        // r = reduce((int) r, blockLength);
-        // r = r + index * blockLength;
+
+        // this would be slightly faster, but means we only have one range
+        // r = reduce((int) r, arrayLength);
+
+        // use one distinct block of entries for each hash index
+        r = reduce((int) r, blockLength);
+        r = r + index * blockLength;
+
         return (int) r;
     }
 
