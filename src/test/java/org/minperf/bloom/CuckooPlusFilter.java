@@ -7,49 +7,75 @@ import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
 
 /**
- * The Cuckoo plus filter, a new algorithm that can replace a bloom filter.
+ * The Xor Filter, a new algorithm that can replace a bloom filter.
  *
- * Unlike the regular Cuckoo filter [1][2], it needs 1.23 log(1/fpp) bits per
- * key. It basically combines a Cuckoo filter with BDZ [3][4] (a minimal perfect
- * hash function algorithm). See also https://brilliant.org/wiki/cuckoo-filter/.
+ * It needs 1.23 log(1/fpp) bits per key. It is related to the BDZ algorithm [1]
+ * (a minimal perfect hash function algorithm).
  *
- * [1] paper: Cuckoo Filter: Practically Better Than Bloom
- * [2] http://www.cs.cmu.edu/~dga/papers/cuckoo-conext2014.pdf
- * [3] paper: Simple and Space-Efficient Minimal Perfect Hash Functions
- * [4] http://cmph.sourceforge.net/papers/wads07.pdf
+ * [1] paper: Simple and Space-Efficient Minimal Perfect Hash Functions -
+ * http://cmph.sourceforge.net/papers/wads07.pdf
  */
 public class CuckooPlusFilter {
 
+    /**
+     * Tests the filter with fingerprint length 4..19 bits.
+     */
     public static void main(String... args) {
-        for(int bitsPerKey = 4; bitsPerKey < 20; bitsPerKey++) {
-            test(bitsPerKey);
+        for(int bitsPerFingerprint = 4; bitsPerFingerprint < 20; bitsPerFingerprint++) {
+            test(bitsPerFingerprint);
         }
     }
 
-    public static void test(int bitsPerKey) {
+    /**
+     * Tests the filter.
+     *
+     * @param bitsPerFingerprint the number of bits for each fingerprint.
+     */
+    public static void test(int bitsPerFingerprint) {
+        // the number of entries
         int len = 4 * 1024 * 1024;
+        // the number of tests to run
         int testCount = 1;
+        // the list of entries: the first half is keys in the filter,
+        // the second half is _not_ in the filter, but used to calculate false
+        // positives
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
+        // the keys
+        long[] keys = new long[len];
+        // the list of non-keys, used to calculate false positives
+        long[] nonKeys = new long[len];
+        for(int i = 0; i<len; i++) {
+            keys[i] = list[i];
+            nonKeys[i] = list[i + len];
+        }
+
+        // construct the filter with the first half of the list
         long time = System.nanoTime();
-        CuckooPlusFilter f = new CuckooPlusFilter(list, len, bitsPerKey);
+        CuckooPlusFilter f = new CuckooPlusFilter(keys, bitsPerFingerprint);
         long addTime = (System.nanoTime() - time) / len;
+
+        // test the filter, that is: lookups
         time = System.nanoTime();
         int falsePositives = 0;
         for (int test = 0; test < testCount; test++) {
+            // each key (the first half) needs to be found
             for (int i = 0; i < len; i++) {
-                if (!f.mayContain(list[i])) {
-                    f.mayContain(list[i]);
+                if (!f.mayContain(keys[i])) {
                     throw new AssertionError();
                 }
             }
-            for (int i = len; i < len * 2; i++) {
-                if (f.mayContain(list[i])) {
+            // non keys _may_ be found - this is used to calculate false
+            // positives
+            for (int i = 0; i < len; i++) {
+                if (f.mayContain(nonKeys[i])) {
                     falsePositives++;
                 }
             }
         }
         long getTime = (System.nanoTime() - time) / len / testCount;
+
+        // print results (timing data, false positive rate)
         double falsePositiveRate = (100. / testCount / len * falsePositives);
         System.out.println("CuckooPlus false positives: " + falsePositiveRate +
                 "% " + (double) f.getBitCount() / len + " bits/key " +
@@ -57,27 +83,60 @@ public class CuckooPlusFilter {
 
     }
 
+    // the number of hashes per key (see the BDZ algorithm)
     private static final int HASHES = 3;
+
+    // the table needs to be 1.23 times the number of entries
     private static final int FACTOR_TIMES_100 = 123;
 
+    // the number of entries in the filter
     private final int size;
+
+    // the table (array) length, that is size * 1.23
     private final int arrayLength;
+
+    // if the table is divided into 3 blocks (one block for each hash)
+    // this would allow to better compress the filter
     private final int blockLength;
-    private final int bitsPerKey;
+
+    // the fingerprint size
+    private final int bitsPerFingerprint;
+
+    // usually 0, but in case the table can't be constructed (which is very
+    // unlikely), then the table is rebuilt with hash index 1, and so on.
     private int hashIndex;
+
+    // the fingerprints (internally an array of long)
     private BitBuffer fingerprints;
 
+    /**
+     * The size of the filter, in bits.
+     *
+     * @return the size
+     */
     private double getBitCount() {
         return fingerprints.position();
     }
 
+    /**
+     * Calculate the table (array) length. This is 1.23 times the size.
+     *
+     * @param size the number of entries
+     * @return the table length
+     */
     private static int getArrayLength(int size) {
         return HASHES + FACTOR_TIMES_100 * size / 100;
     }
 
-    CuckooPlusFilter(long[] list, int entryCount, int bitsPerKey) {
-        this.size = entryCount;
-        this.bitsPerKey = bitsPerKey;
+    /**
+     * Construct the filter. See the BDZ algorithm, as it almost matches it.
+     *
+     * @param keys the list of entries (keys)
+     * @param bitsPerFingerprint the fingerprint size in bits
+     */
+    CuckooPlusFilter(long[] keys, int bitsPerFingerprint) {
+        this.size = keys.length;
+        this.bitsPerFingerprint = bitsPerFingerprint;
         arrayLength = getArrayLength(size);
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
@@ -91,7 +150,7 @@ public class CuckooPlusFilter {
             long[] l2 = new long[m];
             int[] l2c = new int[m];
             for (int i = 0; i < size; i++) {
-                long x = list[i];
+                long x = keys[i];
                 for (int hi = 0; hi < HASHES; hi++) {
                     int h = getHash(x, hashIndex, hi);
                     l2[h] ^= x;
@@ -152,47 +211,90 @@ public class CuckooPlusFilter {
             }
             fp[change] = sum;
         }
-        fingerprints = new BitBuffer(bitsPerKey * m);
+        fingerprints = new BitBuffer(bitsPerFingerprint * m);
         for(long f : fp) {
-            fingerprints.writeNumber(f, bitsPerKey);
+            fingerprints.writeNumber(f, bitsPerFingerprint);
         }
     }
 
+    /**
+     * Whether the filter _may_ contain a key.
+     *
+     * @param key the key to test
+     * @return true if the key may be in the filter
+     */
     public boolean mayContain(long key) {
         long x = fingerprint(key);
         for (int hi = 0; hi < HASHES; hi++) {
             int h = getHash(key, hashIndex, hi);
-            x ^= fingerprints.readNumber(h * bitsPerKey, bitsPerKey);
+            x ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
         }
         return x == 0;
     }
 
-    private int getHash(long x, int hashIndex, int index) {
-        long r = supplementalHash(x, hashIndex + index);
+    /**
+     * Calculate the hash for a key.
+     *
+     * @param key the key
+     * @param hashIndex the hash index (almost always 0)
+     * @param index the index (0..2)
+     * @return the hash (0..arrayLength)
+     */
+    private int getHash(long key, int hashIndex, int index) {
+        long r = supplementalHash(key, hashIndex + index);
         r = reduce((int) r, arrayLength);
+        // the following would use one distinct block of entries for each hash
+        // index:
         // r = reduce((int) r, blockLength);
         // r = r + index * blockLength;
         return (int) r;
     }
 
+    /**
+     * Calculate the fingerprint.
+     *
+     * @param key the key
+     * @return the fingerprint
+     */
     private long fingerprint(long key) {
-        return hash64(key) & ((1L << bitsPerKey) - 1);
+        return hash64(key) & ((1L << bitsPerFingerprint) - 1);
     }
 
-    private static int supplementalHash(long x, int index) {
-        return Mix.supplementalHashWeyl(x, index);
+    /**
+     * Calculate a supplemental hash. Kind of like a universal hash.
+     *
+     * @param key the key
+     * @param index the index (0..2)
+     * @return the hash
+     */
+    private static int supplementalHash(long key, int index) {
+        return Mix.supplementalHashWeyl(key, index);
     }
 
+    /**
+     * Shrink the hash to a value 0..n. Kind of like modulo, but using
+     * multiplication.
+     *
+     * @param hash the hash
+     * @param n the maximum of the result
+     * @return the reduced value
+     */
     private static int reduce(int hash, int n) {
         // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
         return (int) (((hash & 0xffffffffL) * n) >>> 32);
     }
 
-    private static long hash64(long x) {
-        x = (x ^ (x >>> 30)) * 0xbf58476d1ce4e5b9L;
-        x = (x ^ (x >>> 27)) * 0x94d049bb133111ebL;
-        x = x ^ (x >>> 31);
-        return x;
+    /**
+     * Hash the key.
+     *
+     * @param key the key
+     * @return the hash
+     */
+    private static long hash64(long key) {
+        key = (key ^ (key >>> 30)) * 0xbf58476d1ce4e5b9L;
+        key = (key ^ (key >>> 27)) * 0x94d049bb133111ebL;
+        key = key ^ (key >>> 31);
+        return key;
     }
 
 }
