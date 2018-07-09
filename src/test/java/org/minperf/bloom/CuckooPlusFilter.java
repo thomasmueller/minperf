@@ -1,7 +1,5 @@
 package org.minperf.bloom;
 
-import java.util.BitSet;
-
 import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
@@ -190,56 +188,64 @@ public class CuckooPlusFilter {
                     t2count[h]++;
                 }
             }
-
             // == generate the queue ==
             // the list of indexes in the table that are "alone", that is,
             // only have one key pointing to them - those are the simple cases
             int[] alone = new int[arrayLength];
             int alonePos = 0;
-            for (int i = 0; i < arrayLength; i++) {
-                if (t2count[i] == 1) {
-                    alone[alonePos++] = i;
-                }
-            }
             // for each entry that is alone,
             // we remove it from t2, and add it to the reverseOrder list
             reverseOrderPos = 0;
-            while (alonePos > 0) {
-                int i = alone[--alonePos];
-                if (t2count[i] == 0) {
-                    continue;
+            // nextAloneCheck loops over all entries, to find an entry that is alone
+            // once we found one, we remove it, and while removing it, we check
+            // if this resulted in yet another entry that is alone -
+            // the BDZ algorithm loops over _all_ entries in the beginning,
+            // but this results in adding more entries to the alone list multiple times
+            for(int nextAloneCheck = 0; nextAloneCheck < arrayLength;) {
+                while (nextAloneCheck < arrayLength) {
+                    if (t2count[nextAloneCheck] == 1) {
+                        alone[alonePos++] = nextAloneCheck;
+                        break;
+                    }
+                    nextAloneCheck++;
                 }
-                long k = t2[i];
-                reverseOrder[reverseOrderPos++] = k;
-                boolean found = false;
-                for (int hi = 0; hi < HASHES; hi++) {
-                    int h = getHash(k, hashIndex, hi);
-                    // remove this key from the t2 table, using xor
-                    t2[h] ^= k;
-                    t2count[h]--;
-                    if (t2count[h] == 0) {
-                        if (!found) {
-                            at[h] = k;
-                            found = true;
+                while (alonePos > 0) {
+                    int i = alone[--alonePos];
+                    if (t2count[i] == 0) {
+                        continue;
+                    }
+                    long k = t2[i];
+                    reverseOrder[reverseOrderPos++] = k;
+                    boolean found = false;
+                    for (int hi = 0; hi < HASHES; hi++) {
+                        int h = getHash(k, hashIndex, hi);
+                        int newCount = --t2count[h];
+                        if (newCount == 0) {
+                            if (!found) {
+                                at[h] = k;
+                                found = true;
+                            }
+                        } else {
+                            if (newCount == 1) {
+                                // we found a key that is _now_ alone
+                                alone[alonePos++] = h;
+                            }
+                            // remove this key from the t2 table, using xor
+                            t2[h] ^= k;
                         }
-                    } else if (t2count[h] == 1) {
-                        // we found a key that is _now_ alone
-                        alone[alonePos++] = h;
                     }
                 }
             }
-            // this means there was no loop
+            // this means there was no cycle
             if (reverseOrderPos == size) {
                 break;
             }
             hashIndex++;
         }
         this.hashIndex = hashIndex;
-        BitSet visited = new BitSet();
-
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
-        long[] fp = new long[m];
+        int[] fp = new int[m];
         for (int i = reverseOrderPos - 1; i >= 0; i--) {
             // the key we insert next
             long k = reverseOrder[i];
@@ -247,18 +253,15 @@ public class CuckooPlusFilter {
             int change = 0;
             // we set table[change] to the fingerprint of the key,
             // unless the other two entries are already occupied
-            long xor = fingerprint(k);
+            int xor = fingerprint(k);
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(k, hashIndex, hi);
-                if (visited.get(h)) {
+                if (at[h] == k) {
+                    change = h;
+                } else {
                     // this is different from BDZ: using xor to calculate the
                     // fingerprint
                     xor ^= fp[h];
-                } else {
-                    visited.set(h);
-                    if (at[h] == k) {
-                        change = h;
-                    }
                 }
             }
             fp[change] = xor;
@@ -276,7 +279,7 @@ public class CuckooPlusFilter {
      * @return true if the key may be in the filter
      */
     public boolean mayContain(long key) {
-        long f = fingerprint(key);
+        int f = fingerprint(key);
         for (int hi = 0; hi < HASHES; hi++) {
             int h = getHash(key, hashIndex, hi);
             f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
@@ -311,8 +314,8 @@ public class CuckooPlusFilter {
      * @param key the key
      * @return the fingerprint
      */
-    private long fingerprint(long key) {
-        return hash64(key) & ((1L << bitsPerFingerprint) - 1);
+    private int fingerprint(long key) {
+        return (int) hash64(key) & ((1 << bitsPerFingerprint) - 1);
     }
 
     /**
