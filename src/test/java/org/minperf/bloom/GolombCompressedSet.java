@@ -8,6 +8,11 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
 /**
  * Sometimes called "Golomb Coded Sets". This implementation uses Golomb-Rice
  * coding, which is faster than Golomb coding, but uses slightly more space.
+ *
+ * See here on how much space it uses:
+ * https://github.com/0xcb/Golomb-coded-map
+ * log2(1/e) + 1/(1-(1-e)^(1/e))
+ * So Golomb-coding overhead is about 1.5 bits/key
  */
 public class GolombCompressedSet {
 
