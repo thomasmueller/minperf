@@ -16,11 +16,16 @@ import org.minperf.hem.RandomGenerator;
  */
 public class CuckooPlusFilter {
 
+    private static final boolean SHOW_ZERO_RATE = false;
+
+    // TODO how to construct from a larger, mutable data structure
+    // (GolombCompressedSet, Cuckoo filter,...)?
+
     /**
      * Tests the filter with fingerprint length 4..19 bits.
      */
     public static void main(String... args) {
-        for(int bitsPerFingerprint = 4; bitsPerFingerprint < 20; bitsPerFingerprint++) {
+        for (int bitsPerFingerprint = 4; bitsPerFingerprint < 20; bitsPerFingerprint++) {
             test(bitsPerFingerprint);
         }
     }
@@ -125,7 +130,7 @@ public class CuckooPlusFilter {
      * @return the table length
      */
     private static int getArrayLength(int size) {
-        return HASHES + FACTOR_TIMES_100 * size / 100;
+        return (int) (HASHES + (long) FACTOR_TIMES_100 * size / 100);
     }
 
     /**
@@ -205,7 +210,7 @@ public class CuckooPlusFilter {
                 while (nextAloneCheck < arrayLength) {
                     if (t2count[nextAloneCheck] == 1) {
                         alone[alonePos++] = nextAloneCheck;
-                        break;
+                        // break;
                     }
                     nextAloneCheck++;
                 }
@@ -216,17 +221,14 @@ public class CuckooPlusFilter {
                     }
                     long k = t2[i];
                     reverseOrder[reverseOrderPos++] = k;
-                    boolean found = false;
                     for (int hi = 0; hi < HASHES; hi++) {
                         int h = getHash(k, hashIndex, hi);
                         int newCount = --t2count[h];
                         if (newCount == 0) {
-                            if (!found) {
-                                at[h] = k;
-                                found = true;
-                            }
+                            at[h] = k;
                         } else {
                             if (newCount == 1) {
+                            // if (newCount == 1 && h < nextAloneCheck) {
                                 // we found a key that is _now_ alone
                                 alone[alonePos++] = h;
                             }
@@ -266,6 +268,33 @@ public class CuckooPlusFilter {
             }
             fp[change] = xor;
         }
+        if (SHOW_ZERO_RATE) {
+            int zeros = 0;
+            for (int f : fp) {
+                if (f == 0) {
+                    zeros++;
+                }
+            }
+            int zeros0 = 0;
+            int zeros1 = 0;
+            int zeros2 = 0;
+            for (int i = 0; i < blockLength; i++) {
+                if (fp[i] == 0)
+                    zeros0++;
+                if (fp[blockLength + i] == 0)
+                    zeros1++;
+                if (fp[2 * blockLength + i] == 0)
+                    zeros2++;
+            }
+            if (Math.abs(zeros0 + zeros1 + zeros2 - zeros) > 2) {
+                System.out.println("incorrect " + (zeros0 + zeros1 + zeros2) + " / " + zeros);
+            }
+            System.out.println("zeros block 0 " + 100. * zeros0 / blockLength +
+                    " block 1 " + 100. * zeros1 / blockLength +
+                    " block 2 " + 100. * zeros2 / blockLength +
+                    " total " + (100. / fp.length * zeros) + "%");
+        }
+
         fingerprints = new BitBuffer(bitsPerFingerprint * m);
         for(long f : fp) {
             fingerprints.writeNumber(f, bitsPerFingerprint);
@@ -280,10 +309,12 @@ public class CuckooPlusFilter {
      */
     public boolean mayContain(long key) {
         int f = fingerprint(key);
-        for (int hi = 0; hi < HASHES; hi++) {
-            int h = getHash(key, hashIndex, hi);
-            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
-        }
+        int h0 = getHash(key, hashIndex, 0);
+        int h1 = getHash(key, hashIndex, 1);
+        int h2 = getHash(key, hashIndex, 2);
+        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
         return f == 0;
     }
 
