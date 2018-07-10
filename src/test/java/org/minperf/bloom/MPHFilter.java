@@ -12,8 +12,8 @@ public class MPHFilter {
     }
 
     public static void test(int bitsPerKey) {
-        int testCount = 1;
         int len = 4 * 1024 * 1024;
+        int testCount = 1;
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
@@ -38,7 +38,7 @@ public class MPHFilter {
         double falsePositiveRate = (100. / testCount / len * falsePositives);
         System.out.println("MPHF false positives: " + falsePositiveRate +
                 "% " + (double) f.getBitCount() / len + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key");
+                "add: " + addTime + " get: " + getTime + " ns/key " + len + " count");
     }
 
     private final int mask;
