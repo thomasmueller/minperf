@@ -4,12 +4,13 @@ import org.minperf.hem.RandomGenerator;
 
 public class BloomFilter {
 
+    // See also https://hur.st/bloomfilter/?n=357212&p=0.01&m=&k=
+
     public static void main(String... args) {
         for(int bitsPerKey = 4; bitsPerKey < 20; bitsPerKey++) {
             test(bitsPerKey);
         }
     }
-
     public static void test(int bitsPerKey) {
         int len = 4 * 1024 * 1024;
         int n = 1024 * 1024;
@@ -45,7 +46,7 @@ public class BloomFilter {
         double falsePositiveRate = (100. / testCount / len * falsePositives);
         System.out.println("Bloom false positives: " + falsePositiveRate +
                 "% " + (double) f.getBitCount() / len + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key");
+                "add: " + addTime + " get: " + getTime + " ns/key " + len + " count");
 
     }
 
