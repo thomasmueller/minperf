@@ -1,5 +1,7 @@
 package org.minperf.bloom;
 
+import java.util.BitSet;
+
 import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
@@ -59,6 +61,12 @@ public class CuckooPlusFilter {
         CuckooPlusFilter f = new CuckooPlusFilter(keys, bitsPerFingerprint);
         long addTime = (System.nanoTime() - time) / len;
 
+
+        // BitBuffer test2 = new BitBuffer(f.fingerprints.position());
+        // f.write(test2);
+        // test2.seek(0);
+        // f = CuckooPlusFilter.read(test2);
+
         // test the filter, that is: lookups
         time = System.nanoTime();
         int falsePositives = 0;
@@ -84,7 +92,11 @@ public class CuckooPlusFilter {
         System.out.println("CuckooPlus false positives: " + falsePositiveRate +
                 "% " + (double) f.getBitCount() / len + " bits/key " +
                 "add: " + addTime + " get: " + getTime + " ns/key");
-
+         // BitBuffer test = new BitBuffer(f.fingerprints.position());
+         // f.writeCompressed(test);
+         // int compressedLength = test.position();
+         // System.out.println("original: " + f.fingerprints.position() + " compressed: " + compressedLength);
+         // System.out.println(((double) compressedLength / len) + " bits/key compressed at " + bitsPerFingerprint + " bits/fp");
     }
 
     // the number of hashes per key (see the BDZ algorithm)
@@ -384,6 +396,86 @@ public class CuckooPlusFilter {
         key = (key ^ (key >>> 27)) * 0x94d049bb133111ebL;
         key = key ^ (key >>> 31);
         return key;
+    }
+
+    /**
+     * Write compressed. There is an overhead of 0.8 bits per entry.
+     *
+     * @param target the target buffer
+     */
+    public void writeCompressed(BitBuffer target) {
+        target.writeEliasDelta(size + 1);
+        target.writeEliasDelta(bitsPerFingerprint);
+        target.writeEliasDelta(hashIndex + 1);
+        BinaryArithmeticBuffer.Out out = new BinaryArithmeticBuffer.Out(target);
+        int count = 0;
+        for (int i = 0; i < arrayLength; i++) {
+            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            if (x != 0) {
+                count++;
+            }
+        }
+        target.writeEliasDelta(count + 1);
+        for (int i = 0; i < arrayLength; i++) {
+            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            if (x != 0) {
+                target.writeNumber(x, bitsPerFingerprint);
+            }
+        }
+        for (int i = 0; i < arrayLength; i++) {
+            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            int prob = i < blockLength ? PROB_ONE_0 : i < 2 * blockLength ? PROB_ONE_1 : PROB_ONE_2;
+            if (x == 0) {
+                out.writeBit(false, prob);
+            } else {
+                out.writeBit(true, prob);
+            }
+        }
+        out.flush();
+    }
+
+    public static CuckooPlusFilter read(BitBuffer source) {
+        int size = (int) source.readEliasDelta() - 1;
+        int arrayLength = getArrayLength(size);
+        int blockLength = arrayLength / HASHES;
+        int bitsPerFingerprint = (int) source.readEliasDelta();
+        int hashIndex = (int) source.readEliasDelta() - 1;
+        int count = (int) source.readEliasDelta() - 1;
+        int[] fp = new int[count];
+        for (int i = 0; i < count; i++) {
+            fp[i] =  (int) source.readNumber(bitsPerFingerprint);
+        }
+        BitBuffer fingerprints = new BitBuffer(arrayLength * bitsPerFingerprint);
+        BitSet set = new BitSet();
+        BinaryArithmeticBuffer.In in = new BinaryArithmeticBuffer.In(source);
+        for (int i = 0; i < arrayLength; i++) {
+            int prob = i < blockLength ? PROB_ONE_0 : i < 2 * blockLength ? PROB_ONE_1 : PROB_ONE_2;
+            if (in.readBit(prob)) {
+                set.set(i);
+            }
+        }
+        for (int i = 0, j = 0; i < arrayLength; i++) {
+            if (set.get(i)) {
+                long x = fp[j++];
+                fingerprints.writeNumber(x, bitsPerFingerprint);
+            } else {
+                fingerprints.writeNumber(0, bitsPerFingerprint);
+            }
+        }
+        return new CuckooPlusFilter(size, bitsPerFingerprint, hashIndex, fingerprints);
+    }
+
+    // private final static int PROB_ONE = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.18));
+    private final static int PROB_ONE_0 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.325));
+    private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.148));
+    private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.087));
+
+    public CuckooPlusFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
+        this.size = size;
+        this.bitsPerFingerprint = bitsPerFingerprint;
+        this.arrayLength = getArrayLength(size);
+        this.blockLength = arrayLength / HASHES;
+        this.fingerprints = fingerprints;
     }
 
 }
