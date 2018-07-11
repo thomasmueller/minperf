@@ -99,7 +99,12 @@ public class BloomFilter {
     }
 
     private static int getArrayIndex(int index) {
-        return index / 64;
+        // use shift instead of division
+        // the compiler will most likely do that itself,
+        // it's done to be on the safe side
+        // (the compiler might think index can be negative)
+        // return index / 64;
+        return index >>> 6;
     }
 
     private static long getBit(int index) {
