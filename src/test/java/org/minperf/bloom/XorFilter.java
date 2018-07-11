@@ -7,8 +7,7 @@ import org.minperf.hash.Mix;
 import org.minperf.hem.RandomGenerator;
 
 /**
- * The Cuckoo Plus / BDZ / Xor Filter, a new algorithm that can replace a bloom
- * filter.
+ * The Xor Filter, a new algorithm that can replace a bloom filter.
  *
  * It needs 1.23 log(1/fpp) bits per key. It is related to the BDZ algorithm [1]
  * (a minimal perfect hash function algorithm).
@@ -16,7 +15,7 @@ import org.minperf.hem.RandomGenerator;
  * [1] paper: Simple and Space-Efficient Minimal Perfect Hash Functions -
  * http://cmph.sourceforge.net/papers/wads07.pdf
  */
-public class CuckooPlusFilter {
+public class XorFilter {
 
     private static final boolean SHOW_ZERO_RATE = false;
 
@@ -58,7 +57,7 @@ public class CuckooPlusFilter {
 
         // construct the filter with the first half of the list
         long time = System.nanoTime();
-        CuckooPlusFilter f = new CuckooPlusFilter(keys, bitsPerFingerprint);
+        XorFilter f = new XorFilter(keys, bitsPerFingerprint);
         long addTime = (System.nanoTime() - time) / len;
 
 
@@ -103,6 +102,9 @@ public class CuckooPlusFilter {
     private static final int HASHES = 3;
 
     // the table needs to be 1.23 times the number of keys to store
+    // with 2 hashes, we would need 232 (factor 2.32) for a 50% chance,
+    // 240 for 55%, 250 for a 60%, 264 for 65%, 282 for 67%, as for
+    // 2 hashes, p = sqrt(1 - ((2/factor)^2));
     private static final int FACTOR_TIMES_100 = 123;
 
     // the number of keys in the filter
@@ -163,7 +165,7 @@ public class CuckooPlusFilter {
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
      */
-    CuckooPlusFilter(long[] keys, int bitsPerFingerprint) {
+    XorFilter(long[] keys, int bitsPerFingerprint) {
         this.size = keys.length;
         this.bitsPerFingerprint = bitsPerFingerprint;
         arrayLength = getArrayLength(size);
@@ -321,12 +323,16 @@ public class CuckooPlusFilter {
      */
     public boolean mayContain(long key) {
         int f = fingerprint(key);
-        int h0 = getHash(key, hashIndex, 0);
-        int h1 = getHash(key, hashIndex, 1);
-        int h2 = getHash(key, hashIndex, 2);
-        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
+        for (int i = 0; i < HASHES; i++) {
+            int h = getHash(key, hashIndex, i);
+            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
+        }
+//        int h0 = getHash(key, hashIndex, 0);
+//        int h1 = getHash(key, hashIndex, 1);
+//        int h2 = getHash(key, hashIndex, 2);
+//        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
+//        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
+//        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
         return f == 0;
     }
 
@@ -434,7 +440,7 @@ public class CuckooPlusFilter {
         out.flush();
     }
 
-    public static CuckooPlusFilter read(BitBuffer source) {
+    public static XorFilter read(BitBuffer source) {
         int size = (int) source.readEliasDelta() - 1;
         int arrayLength = getArrayLength(size);
         int blockLength = arrayLength / HASHES;
@@ -462,7 +468,7 @@ public class CuckooPlusFilter {
                 fingerprints.writeNumber(0, bitsPerFingerprint);
             }
         }
-        return new CuckooPlusFilter(size, bitsPerFingerprint, hashIndex, fingerprints);
+        return new XorFilter(size, bitsPerFingerprint, hashIndex, fingerprints);
     }
 
     // private final static int PROB_ONE = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.18));
@@ -470,7 +476,7 @@ public class CuckooPlusFilter {
     private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.148));
     private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.087));
 
-    public CuckooPlusFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
+    public XorFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
         this.size = size;
         this.bitsPerFingerprint = bitsPerFingerprint;
         this.arrayLength = getArrayLength(size);
