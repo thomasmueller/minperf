@@ -6,10 +6,15 @@ import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
 /**
- * Sometimes called "Golomb Coded Sets". This implementation uses Golomb
- * coding.
+ * Sometimes called "Golomb Coded Sets". This implementation uses Golomb coding,
+ * which is slower than Golomb-Rice coding, but in theory could use slightly
+ * less space (depending on the parameters).
+ *
+ * See here on how much space it uses: https://github.com/0xcb/Golomb-coded-map
+ * log2(1/e) + 1/(1-(1-e)^(1/e)) So the overhead is about 1.5 bits/key (the pure
+ * Golomb coding overhead is about 0.5 bits).
  */
-public class GolombCompressedSet2 {
+public class GolombCompressedSet {
 
     public static void main(String... args) {
         for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
@@ -23,7 +28,7 @@ public class GolombCompressedSet2 {
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
-        GolombCompressedSet2 f = new GolombCompressedSet2(list, len, bitsPerKey);
+        GolombRiceCompressedSet f = new GolombRiceCompressedSet(list, len, bitsPerKey);
         long addTime = (System.nanoTime() - time) / len;
         time = System.nanoTime();
         int falsePositives = 0;
@@ -57,8 +62,8 @@ public class GolombCompressedSet2 {
     private final MultiStageMonotoneList start;
     private final int startBuckets;
 
-    GolombCompressedSet2(long[] hashes, int len, int bits) {
-        int averageBucketSize = 64;
+    GolombCompressedSet(long[] hashes, int len, int bits) {
+        int averageBucketSize = 16;
         int bitCount = 63 - Long.numberOfLeadingZeros((long) len << bits);
         Sort.parallelSortUnsigned(hashes, 0, len);
         bucketCount = Builder.getBucketCount(len, averageBucketSize);
@@ -68,7 +73,7 @@ public class GolombCompressedSet2 {
         if (bucketShift <= 0 || bucketShift >= 64) {
             throw new IllegalArgumentException();
         }
-        this.golombDivisor = getBestGolombDivisor(1L << bits) - 1;
+        this.golombDivisor = getBestGolombDivisor(1L << bits);
         BitBuffer buckets = new BitBuffer(10 * bits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;

@@ -9,12 +9,11 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
  * Sometimes called "Golomb Coded Sets". This implementation uses Golomb-Rice
  * coding, which is faster than Golomb coding, but uses slightly more space.
  *
- * See here on how much space it uses:
- * https://github.com/0xcb/Golomb-coded-map
- * log2(1/e) + 1/(1-(1-e)^(1/e))
- * So Golomb-coding overhead is about 1.5 bits/key
+ * See here on how much space it uses: https://github.com/0xcb/Golomb-coded-map
+ * log2(1/e) + 1/(1-(1-e)^(1/e)) So the overhead is about 1.5 bits/key (the pure
+ * Golomb coding overhead is about 0.5 bits).
  */
-public class GolombCompressedSet {
+public class GolombRiceCompressedSet {
 
     public static void main(String... args) {
         for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
@@ -28,7 +27,7 @@ public class GolombCompressedSet {
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
-        GolombCompressedSet f = new GolombCompressedSet(list, len, bitsPerKey);
+        GolombRiceCompressedSet f = new GolombRiceCompressedSet(list, len, bitsPerKey);
         long addTime = (System.nanoTime() - time) / len;
         time = System.nanoTime();
         int falsePositives = 0;
@@ -48,7 +47,7 @@ public class GolombCompressedSet {
         long getTime = (System.nanoTime() - time) / len / testCount;
         double falsePositiveRate = (100. / testCount / len * falsePositives);
         double bitsPerKeyResult = (double) f.getBitCount() / len;
-        System.out.println("GCS false positives: " + falsePositiveRate +
+        System.out.println("GRCS false positives: " + falsePositiveRate +
                 "% " + bitsPerKeyResult + " bits/key " +
                 "add: " + addTime + " get: " + getTime + " ns/key overhead " + (bitsPerKeyResult - bitsPerKey));
     }
@@ -62,7 +61,7 @@ public class GolombCompressedSet {
     private final MultiStageMonotoneList start;
     private final int startBuckets;
 
-    GolombCompressedSet(long[] hashes, int len, int bits) {
+    GolombRiceCompressedSet(long[] hashes, int len, int bits) {
         int averageBucketSize = 16;
         int bitCount = 63 - Long.numberOfLeadingZeros((long) len << bits);
         Sort.parallelSortUnsigned(hashes, 0, len);
