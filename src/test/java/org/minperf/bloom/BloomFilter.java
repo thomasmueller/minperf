@@ -1,56 +1,24 @@
 package org.minperf.bloom;
 
-import org.minperf.hem.RandomGenerator;
-
-public class BloomFilter {
+/**
+ * A standard bloom filter. Nothing special.
+ */
+public class BloomFilter implements Filter {
 
     // See also https://hur.st/bloomfilter/?n=357212&p=0.01&m=&k=
 
-    public static void main(String... args) {
-        for(int bitsPerKey = 4; bitsPerKey < 20; bitsPerKey++) {
-            test(bitsPerKey);
-        }
-    }
-    public static void test(int bitsPerKey) {
-        int len = 4 * 1024 * 1024;
-        int n = 1024 * 1024;
+    public static Filter construct(long[] keys, int bitsPerKey) {
+        int n = keys.length;
         int m = n * bitsPerKey;
         int k = getBestK(m, n);
-        int testCount = 1;
-        long[] list = new long[len * 2];
-        RandomGenerator.createRandomUniqueListFast(list, len);
-        BloomFilter f = new BloomFilter(len, bitsPerKey, k);
-        long time = System.nanoTime();
-        for (int test = 0; test < testCount; test++) {
-            for (int i = 0; i < len; i++) {
-                f.add(list[i]);
-            }
+        BloomFilter f = new BloomFilter(n, bitsPerKey, k);
+        for(long x : keys) {
+            f.add(x);
         }
-        long addTime = (System.nanoTime() - time) / len;
-        time = System.nanoTime();
-        int falsePositives = 0;
-        for (int test = 0; test < testCount; test++) {
-            for (int i = 0; i < len; i++) {
-                if (!f.mayContain(list[i])) {
-                    f.mayContain(list[i]);
-                    throw new AssertionError();
-                }
-            }
-            for (int i = len; i < len * 2; i++) {
-                if (f.mayContain(list[i])) {
-                    falsePositives++;
-                }
-            }
-        }
-        long getTime = (System.nanoTime() - time) / len / testCount;
-        double falsePositiveRate = (100. / testCount / len * falsePositives);
-        System.out.println("Bloom false positives: " + falsePositiveRate +
-                "% " + (double) f.getBitCount() / len + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key " + len + " count");
-
+        return f;
     }
 
-    static int getBestK(int m, int n) {
+    private static int getBestK(int m, int n) {
         return Math.max(1, (int) Math.round((double) m / n * Math.log(2)));
     }
 
@@ -62,7 +30,7 @@ public class BloomFilter {
         this(entryCount, 8, 6);
     }
 
-    private double getBitCount() {
+    public long getBitCount() {
         return data.length * 64;
     }
 
@@ -84,7 +52,8 @@ public class BloomFilter {
         }
     }
 
-    boolean mayContain(long hashCode) {
+    @Override
+    public boolean mayContain(long hashCode) {
         long h = hash64(hashCode);
         int a = (int) (h >>> 32);
         int b = (int) h;

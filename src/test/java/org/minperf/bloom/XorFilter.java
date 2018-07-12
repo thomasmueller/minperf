@@ -4,7 +4,6 @@ import java.util.BitSet;
 
 import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
-import org.minperf.hem.RandomGenerator;
 
 /**
  * The Xor Filter, a new algorithm that can replace a bloom filter.
@@ -15,90 +14,19 @@ import org.minperf.hem.RandomGenerator;
  * [1] paper: Simple and Space-Efficient Minimal Perfect Hash Functions -
  * http://cmph.sourceforge.net/papers/wads07.pdf
  */
-public class XorFilter {
+public class XorFilter implements Filter {
 
     private static final boolean SHOW_ZERO_RATE = false;
 
     // TODO how to construct from a larger, mutable data structure
     // (GolombCompressedSet, Cuckoo filter,...)?
+    // how many additional bits are needed to support merging?
+    // Multi-layered design as described in "Don’t Thrash: How to Cache Your Hash on Flash"?
 
-    /**
-     * Tests the filter with fingerprint length 4..19 bits.
-     */
-    public static void main(String... args) {
-        for (int bitsPerFingerprint = 4; bitsPerFingerprint < 20; bitsPerFingerprint++) {
-            test(bitsPerFingerprint);
-        }
-    }
-
-    /**
-     * Tests the filter.
-     *
-     * @param bitsPerFingerprint the number of bits for each fingerprint.
-     */
-    public static void test(int bitsPerFingerprint) {
-        // the number of entries
-        int len = 4 * 1024 * 1024;
-        // the number of tests to run
-        int testCount = 1;
-        // the list of entries: the first half is keys in the filter,
-        // the second half is _not_ in the filter, but used to calculate false
-        // positives
-        long[] list = new long[len * 2];
-        RandomGenerator.createRandomUniqueListFast(list, len);
-        // the keys
-        long[] keys = new long[len];
-        // the list of non-keys, used to calculate false positives
-        long[] nonKeys = new long[len];
-        for(int i = 0; i<len; i++) {
-            keys[i] = list[i];
-            nonKeys[i] = list[i + len];
-        }
-
-        // construct the filter with the first half of the list
-        long time = System.nanoTime();
-        XorFilter f = new XorFilter(keys, bitsPerFingerprint);
-        long addTime = (System.nanoTime() - time) / len;
-
-
-        // BitBuffer test2 = new BitBuffer(f.fingerprints.position());
-        // f.write(test2);
-        // test2.seek(0);
-        // f = CuckooPlusFilter.read(test2);
-
-        // test the filter, that is: lookups
-        time = System.nanoTime();
-        int falsePositives = 0;
-        for (int test = 0; test < testCount; test++) {
-            // each key (the first half) needs to be found
-            for (int i = 0; i < len; i++) {
-                if (!f.mayContain(keys[i])) {
-                    throw new AssertionError();
-                }
-            }
-            // non keys _may_ be found - this is used to calculate false
-            // positives
-            for (int i = 0; i < len; i++) {
-                if (f.mayContain(nonKeys[i])) {
-                    falsePositives++;
-                }
-            }
-        }
-        long getTime = (System.nanoTime() - time) / len / testCount;
-
-        // print results (timing data, false positive rate)
-        double falsePositiveRate = (100. / testCount / len * falsePositives);
-        System.out.println("CuckooPlus false positives: " + falsePositiveRate +
-                "% " + (double) f.getBitCount() / len + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key");
-         // BitBuffer test = new BitBuffer(f.fingerprints.position());
-         // f.writeCompressed(test);
-         // int compressedLength = test.position();
-         // System.out.println("original: " + f.fingerprints.position() + " compressed: " + compressedLength);
-         // System.out.println(((double) compressedLength / len) + " bits/key compressed at " + bitsPerFingerprint + " bits/fp");
-    }
-
+    // TODO could multiple entries for a key be in the same cache line (64 bytes)?
+    // maybe with a blocked approach?
     // the number of hashes per key (see the BDZ algorithm)
+
     private static final int HASHES = 3;
 
     // the table needs to be 1.23 times the number of keys to store
@@ -128,13 +56,15 @@ public class XorFilter {
     // the fingerprints (internally an array of long)
     private BitBuffer fingerprints;
 
+    private final int bitCount;
+
     /**
      * The size of the filter, in bits.
      *
      * @return the size
      */
-    private double getBitCount() {
-        return fingerprints.position();
+    public long getBitCount() {
+        return bitCount;
     }
 
     /**
@@ -145,6 +75,19 @@ public class XorFilter {
      */
     private static int getArrayLength(int size) {
         return (int) (HASHES + (long) FACTOR_TIMES_100 * size / 100);
+    }
+
+    public static Filter construct(long[] keys, int bitsPerKey) {
+        return new XorFilter(keys, bitsPerKey);
+    }
+
+    public XorFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
+        this.size = size;
+        this.bitsPerFingerprint = bitsPerFingerprint;
+        this.arrayLength = getArrayLength(size);
+        bitCount = arrayLength * bitsPerFingerprint;
+        this.blockLength = arrayLength / HASHES;
+        this.fingerprints = fingerprints;
     }
 
     /**
@@ -165,10 +108,11 @@ public class XorFilter {
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
      */
-    XorFilter(long[] keys, int bitsPerFingerprint) {
+    public XorFilter(long[] keys, int bitsPerFingerprint) {
         this.size = keys.length;
         this.bitsPerFingerprint = bitsPerFingerprint;
         arrayLength = getArrayLength(size);
+        bitCount = arrayLength * bitsPerFingerprint;
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
 
@@ -256,6 +200,7 @@ public class XorFilter {
             if (reverseOrderPos == size) {
                 break;
             }
+//System.out.println("hi++");
             hashIndex++;
         }
         this.hashIndex = hashIndex;
@@ -321,12 +266,24 @@ public class XorFilter {
      * @param key the key to test
      * @return true if the key may be in the filter
      */
+    @Override
     public boolean mayContain(long key) {
         int f = fingerprint(key);
-        for (int i = 0; i < HASHES; i++) {
-            int h = getHash(key, hashIndex, i);
-            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
-        }
+        key = Mix.hash64(key + hashIndex);
+        int r0 = (int) (key >>> 32);
+        int r1 = (int) (key);
+        int r2 = (int) ((key >>> 32) ^ key);
+        int h0 = reduce(r0, blockLength);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
+
+//        for (int i = 0; i < HASHES; i++) {
+//            int h = getHash(key, hashIndex, i);
+//            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
+//        }
 //        int h0 = getHash(key, hashIndex, 0);
 //        int h1 = getHash(key, hashIndex, 1);
 //        int h2 = getHash(key, hashIndex, 2);
@@ -345,9 +302,27 @@ public class XorFilter {
      * @return the hash (0..arrayLength)
      */
     private int getHash(long key, int hashIndex, int index) {
-        long r = supplementalHash(key, hashIndex + index);
+        key = Mix.hash64(key + hashIndex);
+        int r;
+        switch(index) {
+        case 0:
+            r = (int) (key >>> 32);
+            break;
+        case 1:
+            r = (int) (key);
+            // r = (int) ((key >>> 32) + key);
+            break;
+        default:
+            r = (int) ((key >>> 32) ^  key);
+            // r = (int) ((key >>> 32) + 2 * key);
+            break;
+        }
+
+        // long r = supplementalHash(key, hashIndex + index);
 
         // this would be slightly faster, but means we only have one range
+        // also, there is a small risk that for the same key and different index,
+        // the same value is returned
         // r = reduce((int) r, arrayLength);
 
         // use one distinct block of entries for each hash index
@@ -364,7 +339,8 @@ public class XorFilter {
      * @return the fingerprint
      */
     private int fingerprint(long key) {
-        return (int) hash64(key) & ((1 << bitsPerFingerprint) - 1);
+        return (int) (key & ((1 << bitsPerFingerprint) - 1));
+        // return (int) hash64(key) & ((1 << bitsPerFingerprint) - 1);
     }
 
     /**
@@ -389,19 +365,6 @@ public class XorFilter {
     private static int reduce(int hash, int n) {
         // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
         return (int) (((hash & 0xffffffffL) * n) >>> 32);
-    }
-
-    /**
-     * Hash the key.
-     *
-     * @param key the key
-     * @return the hash
-     */
-    private static long hash64(long key) {
-        key = (key ^ (key >>> 30)) * 0xbf58476d1ce4e5b9L;
-        key = (key ^ (key >>> 27)) * 0x94d049bb133111ebL;
-        key = key ^ (key >>> 31);
-        return key;
     }
 
     /**
@@ -475,13 +438,5 @@ public class XorFilter {
     private final static int PROB_ONE_0 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.325));
     private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.148));
     private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.087));
-
-    public XorFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
-        this.size = size;
-        this.bitsPerFingerprint = bitsPerFingerprint;
-        this.arrayLength = getArrayLength(size);
-        this.blockLength = arrayLength / HASHES;
-        this.fingerprints = fingerprints;
-    }
 
 }
