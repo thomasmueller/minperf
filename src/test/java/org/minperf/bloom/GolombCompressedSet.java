@@ -6,15 +6,10 @@ import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
 /**
- * Sometimes called "Golomb Coded Sets". This implementation uses Golomb-Rice
- * coding, which is faster than Golomb coding, but uses slightly more space.
- *
- * See here on how much space it uses:
- * https://github.com/0xcb/Golomb-coded-map
- * log2(1/e) + 1/(1-(1-e)^(1/e))
- * So Golomb-coding overhead is about 1.5 bits/key
+ * Sometimes called "Golomb Coded Sets". This implementation uses Golomb
+ * coding.
  */
-public class GolombCompressedSet {
+public class GolombCompressedSet2 {
 
     public static void main(String... args) {
         for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
@@ -28,7 +23,7 @@ public class GolombCompressedSet {
         long[] list = new long[len * 2];
         RandomGenerator.createRandomUniqueListFast(list, len);
         long time = System.nanoTime();
-        GolombCompressedSet f = new GolombCompressedSet(list, len, bitsPerKey);
+        GolombCompressedSet2 f = new GolombCompressedSet2(list, len, bitsPerKey);
         long addTime = (System.nanoTime() - time) / len;
         time = System.nanoTime();
         int falsePositives = 0;
@@ -54,7 +49,7 @@ public class GolombCompressedSet {
     }
 
     private final BitBuffer buff;
-    private final int golombShift;
+    private final int golombDivisor;
     private final int bufferSize;
     private final int bucketCount;
     private final int bitShift;
@@ -62,8 +57,8 @@ public class GolombCompressedSet {
     private final MultiStageMonotoneList start;
     private final int startBuckets;
 
-    GolombCompressedSet(long[] hashes, int len, int bits) {
-        int averageBucketSize = 16;
+    GolombCompressedSet2(long[] hashes, int len, int bits) {
+        int averageBucketSize = 64;
         int bitCount = 63 - Long.numberOfLeadingZeros((long) len << bits);
         Sort.parallelSortUnsigned(hashes, 0, len);
         bucketCount = Builder.getBucketCount(len, averageBucketSize);
@@ -73,7 +68,7 @@ public class GolombCompressedSet {
         if (bucketShift <= 0 || bucketShift >= 64) {
             throw new IllegalArgumentException();
         }
-        this.golombShift = bits;
+        this.golombDivisor = getBestGolombDivisor(1L << bits) - 1;
         BitBuffer buckets = new BitBuffer(10 * bits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;
@@ -87,7 +82,7 @@ public class GolombCompressedSet {
             }
             long diff = x - last;
             last = x;
-            buckets.writeGolombRice(golombShift, diff);
+            writeGolomb(buckets, golombDivisor, diff);
         }
         while (bucket <= bucketCount) {
             startList[bucket++] = buckets.position();
@@ -111,10 +106,10 @@ public class GolombCompressedSet {
         int p = startBuckets + (int) (startPair >>> 32);
         int startNext = startBuckets + (int) startPair;
         long x = ((long) b) << bucketShift;
+        buff.seek(p);
         while (p < startNext) {
-            long v = buff.readGolombRice(p, golombShift);
+            long v = readGolomb(buff, golombDivisor);
             x += v;
-            p += BitBuffer.getGolombRiceSize(golombShift, v);
             if (x == match) {
                 return true;
             } else if (x > match) {
@@ -122,6 +117,77 @@ public class GolombCompressedSet {
             }
         }
         return false;
+    }
+
+    public static int getBestGolombDivisor(long average) {
+        double p = 1. / average;
+        return (int) (-1 / Math.log(1 - p));
+    }
+
+    /**
+     * Write the Golomb code of a value.
+     *
+     * @param divisor the divisor
+     * @param value the value
+     */
+    public static void writeGolomb(BitBuffer buff, int divisor, long value) {
+        long q = value / divisor;
+        for (long i = 0; i < q; i++) {
+            buff.writeBit(1);
+        }
+        buff.writeBit(0);
+        long r = value - q * divisor;
+        int bit = 63 - Long.numberOfLeadingZeros(divisor - 1);
+        if (r < ((2 << bit) - divisor)) {
+            bit--;
+        } else {
+            r += (2 << bit) - divisor;
+        }
+        for (; bit >= 0; bit--) {
+            buff.writeBit((r >>> bit) & 1);
+        }
+    }
+
+    /**
+     * Read a value that is stored as a Golomb code.
+     *
+     * @param divisor the divisor
+     * @return the value
+     */
+    public static long readGolomb(BitBuffer buff, int divisor) {
+        long q = 0;
+        while (buff.readBit() == 1) {
+            q++;
+        }
+        int bit = 63 - Long.numberOfLeadingZeros(divisor - 1);
+        long r = 0;
+        if (bit >= 0) {
+            long cutOff = (2L << bit) - divisor;
+            for (; bit > 0; bit--) {
+                r = (r << 1) + buff.readBit();
+            }
+            if (r >= cutOff) {
+                r = (r << 1) + buff.readBit() - cutOff;
+            }
+        }
+        return q * divisor + r;
+    }
+
+    /**
+     * Get the size of the Golomb code for this value.
+     *
+     * @param divisor the divisor
+     * @param value the value
+     * @return the number of bits
+     */
+    public static long getGolombSize(int divisor, long value) {
+        long q = value / divisor;
+        long r = value - q * divisor;
+        int bit = 63 - Long.numberOfLeadingZeros(divisor - 1);
+        if (r < ((2L << bit) - divisor)) {
+            bit--;
+        }
+        return bit + q + 2;
     }
 
 }

@@ -5,8 +5,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /**
- * A simple bit buffer. It is partially optimized for reading,
- * but writing is relatively slow.
+ * A simple bit buffer. It is partially optimized for reading, but writing is
+ * relatively slow. Writing will only add bits (bitwise or with existing bits).
  */
 public class BitBuffer {
 
@@ -296,6 +296,22 @@ public class BitBuffer {
         } else {
             data[index] |= x >>> (bitCount - remainingBits);
             data[index + 1] |= x << (64 - bitCount + remainingBits);
+        }
+        pos += bitCount;
+    }
+
+    public void clearBits(int bitCount) {
+        if (bitCount == 0) {
+            return;
+        }
+        int remainingBits = 64 - (pos & 63);
+        int index = pos >>> 6;
+        long x = (1 << bitCount) - 1;
+        if (bitCount <= remainingBits) {
+            data[index] &= ~(x << (remainingBits - bitCount));
+        } else {
+            data[index] &= ~(x >>> (bitCount - remainingBits));
+            data[index + 1] &= ~(x << (64 - bitCount + remainingBits));
         }
         pos += bitCount;
     }
