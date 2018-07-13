@@ -19,17 +19,26 @@ public class Test {
             case BLOOM:
                 setting = 10;
                 break;
+            case XOR8:
+                setting = 7;
+                break;
+            case XOR16:
+                setting = 7;
+                break;
             case XOR:
                 setting = 7;
                 break;
             case CUCKOO:
                 setting = 9;
                 break;
-            case MPHF:
-                setting = 7;
+            case CUCKOO8_4:
+                setting = 0;
+                break;
+            case CUCKOO16_4:
+                setting = 0;
                 break;
             }
-            test(type, false, 1_000_000, 32_000_000, setting, setting, 0.001, 0.1);
+            test(type, false, 1_000_000, 128_000_000, setting, setting, 0.001, 0.1);
         }
     }
 
@@ -38,7 +47,7 @@ public class Test {
             if (warmup) {
                 System.out.print(type.name().toLowerCase());
             }
-            test(type, warmup, minLen, maxLen, 4, 16, minFpp, maxFpp);
+            test(type, warmup, minLen, maxLen, 10, 10, minFpp, maxFpp);
         }
     }
 
@@ -48,7 +57,6 @@ public class Test {
             double minFpp, double maxFpp) {
         int validFpp = 0;
         for(int len = minLen; len <= maxLen; len *= 2) {
-
             // the list of entries: the first half is keys in the filter,
             // the second half is _not_ in the filter, but used to calculate false
             // positives

@@ -7,7 +7,7 @@ public class BloomFilter implements Filter {
 
     // See also https://hur.st/bloomfilter/?n=357212&p=0.01&m=&k=
 
-    public static Filter construct(long[] keys, int bitsPerKey) {
+    public static BloomFilter construct(long[] keys, int bitsPerKey) {
         int n = keys.length;
         int m = n * bitsPerKey;
         int k = getBestK(m, n);

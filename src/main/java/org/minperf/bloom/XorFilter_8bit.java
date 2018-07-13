@@ -1,8 +1,5 @@
 package org.minperf.bloom;
 
-import java.util.BitSet;
-
-import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
 
 /**
@@ -14,7 +11,9 @@ import org.minperf.hash.Mix;
  * [1] paper: Simple and Space-Efficient Minimal Perfect Hash Functions -
  * http://cmph.sourceforge.net/papers/wads07.pdf
  */
-public class XorFilter implements Filter {
+public class XorFilter_8bit implements Filter {
+
+    private static final int BITS_PER_FINGERPRINT = 8;
 
     private static final boolean SHOW_ZERO_RATE = false;
 
@@ -46,15 +45,12 @@ public class XorFilter implements Filter {
     // because the last block contains more zero entries than the first two
     private final int blockLength;
 
-    // the fingerprint size in bits
-    private final int bitsPerFingerprint;
-
     // usually 0, but in case the table can't be constructed (which is very
     // unlikely), then the table is rebuilt with hash index 1, and so on.
     private int hashIndex;
 
     // the fingerprints (internally an array of long)
-    private BitBuffer fingerprints;
+    private byte[] fingerprints;
 
     private final int bitCount;
 
@@ -77,15 +73,14 @@ public class XorFilter implements Filter {
         return (int) (HASHES + (long) FACTOR_TIMES_100 * size / 100);
     }
 
-    public static XorFilter construct(long[] keys, int bitsPerKey) {
-        return new XorFilter(keys, bitsPerKey);
+    public static XorFilter_8bit construct(long[] keys) {
+        return new XorFilter_8bit(keys);
     }
 
-    public XorFilter(int size, int bitsPerFingerprint, int hashIndex, BitBuffer fingerprints) {
+    public XorFilter_8bit(int size, int hashIndex, byte[] fingerprints) {
         this.size = size;
-        this.bitsPerFingerprint = bitsPerFingerprint;
         this.arrayLength = getArrayLength(size);
-        bitCount = arrayLength * bitsPerFingerprint;
+        bitCount = arrayLength * BITS_PER_FINGERPRINT;
         this.blockLength = arrayLength / HASHES;
         this.fingerprints = fingerprints;
     }
@@ -108,11 +103,10 @@ public class XorFilter implements Filter {
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
      */
-    public XorFilter(long[] keys, int bitsPerFingerprint) {
+    public XorFilter_8bit(long[] keys) {
         this.size = keys.length;
-        this.bitsPerFingerprint = bitsPerFingerprint;
         arrayLength = getArrayLength(size);
-        bitCount = arrayLength * bitsPerFingerprint;
+        bitCount = arrayLength * BITS_PER_FINGERPRINT;
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
 
@@ -213,7 +207,8 @@ public class XorFilter implements Filter {
             int change = 0;
             // we set table[change] to the fingerprint of the key,
             // unless the other two entries are already occupied
-            int xor = fingerprint(k);
+            long hash = Mix.hash64(k + hashIndex);
+            int xor = fingerprint(hash);
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(k, hashIndex, hi);
                 if (at[h] == k) {
@@ -253,9 +248,9 @@ public class XorFilter implements Filter {
                     " total " + (100. / fp.length * zeros) + "%");
         }
 
-        fingerprints = new BitBuffer(bitsPerFingerprint * m);
-        for(long f : fp) {
-            fingerprints.writeNumber(f, bitsPerFingerprint);
+        fingerprints = new byte[m];
+        for(int i=0; i<fp.length; i++) {
+            fingerprints[i] = (byte) fp[i];
         }
     }
 
@@ -267,78 +262,17 @@ public class XorFilter implements Filter {
      */
     @Override
     public boolean mayContain(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
+        long hash = Mix.hash64(key + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        // todo: these calls to fingerprints.readNumber are not reasonable in a high
-        // performance setting. Need to write special cases for various bitsPerFingerprint values
-        // such as 8 and 16.
-        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
-
-        return f == 0;
+        f ^= fingerprints[h0] ^ fingerprints[h1] ^ fingerprints[h2];
+        return (f & 0xff) == 0;
     }
-
-    // special case where bitsPerFingerprint == 32, could be
-    // even faster, should special case all relevant bit widths
-    // UNTESTED
-     public boolean mayContain32(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
-        int h0 = reduce(r0, blockLength);
-        int h1 = reduce(r1, blockLength) + blockLength;
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>1] >>> ((key & 1)<<5);
-        f ^= fingerprints.data[h1>>>1] >>> ((key & 1)<<5);
-        f ^= fingerprints.data[h2>>>1] >>> ((key & 1)<<5);
-        return f == 0;
-    }
-
-    // special case where bitsPerFingerprint == 16, could be
-    // even faster, should special case all relevant bit widths
-    // UNTESTED
-    public boolean mayContain16(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
-        int h0 = reduce(r0, blockLength);
-        int h1 = reduce(r1, blockLength) + blockLength;
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>2] >>> ((key & 3)<<4);
-        f ^= fingerprints.data[h1>>>2] >>> ((key & 3)<<4);
-        f ^= fingerprints.data[h2>>>2] >>> ((key & 3)<<4);
-        return (f & 0xFFFF) == 0;
-    }
-
-    // special case where bitsPerFingerprint == 8, could be
-    // even faster, should special case all relevant bit widths
-    // UNTESTED
-     public boolean mayContain8(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
-        int h0 = reduce(r0, blockLength);
-        int h1 = reduce(r1, blockLength) + blockLength;
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>3] >>> ((key & 7)<<3);
-        f ^= fingerprints.data[h1>>>3] >>> ((key & 7)<<3);
-        f ^= fingerprints.data[h2>>>3] >>> ((key & 7)<<3);
-        return (f & 0xFF) == 0;
-    }
-
 
     /**
      * Calculate the hash for a key.
@@ -349,23 +283,19 @@ public class XorFilter implements Filter {
      * @return the hash (0..arrayLength)
      */
     private int getHash(long key, int hashIndex, int index) {
-        key = Mix.hash64(key + hashIndex);
+        long hash = Mix.hash64(key + hashIndex);
         int r;
         switch(index) {
         case 0:
-            r = (int) (key >>> 32);
+            r = (int) (hash >>> 32);
             break;
         case 1:
-            r = (int) (key);
-            // r = (int) ((key >>> 32) + key);
+            r = (int) (hash);
             break;
         default:
-            r = (int) ((key >>> 32) ^  key);
-            // r = (int) ((key >>> 32) + 2 * key);
+            r = (int) ((hash >>> 32) ^  hash);
             break;
         }
-
-        // long r = supplementalHash(key, hashIndex + index);
 
         // this would be slightly faster, but means we only have one range
         // also, there is a small risk that for the same key and different index,
@@ -385,20 +315,9 @@ public class XorFilter implements Filter {
      * @param key the key
      * @return the fingerprint
      */
-    private int fingerprint(long key) {
-        return (int) (key & ((1 << bitsPerFingerprint) - 1));
-        // return (int) hash64(key) & ((1 << bitsPerFingerprint) - 1);
-    }
-
-    /**
-     * Calculate a supplemental hash. Kind of like a universal hash.
-     *
-     * @param key the key
-     * @param index the index (0..2)
-     * @return the hash
-     */
-    private static int supplementalHash(long key, int index) {
-        return Mix.supplementalHashWeyl(key, index);
+    private int fingerprint(long hash) {
+        // TODO shift by 8 bit, otherwise the address and the fingerprint are similar
+        return (int) ((hash >> 8) & ((1 << BITS_PER_FINGERPRINT) - 1));
     }
 
     /**
@@ -413,77 +332,5 @@ public class XorFilter implements Filter {
         // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
         return (int) (((hash & 0xffffffffL) * n) >>> 32);
     }
-
-    /**
-     * Write compressed. There is an overhead of 0.8 bits per entry.
-     *
-     * @param target the target buffer
-     */
-    public void writeCompressed(BitBuffer target) {
-        target.writeEliasDelta(size + 1);
-        target.writeEliasDelta(bitsPerFingerprint);
-        target.writeEliasDelta(hashIndex + 1);
-        BinaryArithmeticBuffer.Out out = new BinaryArithmeticBuffer.Out(target);
-        int count = 0;
-        for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
-            if (x != 0) {
-                count++;
-            }
-        }
-        target.writeEliasDelta(count + 1);
-        for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
-            if (x != 0) {
-                target.writeNumber(x, bitsPerFingerprint);
-            }
-        }
-        for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
-            int prob = i < blockLength ? PROB_ONE_0 : i < 2 * blockLength ? PROB_ONE_1 : PROB_ONE_2;
-            if (x == 0) {
-                out.writeBit(false, prob);
-            } else {
-                out.writeBit(true, prob);
-            }
-        }
-        out.flush();
-    }
-
-    public static XorFilter read(BitBuffer source) {
-        int size = (int) source.readEliasDelta() - 1;
-        int arrayLength = getArrayLength(size);
-        int blockLength = arrayLength / HASHES;
-        int bitsPerFingerprint = (int) source.readEliasDelta();
-        int hashIndex = (int) source.readEliasDelta() - 1;
-        int count = (int) source.readEliasDelta() - 1;
-        int[] fp = new int[count];
-        for (int i = 0; i < count; i++) {
-            fp[i] =  (int) source.readNumber(bitsPerFingerprint);
-        }
-        BitBuffer fingerprints = new BitBuffer(arrayLength * bitsPerFingerprint);
-        BitSet set = new BitSet();
-        BinaryArithmeticBuffer.In in = new BinaryArithmeticBuffer.In(source);
-        for (int i = 0; i < arrayLength; i++) {
-            int prob = i < blockLength ? PROB_ONE_0 : i < 2 * blockLength ? PROB_ONE_1 : PROB_ONE_2;
-            if (in.readBit(prob)) {
-                set.set(i);
-            }
-        }
-        for (int i = 0, j = 0; i < arrayLength; i++) {
-            if (set.get(i)) {
-                long x = fp[j++];
-                fingerprints.writeNumber(x, bitsPerFingerprint);
-            } else {
-                fingerprints.writeNumber(0, bitsPerFingerprint);
-            }
-        }
-        return new XorFilter(size, bitsPerFingerprint, hashIndex, fingerprints);
-    }
-
-    // private final static int PROB_ONE = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.18));
-    private final static int PROB_ONE_0 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.325));
-    private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.148));
-    private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.087));
 
 }
