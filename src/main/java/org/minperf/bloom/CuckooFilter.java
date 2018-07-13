@@ -124,7 +124,8 @@ public class CuckooFilter implements Filter {
         //////////////////////////
         // buffer.readNumber is probably not reasonable in a high performance setting
         /////////////////////////
-        long allFingerprints = buffer.readNumber(bucket * fingerprintBitsPerBucket,
+        // casting to long to avoid overflow
+        long allFingerprints = buffer.readNumber((long) bucket * fingerprintBitsPerBucket,
                 fingerprintBitsPerBucket);
         for (int entry = 0; entry < entriesPerBucket; entry++) {
             if ((allFingerprints & fingerprintMask) == fingerprint) {
@@ -144,11 +145,11 @@ public class CuckooFilter implements Filter {
 
     private boolean bucketInsert(int bucket, int fingerprint) {
         for (int entry = 0; entry < entriesPerBucket; entry++) {
-            long fp = buffer.readNumber((bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
+            long fp = buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
             if (fp == 0) {
                 buffer.seek((int) ((bucket * entriesPerBucket + entry) * fingerprintBits));
                 buffer.writeNumber(fingerprint, fingerprintBits);
-                fp = buffer.readNumber((bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
+                fp = buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
                 if (fp != fingerprint) {
                     throw new AssertionError();
                 }
@@ -184,7 +185,7 @@ public class CuckooFilter implements Filter {
     }
 
     private int bucketsSwap(int bucket, int entry, int fingerprint) {
-        int fp = (int) buffer.readNumber((bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
+        int fp = (int) buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
         buffer.seek((int) ((bucket * entriesPerBucket + entry) * fingerprintBits));
         // overwrite is not supported, so we first have to clear
         buffer.clearBits(fingerprintBits);

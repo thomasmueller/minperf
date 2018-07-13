@@ -278,9 +278,10 @@ public class XorFilter implements Filter {
         // todo: these calls to fingerprints.readNumber are not reasonable in a high
         // performance setting. Need to write special cases for various bitsPerFingerprint values
         // such as 8 and 16.
-        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
-        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
+        // must cast to long to avoid overflow.
+        f ^= fingerprints.readNumber((long)h0 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber((long)h1 * bitsPerFingerprint, bitsPerFingerprint);
+        f ^= fingerprints.readNumber((long)h2 * bitsPerFingerprint, bitsPerFingerprint);
 
         return f == 0;
     }
@@ -426,20 +427,20 @@ public class XorFilter implements Filter {
         BinaryArithmeticBuffer.Out out = new BinaryArithmeticBuffer.Out(target);
         int count = 0;
         for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            int x = (int) fingerprints.readNumber((long)i * bitsPerFingerprint, bitsPerFingerprint);
             if (x != 0) {
                 count++;
             }
         }
         target.writeEliasDelta(count + 1);
         for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            int x = (int) fingerprints.readNumber((long)i * bitsPerFingerprint, bitsPerFingerprint);
             if (x != 0) {
                 target.writeNumber(x, bitsPerFingerprint);
             }
         }
         for (int i = 0; i < arrayLength; i++) {
-            int x = (int) fingerprints.readNumber(i * bitsPerFingerprint, bitsPerFingerprint);
+            int x = (int) fingerprints.readNumber((long)i * bitsPerFingerprint, bitsPerFingerprint);
             int prob = i < blockLength ? PROB_ONE_0 : i < 2 * blockLength ? PROB_ONE_1 : PROB_ONE_2;
             if (x == 0) {
                 out.writeBit(false, prob);
