@@ -18,7 +18,7 @@ public class JmhBench {
     @State(Scope.Benchmark)
     public static class StateHolder {
 
-        @Param({ "100000", "1000000", "10000000", "100000000" })
+        @Param({ "100000", "1000000", "10000000" })
         int N;
 
         @Param({ "8", "16", "32" })
