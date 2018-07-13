@@ -17,7 +17,6 @@ package org.minperf.bloom;
 
 import java.util.Random;
 
-import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;
 
 /**
@@ -26,37 +25,29 @@ import org.minperf.hash.Mix;
  *
  * See "Cuckoo Filter: Practically Better Than Bloom".
  */
-public class CuckooFilter implements Filter {
+public class CuckooFilter_16bit_4entries implements Filter {
 
-    private final BitBuffer buffer;
+    private static final int FINGERPRINT_BITS = 16;
+    private static final int ENTRIES_PER_BUCKET = 4;
+    private static final long FINGERPRINT_MASK = (1L << FINGERPRINT_BITS) - 1;
+
+    private final long[] data;
     private final int bucketCount;
-    private final int fingerprintBits;
-    private final int fingerprintBitsPerBucket;
-    private final int fingerprintMask;
-    private final int entriesPerBucket;
     private final Random random = new Random(1);
 
-    public static CuckooFilter construct(long[] keys, int bitsPerKey) {
-
+    public static CuckooFilter_16bit_4entries construct(long[] keys) {
         int len = keys.length;
-        CuckooFilter f = new CuckooFilter((int) (len / 0.95), bitsPerKey, 4);
+        CuckooFilter_16bit_4entries f = new CuckooFilter_16bit_4entries((int) (len / 0.95));
         for (long k : keys) {
             f.insert(k);
         }
         return f;
     }
 
-    public CuckooFilter(int capacity, int fingerprintBits, int entriesPerBucket) {
+    public CuckooFilter_16bit_4entries(int capacity) {
         // bucketCount needs to be even for bucket2 to work
-        bucketCount = (int) Math.ceil((double) capacity / entriesPerBucket) / 2 * 2;
-        this.entriesPerBucket = entriesPerBucket;
-        this.fingerprintBits = fingerprintBits;
-        this.fingerprintBitsPerBucket = fingerprintBits * entriesPerBucket;
-        if (fingerprintBitsPerBucket > 63) {
-            throw new AssertionError("too many fingerprint bits for the BitBuffer; max is 15 sorry");
-        }
-        this.buffer = new BitBuffer(fingerprintBits * bucketCount * entriesPerBucket);
-        this.fingerprintMask = (1 << fingerprintBits) - 1;
+        bucketCount = (int) Math.ceil((double) capacity / ENTRIES_PER_BUCKET) / 2 * 2;
+        this.data = new long[bucketCount];
     }
 
     public void insert(long key) {
@@ -75,6 +66,7 @@ public class CuckooFilter implements Filter {
         int bucket2 = getBucket2(bucket, fingerprint);
         return bucketContains(bucket2, fingerprint);
     }
+
     public boolean mayContainAtOnce(long key) {
         long hash = Mix.hash64(key);
         int bucket = getBucket(hash);
@@ -83,13 +75,20 @@ public class CuckooFilter implements Filter {
         return (bucketContains(bucket, fingerprint) || bucketContains(bucket2, fingerprint));
     }
 
+    public boolean mayContainReallyAtOnce(long key) {
+        long hash = Mix.hash64(key);
+        int bucket = getBucket(hash);
+        int fingerprint = getFingerprint(hash);
+        int bucket2 = getBucket2(bucket, fingerprint);
+        return bucketsContains(bucket, bucket2, fingerprint);
+    }
 
     private int getBucket(long hash) {
         return reduce((int) hash, bucketCount);
     }
 
     private int getFingerprint(long hash) {
-        int fingerprint =  (int) (hash & fingerprintMask);
+        int fingerprint =  (int) (hash & FINGERPRINT_MASK);
         // fingerprint 0 is not allowed -
         // an alternative, with a slightly lower false positive rate with a
         // small fingerprint, would be: shift until it's not zero (but it
@@ -118,41 +117,39 @@ public class CuckooFilter implements Filter {
     }
 
     private boolean bucketContains(int bucket, int fingerprint) {
-        // read all fingerprints at once - with 4 entries per bucket, this only
-        // works up to 15 bits per fingerprint, with the current BitBuffer
+        long allFingerprints = data[bucket];
+        // from https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
+        long v = allFingerprints ^ (fingerprint * 0x0001000100010001L);
+        long hasZeroByte = ~((((v & 0x7fff7fff7fff7fffL) + 0x7fff7fff7fff7fffL) | v) | 0x7fff7fff7fff7fffL);
+        return hasZeroByte != 0;
+    }
 
-        //////////////////////////
-        // buffer.readNumber is probably not reasonable in a high performance setting
-        /////////////////////////
-        // casting to long to avoid overflow
-        long allFingerprints = buffer.readNumber((long) bucket * fingerprintBitsPerBucket,
-                fingerprintBitsPerBucket);
-        for (int entry = 0; entry < entriesPerBucket; entry++) {
-            if ((allFingerprints & fingerprintMask) == fingerprint) {
-                return true;
-            }
-            allFingerprints >>>= fingerprintBits;
-        }
-        // this would be one fingerprint at a time
-        // for (int entry = 0; entry < entriesPerBucket; entry++) {
-        //     long fp = buffer.readNumber((bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
-        //     if (fp == fingerprint) {
-        //         return true;
-        //     }
-        // }
-        return false;
+    private boolean bucketsContains(int bucket, int bucket2, int fingerprint) {
+        long allFingerprints1 = data[bucket];
+        long allFingerprints2 = data[bucket2];
+        // from https://graphics.stanford.edu/~seander/bithacks.html#ZeroInWord
+        long fingerprintMask = fingerprint * 0x0001000100010001L;
+        long v1 = allFingerprints1 ^ fingerprintMask;
+        long v2 = allFingerprints2 ^ fingerprintMask;
+        long hasZeroByte1 = ~((((v1 & 0x7fff7fff7fff7fffL) + 0x7fff7fff7fff7fffL) | v1) | 0x7fff7fff7fff7fffL);
+        long hasZeroByte2 = ~((((v2 & 0x7fff7fff7fff7fffL) + 0x7fff7fff7fff7fffL) | v2) | 0x7fff7fff7fff7fffL);
+        return (hasZeroByte1 + hasZeroByte2) != 0;
+    }
+
+    private int getFingerprintAt(int bucket, int entry) {
+        return (int) ((data[bucket] >>> (FINGERPRINT_BITS * entry)) & FINGERPRINT_MASK);
+    }
+
+    private void setFingerprintAt(int bucket, int entry, int fingerprint) {
+        data[bucket] &= ~(FINGERPRINT_MASK << (FINGERPRINT_BITS * entry));
+        data[bucket] |= (long) fingerprint << (FINGERPRINT_BITS * entry);
     }
 
     private boolean bucketInsert(int bucket, int fingerprint) {
-        for (int entry = 0; entry < entriesPerBucket; entry++) {
-            long fp = buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
+        for (int entry = 0; entry < ENTRIES_PER_BUCKET; entry++) {
+            int fp = getFingerprintAt(bucket, entry);
             if (fp == 0) {
-                buffer.seek((int) ((bucket * entriesPerBucket + entry) * fingerprintBits));
-                buffer.writeNumber(fingerprint, fingerprintBits);
-                fp = buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
-                if (fp != fingerprint) {
-                    throw new AssertionError();
-                }
+                setFingerprintAt(bucket, entry, fingerprint);
                 return true;
             } else if (fp == fingerprint) {
                 return true;
@@ -174,7 +171,7 @@ public class CuckooFilter implements Filter {
 
     private void swap(int bucket, int fingerprint) {
         for (int n = 0; n < 1000; n++) {
-            int entry = random.nextInt() & (entriesPerBucket - 1);
+            int entry = random.nextInt() & (ENTRIES_PER_BUCKET - 1);
             fingerprint = bucketsSwap(bucket, entry, fingerprint);
             bucket = getBucket2(bucket, fingerprint);
             if (bucketInsert(bucket, fingerprint)) {
@@ -185,17 +182,13 @@ public class CuckooFilter implements Filter {
     }
 
     private int bucketsSwap(int bucket, int entry, int fingerprint) {
-        int fp = (int) buffer.readNumber(((long)bucket * entriesPerBucket + entry) * fingerprintBits, fingerprintBits);
-        buffer.seek((int) ((bucket * entriesPerBucket + entry) * fingerprintBits));
-        // overwrite is not supported, so we first have to clear
-        buffer.clearBits(fingerprintBits);
-        buffer.seek((int) ((bucket * entriesPerBucket + entry) * fingerprintBits));
-        buffer.writeNumber(fingerprint, fingerprintBits);
-        return fp;
+        int old = getFingerprintAt(bucket, entry);
+        setFingerprintAt(bucket, entry, fingerprint);
+        return old;
     }
 
     public long getBitCount() {
-        return fingerprintBits * entriesPerBucket * bucketCount;
+        return FINGERPRINT_BITS * ENTRIES_PER_BUCKET * bucketCount;
     }
 
     /**

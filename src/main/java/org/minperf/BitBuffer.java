@@ -81,12 +81,12 @@ public class BitBuffer {
      * @param bitCount the number of bits, at most 63
      * @return the value
      */
-    public long readNumber(int pos, int bitCount) {
+    public long readNumber(long pos, int bitCount) {
         if (bitCount == 0) {
             return 0;
         }
-        int remainingBits = 64 - (pos & 63);
-        int index = pos >>> 6;
+        int remainingBits = 64 - ((int)pos & 63);
+        int index = (int)(pos >>> 6);
         long x = data[index];
         if (bitCount <= remainingBits) {
             x >>>= remainingBits - bitCount;
