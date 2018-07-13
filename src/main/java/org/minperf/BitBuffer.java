@@ -13,8 +13,8 @@ public class BitBuffer {
     public final long[] data;
     private int pos;
 
-    public BitBuffer(int bits) {
-        this.data = new long[(bits + 63) / 64];
+    public BitBuffer(long bits) {
+        this.data = new long[(int)((bits + 63) / 64)];
     }
 
     public BitBuffer(byte[] data) {

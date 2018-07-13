@@ -253,7 +253,7 @@ public class XorFilter implements Filter {
                     " total " + (100. / fp.length * zeros) + "%");
         }
 
-        fingerprints = new BitBuffer(bitsPerFingerprint * m);
+        fingerprints = new BitBuffer((long)bitsPerFingerprint * m);
         for(long f : fp) {
             fingerprints.writeNumber(f, bitsPerFingerprint);
         }
