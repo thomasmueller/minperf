@@ -1,4 +1,4 @@
-package org.minperf.bloom;
+package org.minperf.bloom.mphf;
 
 import org.minperf.BitBuffer;
 import org.minperf.hash.Mix;

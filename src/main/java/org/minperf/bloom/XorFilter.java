@@ -3,6 +3,7 @@ package org.minperf.bloom;
 import java.util.BitSet;
 
 import org.minperf.BitBuffer;
+import org.minperf.bloom.utils.BinaryArithmeticBuffer;
 import org.minperf.hash.Mix;
 
 /**
