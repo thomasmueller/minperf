@@ -135,7 +135,7 @@ public class MonotoneListTest {
         byte[] data = new byte[bucketCount * 8];
         int[] readList = new int[bucketCount];
         r.nextBytes(data);
-        for (int i = 0; i < bucketCount; i++) {
+        for (int i = 1; i < bucketCount; i++) {
             readList[i] = r.nextInt(bucketCount - 1);
         }
         int dummy = 0;

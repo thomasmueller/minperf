@@ -1,7 +1,7 @@
 package org.minperf.bloom;
 
 import org.minperf.BitBuffer;
-import org.minperf.hem.RandomGenerator;
+//import org.minperf.hem.RandomGenerator;
 import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
@@ -14,7 +14,7 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
  * Golomb coding overhead is about 0.5 bits).
  */
 public class GolombRiceCompressedSet {
-
+/*
     public static void main(String... args) {
         for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
             test(bitsPerKey);
@@ -51,7 +51,7 @@ public class GolombRiceCompressedSet {
                 "% " + bitsPerKeyResult + " bits/key " +
                 "add: " + addTime + " get: " + getTime + " ns/key overhead " + (bitsPerKeyResult - bitsPerKey));
     }
-
+*/
     private final BitBuffer buff;
     private final int golombShift;
     private final int bufferSize;

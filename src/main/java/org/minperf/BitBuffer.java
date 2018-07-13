@@ -10,7 +10,7 @@ import java.util.Arrays;
  */
 public class BitBuffer {
 
-    private final long[] data;
+    public final long[] data;
     private int pos;
 
     public BitBuffer(int bits) {

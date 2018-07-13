@@ -200,7 +200,6 @@ public class XorFilter implements Filter {
             if (reverseOrderPos == size) {
                 break;
             }
-//System.out.println("hi++");
             hashIndex++;
         }
         this.hashIndex = hashIndex;
@@ -280,16 +279,23 @@ public class XorFilter implements Filter {
         f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
         f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
 
-//        for (int i = 0; i < HASHES; i++) {
-//            int h = getHash(key, hashIndex, i);
-//            f ^= fingerprints.readNumber(h * bitsPerFingerprint, bitsPerFingerprint);
-//        }
-//        int h0 = getHash(key, hashIndex, 0);
-//        int h1 = getHash(key, hashIndex, 1);
-//        int h2 = getHash(key, hashIndex, 2);
-//        f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
-//        f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
-//        f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
+        return f == 0;
+    }
+
+    // special case where bitsPerFingerprint == 32, could be 
+    // even faster, should special case all relevant bit widths
+    public boolean mayContain32(long key) {
+        int f = fingerprint(key);
+        key = Mix.hash64(key + hashIndex);
+        int r0 = (int) (key >>> 32);
+        int r1 = (int) (key);
+        int r2 = (int) ((key >>> 32) ^ key);
+        int h0 = reduce(r0, blockLength);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        f ^= fingerprints.data[h0>>>1] >>> ((key & 1)<<1);
+        f ^= fingerprints.data[h1>>>1] >>> ((key & 1)<<1);
+        f ^= fingerprints.data[h2>>>1] >>> ((key & 1)<<1);
         return f == 0;
     }
 
