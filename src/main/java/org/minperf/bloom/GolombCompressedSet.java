@@ -1,7 +1,7 @@
 package org.minperf.bloom;
 
 import org.minperf.BitBuffer;
-import org.minperf.hem.RandomGenerator;
+//import org.minperf.hem.RandomGenerator;
 import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
@@ -16,6 +16,8 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
  */
 public class GolombCompressedSet {
 
+  /// Mixing tests with code is non-standard.
+/*
     public static void main(String... args) {
         for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
             test(bitsPerKey);
@@ -51,7 +53,7 @@ public class GolombCompressedSet {
         System.out.println("GCS false positives: " + falsePositiveRate +
                 "% " + bitsPerKeyResult + " bits/key " +
                 "add: " + addTime + " get: " + getTime + " ns/key overhead " + (bitsPerKeyResult - bitsPerKey));
-    }
+    }*/
 
     private final BitBuffer buff;
     private final int golombDivisor;
