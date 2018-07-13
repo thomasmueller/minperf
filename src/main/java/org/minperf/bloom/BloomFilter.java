@@ -41,10 +41,10 @@ public class BloomFilter implements Filter {
         data = new long[(int) ((bits + 63) / 64)];
     }
 
-    void add(long hashCode) {
-        long h = hash64(hashCode);
-        int a = (int) (h >>> 32);
-        int b = (int) h;
+    void add(long key) {
+        long hash = hash64(key);
+        int a = (int) (hash >>> 32);
+        int b = (int) hash;
         for (int i = 0; i < k; i++) {
             int index = reduce(a, bits);
             data[getArrayIndex(index)] |= getBit(index);
@@ -53,10 +53,10 @@ public class BloomFilter implements Filter {
     }
 
     @Override
-    public boolean mayContain(long hashCode) {
-        long h = hash64(hashCode);
-        int a = (int) (h >>> 32);
-        int b = (int) h;
+    public boolean mayContain(long key) {
+        long hash = hash64(key);
+        int a = (int) (hash >>> 32);
+        int b = (int) hash;
         for (int i = 0; i < k; i++) {
             int index = reduce(a, bits);
             if ((data[getArrayIndex(index)] & getBit(index)) == 0) {
@@ -77,7 +77,7 @@ public class BloomFilter implements Filter {
     }
 
     private static long getBit(int index) {
-        return 1L << (index & 63);
+        return 1L << index;
     }
 
     private static int reduce(int hash, int n) {
