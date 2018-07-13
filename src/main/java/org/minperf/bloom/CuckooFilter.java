@@ -71,7 +71,15 @@ public class CuckooFilter implements Filter {
         int bucket2 = getBucket2(bucket, fingerprint);
         return bucketContains(bucket2, fingerprint);
     }
+    public boolean mayContainAtOnce(long key) {
+        long hash = Mix.hash64(key);
+        int bucket = getBucket(hash);
+        int fingerprint = getFingerprint(hash);
+        int bucket2 = getBucket2(bucket, fingerprint);
+        return (bucketContains(bucket, fingerprint) || bucketContains(bucket2, fingerprint));
+    }
 
+ 
     private int getBucket(long hash) {
         return reduce((int) hash, bucketCount);
     }
@@ -108,6 +116,10 @@ public class CuckooFilter implements Filter {
     private boolean bucketContains(int bucket, int fingerprint) {
         // read all fingerprints at once - with 4 entries per bucket, this only
         // works up to 15 bits per fingerprint, with the current BitBuffer
+
+        //////////////////////////
+        // buffer.readNumber is probably not reasonable in a high performance setting
+        /////////////////////////
         long allFingerprints = buffer.readNumber(bucket * fingerprintBitsPerBucket,
                 fingerprintBitsPerBucket);
         for (int entry = 0; entry < entriesPerBucket; entry++) {

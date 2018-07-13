@@ -21,6 +21,10 @@ public class JmhBench {
 		@Param({ "100000", "1000000", "10000000" })
 		int N;
 
+		@Param({ "8", "16", "32" })
+		int bits;
+
+
 		XorFilter xor;
 		BloomFilter bloom;
 		CuckooFilter cuckoo;
@@ -40,11 +44,11 @@ public class JmhBench {
 				keys[i] = r.nextLong();
 			}
 			System.out.println("Constructing Xor Filter");
-			xor = (XorFilter) XorFilter.construct(keys, 32);
+			xor = (XorFilter) XorFilter.construct(keys, bits);
 			System.out.println("Constructing Bloom Filter");
-			bloom = (BloomFilter) BloomFilter.construct(keys, 32);
+			bloom = (BloomFilter) BloomFilter.construct(keys, bits);
 			System.out.println("Constructing cuckoo Filter");
-			cuckoo = (CuckooFilter) CuckooFilter.construct(keys, 32);
+			cuckoo = (CuckooFilter) CuckooFilter.construct(keys, bits);
 			System.out.println("Generating test random array");
 			for (int i = 0; i < Ntest; i++) {
 				testkeys[i] = r.nextLong();
@@ -73,18 +77,40 @@ public class JmhBench {
 	}
 	
 	@Benchmark
-	public int xortest32(StateHolder s) {
+	public int xortestfast(StateHolder s) {
 		int sum = 0;
-		for (int k = 0; k < s.Ntest; k++)
-			if (s.xor.mayContain32(s.testkeys[k]))
-				sum++;
+                if(s.bits == 32) {
+		  for (int k = 0; k < s.Ntest; k++) {
+			if (s.xor.mayContain32(s.testkeys[k])) sum++;
+                  }
+                } else if (s.bits == 16) {
+       		  for (int k = 0; k < s.Ntest; k++) {
+			if (s.xor.mayContain16(s.testkeys[k])) sum++;
+                  }
+                } else if (s.bits == 8) {
+       		  for (int k = 0; k < s.Ntest; k++) {
+			if (s.xor.mayContain8(s.testkeys[k])) sum++;
+                  }
+                } else {
+                  // "unsupported "
+                }
 		return sum;
 	}
+
 	@Benchmark
 	public int cuckootest(StateHolder s) {
 		int sum = 0;
 		for (int k = 0; k < s.Ntest; k++)
 			if (s.cuckoo.mayContain(s.testkeys[k]))
+				sum++;
+		return sum;
+	}
+
+	@Benchmark
+	public int cuckootestatonce(StateHolder s) {
+		int sum = 0;
+		for (int k = 0; k < s.Ntest; k++)
+			if (s.cuckoo.mayContainAtOnce(s.testkeys[k]))
 				sum++;
 		return sum;
 	}

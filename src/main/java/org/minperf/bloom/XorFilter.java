@@ -275,6 +275,9 @@ public class XorFilter implements Filter {
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        // todo: these calls to fingerprints.readNumber are not reasonable in a high
+        // performance setting. Need to write special cases for various bitsPerFingerprint values
+        // such as 8 and 16.
         f ^= fingerprints.readNumber(h0 * bitsPerFingerprint, bitsPerFingerprint);
         f ^= fingerprints.readNumber(h1 * bitsPerFingerprint, bitsPerFingerprint);
         f ^= fingerprints.readNumber(h2 * bitsPerFingerprint, bitsPerFingerprint);
@@ -284,7 +287,8 @@ public class XorFilter implements Filter {
 
     // special case where bitsPerFingerprint == 32, could be 
     // even faster, should special case all relevant bit widths
-    public boolean mayContain32(long key) {
+    // UNTESTED
+     public boolean mayContain32(long key) {
         int f = fingerprint(key);
         key = Mix.hash64(key + hashIndex);
         int r0 = (int) (key >>> 32);
@@ -293,11 +297,48 @@ public class XorFilter implements Filter {
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>1] >>> ((key & 1)<<1);
-        f ^= fingerprints.data[h1>>>1] >>> ((key & 1)<<1);
-        f ^= fingerprints.data[h2>>>1] >>> ((key & 1)<<1);
+        f ^= fingerprints.data[h0>>>1] >>> ((key & 1)<<5);
+        f ^= fingerprints.data[h1>>>1] >>> ((key & 1)<<5);
+        f ^= fingerprints.data[h2>>>1] >>> ((key & 1)<<5);
         return f == 0;
     }
+
+    // special case where bitsPerFingerprint == 16, could be 
+    // even faster, should special case all relevant bit widths
+    // UNTESTED
+    public boolean mayContain16(long key) {
+        int f = fingerprint(key);
+        key = Mix.hash64(key + hashIndex);
+        int r0 = (int) (key >>> 32);
+        int r1 = (int) (key);
+        int r2 = (int) ((key >>> 32) ^ key);
+        int h0 = reduce(r0, blockLength);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        f ^= fingerprints.data[h0>>>2] >>> ((key & 3)<<4);
+        f ^= fingerprints.data[h1>>>2] >>> ((key & 3)<<4);
+        f ^= fingerprints.data[h2>>>2] >>> ((key & 3)<<4);
+        return (f & 0xFFFF) == 0;
+    }
+
+    // special case where bitsPerFingerprint == 8, could be 
+    // even faster, should special case all relevant bit widths
+    // UNTESTED
+     public boolean mayContain8(long key) {
+        int f = fingerprint(key);
+        key = Mix.hash64(key + hashIndex);
+        int r0 = (int) (key >>> 32);
+        int r1 = (int) (key);
+        int r2 = (int) ((key >>> 32) ^ key);
+        int h0 = reduce(r0, blockLength);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        f ^= fingerprints.data[h0>>>3] >>> ((key & 7)<<3);
+        f ^= fingerprints.data[h1>>>3] >>> ((key & 7)<<3);
+        f ^= fingerprints.data[h2>>>3] >>> ((key & 7)<<3);
+        return (f & 0xFF) == 0;
+    }
+
 
     /**
      * Calculate the hash for a key.
