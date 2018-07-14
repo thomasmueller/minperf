@@ -8,17 +8,17 @@ public class BloomFilter implements Filter {
     // See also https://hur.st/bloomfilter/?n=357212&p=0.01&m=&k=
 
     public static BloomFilter construct(long[] keys, int bitsPerKey) {
-        int n = keys.length;
-        int m = n * bitsPerKey;
+        long n = keys.length;
+        long m = n * bitsPerKey;
         int k = getBestK(m, n);
-        BloomFilter f = new BloomFilter(n, bitsPerKey, k);
+        BloomFilter f = new BloomFilter((int) n, bitsPerKey, k);
         for(long x : keys) {
             f.add(x);
         }
         return f;
     }
 
-    private static int getBestK(int m, int n) {
+    private static int getBestK(long m, long n) {
         return Math.max(1, (int) Math.round((double) m / n * Math.log(2)));
     }
 
@@ -31,7 +31,7 @@ public class BloomFilter implements Filter {
     }
 
     public long getBitCount() {
-        return data.length * 64;
+        return data.length * 64L;
     }
 
     BloomFilter(int entryCount, int bitsPerKey, int k) {
@@ -48,8 +48,8 @@ public class BloomFilter implements Filter {
         final int arraysize = data.length;
         for (int i = 0; i < k; i++) {
             // reworked to avoid overflows
-            // use the fact that reduce is not very sensitive to lower bits of a 
-            data[reduce(a,arraysize)] |= getBit(a);
+            // use the fact that reduce is not very sensitive to lower bits of a
+            data[reduce(a, arraysize)] |= getBit(a);
             a += b;
         }
     }
@@ -62,21 +62,12 @@ public class BloomFilter implements Filter {
         final int arraysize = data.length;
         for (int i = 0; i < k; i++) {
             // reworked to avoid overflows
-            if ((data[reduce(a,arraysize)] & getBit(a)) == 0) {
+            if ((data[reduce(a, arraysize)] & getBit(a)) == 0) {
                 return false;
             }
             a += b;
         }
         return true;
-    }
-
-    private static int getArrayIndex(int index) {
-        // use shift instead of division
-        // the compiler will most likely do that itself,
-        // it's done to be on the safe side
-        // (the compiler might think index can be negative)
-        // return index / 64;
-        return index >>> 6;
     }
 
     private static long getBit(int index) {
