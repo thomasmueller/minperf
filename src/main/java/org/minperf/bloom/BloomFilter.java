@@ -23,7 +23,7 @@ public class BloomFilter implements Filter {
     }
 
     private final int k;
-    private final int bits;
+    private final long bits;
     private final long[] data;
 
     BloomFilter(int entryCount) {
@@ -37,7 +37,7 @@ public class BloomFilter implements Filter {
     BloomFilter(int entryCount, int bitsPerKey, int k) {
         entryCount = Math.max(1, entryCount);
         this.k = k;
-        this.bits = entryCount * bitsPerKey;
+        this.bits = (long) entryCount * bitsPerKey;
         data = new long[(int) ((bits + 63) / 64)];
     }
 
@@ -45,9 +45,11 @@ public class BloomFilter implements Filter {
         long hash = hash64(key);
         int a = (int) (hash >>> 32);
         int b = (int) hash;
+        final int arraysize = data.length;
         for (int i = 0; i < k; i++) {
-            int index = reduce(a, bits);
-            data[getArrayIndex(index)] |= getBit(index);
+            // reworked to avoid overflows
+            // use the fact that reduce is not very sensitive to lower bits of a 
+            data[reduce(a,arraysize)] |= getBit(a);
             a += b;
         }
     }
@@ -57,9 +59,10 @@ public class BloomFilter implements Filter {
         long hash = hash64(key);
         int a = (int) (hash >>> 32);
         int b = (int) hash;
+        final int arraysize = data.length;
         for (int i = 0; i < k; i++) {
-            int index = reduce(a, bits);
-            if ((data[getArrayIndex(index)] & getBit(index)) == 0) {
+            // reworked to avoid overflows
+            if ((data[reduce(a,arraysize)] & getBit(a)) == 0) {
                 return false;
             }
             a += b;
