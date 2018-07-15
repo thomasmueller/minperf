@@ -18,14 +18,14 @@ public class JmhBenchXor8 {
     @State(Scope.Benchmark)
     public static class StateHolder {
 
-        @Param({ "100000", "1000000", "10000000", "100000000" })
+        @Param({ "100000", "1000000", "10000000", "20000000", "40000000", "60000000", "680000000", "100000000" })
         int N;
 
         @Param({ "8" })
         int bits;
 
         XorFilter_8bit xor8;
-        final int Ntest = 10000;
+        final int Ntest = 100000;
         long[] testkeys = new long[Ntest];
 
         @Setup(Level.Trial)
@@ -57,7 +57,7 @@ public class JmhBenchXor8 {
                 if (s.xor8.mayContain(s.testkeys[k]))
                     sum++;
             }
-        }        
+        }
        return sum;
     }
 

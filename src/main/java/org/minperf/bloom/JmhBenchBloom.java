@@ -18,14 +18,14 @@ public class JmhBenchBloom {
     @State(Scope.Benchmark)
     public static class StateHolder {
 
-        @Param({ "100000", "1000000", "10000000", "100000000" })
+        @Param({ "100000", "1000000", "10000000", "20000000", "40000000", "60000000", "680000000", "100000000" })
         int N;
 
         @Param({ "8", "16", "32" })
         int bits;
 
         BloomFilter bloom;
-        final int Ntest = 10000;
+        final int Ntest = 100000;
         long[] testkeys = new long[Ntest];
 
         @Setup(Level.Trial)
