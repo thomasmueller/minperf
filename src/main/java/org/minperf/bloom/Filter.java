@@ -2,7 +2,24 @@ package org.minperf.bloom;
 
 public interface Filter {
 
+    /**
+     * Whether the set may contain the key.
+     *
+     * @param key the key
+     * @return true if the set might contain the key, and false if not
+     */
     boolean mayContain(long key);
+
+    /**
+     * An alternative implementation.
+     *
+     * @param key the key
+     * @return -1 if the method isn't implemented, 0 for false, >0 for true
+     */
+    default int mayContainAlternative(long key) {
+        return -1;
+    }
+
     long getBitCount();
 
     public enum Type {
