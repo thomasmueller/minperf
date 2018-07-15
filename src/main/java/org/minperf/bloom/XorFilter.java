@@ -28,6 +28,10 @@ public class XorFilter implements Filter {
     // maybe with a blocked approach?
     // the number of hashes per key (see the BDZ algorithm)
 
+    // TODO the xor filter can be initialized with random data if this is needed
+    // 91.3% of the entries are hit by keys
+    // 81.3% of the entries are set (so 10% are never hit, and 10% can be any value)
+
     private static final int HASHES = 3;
 
     // the table needs to be 1.23 times the number of keys to store
