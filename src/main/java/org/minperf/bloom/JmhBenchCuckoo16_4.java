@@ -18,14 +18,14 @@ public class JmhBenchCuckoo16_4 {
     @State(Scope.Benchmark)
     public static class StateHolder {
 
-        @Param({ "100000", "1000000", "10000000", "100000000" })
+        @Param({ "100000", "1000000", "10000000", "20000000", "40000000", "60000000", "680000000", "100000000" })
         int N;
 
         @Param({ "16" })
         int bits;
 
         CuckooFilter_16bit_4entries cuckoo16_4;
-        final int Ntest = 10000;
+        final int Ntest = 100000;
         long[] testkeys = new long[Ntest];
 
         @Setup(Level.Trial)
