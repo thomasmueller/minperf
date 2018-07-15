@@ -25,7 +25,7 @@ public class JmhBenchXor8 {
         int bits;
 
         XorFilter_8bit xor8;
-        final int Ntest = 100000;
+        final int Ntest = 1000000;
         long[] testkeys = new long[Ntest];
 
         @Setup(Level.Trial)

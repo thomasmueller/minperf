@@ -31,7 +31,7 @@ public class JmhBench {
         CuckooFilter cuckoo;
         CuckooFilter_8bit_4entries cuckoo8_4;
         CuckooFilter_16bit_4entries cuckoo16_4;
-        final int Ntest = 100000;
+        final int Ntest = 1000000;
         long[] testkeys = new long[Ntest];
 
         @Setup(Level.Trial)
