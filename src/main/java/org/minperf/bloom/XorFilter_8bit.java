@@ -1,5 +1,7 @@
 package org.minperf.bloom;
 
+import java.util.Arrays;
+
 import org.minperf.hash.Mix;
 
 /**
@@ -200,18 +202,27 @@ public class XorFilter_8bit implements Filter {
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
         int[] fp = new int[m];
+        // set all entries to some keys fingerprint
+        // to support early stopping in some cases
+        // for(long k : keys) {
+        //     for (int hi = 0; hi < HASHES; hi++) {
+        //         int h = getHash(k, hashIndex, hi);
+        //         long hash = Mix.hash64(k + hashIndex);
+        //         fp[h] = fingerprint(hash);
+        //     }
+        // }
         for (int i = reverseOrderPos - 1; i >= 0; i--) {
             // the key we insert next
             long k = reverseOrder[i];
             // which entry in the table we can change
-            int change = 0;
+            int change = -1;
             // we set table[change] to the fingerprint of the key,
             // unless the other two entries are already occupied
             long hash = Mix.hash64(k + hashIndex);
             int xor = fingerprint(hash);
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(k, hashIndex, hi);
-                if (at[h] == k) {
+                if (at[h] == k && change == -1) {
                     change = h;
                 } else {
                     // this is different from BDZ: using xor to calculate the
@@ -222,6 +233,32 @@ public class XorFilter_8bit implements Filter {
             fp[change] = xor;
         }
         if (SHOW_ZERO_RATE) {
+            int[] isFp = new int[5];
+            for(long k : keys) {
+                long hash = Mix.hash64(k + hashIndex);
+                int f = fingerprint(hash);
+                int h0 = getHash(k, hashIndex, 0);
+                int h1 = getHash(k, hashIndex, 1);
+                int h2 = getHash(k, hashIndex, 2);
+                if (fp[h0] == f) {
+                    isFp[0]++;
+                }
+                if (fp[h1] == f) {
+                    isFp[1]++;
+                }
+                if (fp[h2] == f) {
+                    isFp[2]++;
+                }
+                if ((fp[h0] ^ fp[h1]) == f) {
+                    isFp[3]++;
+                }
+                if ((fp[h1] ^ fp[h2]) == f) {
+                    isFp[4]++;
+                }
+                // ifFP: [13374, 63473, 69007, 3948, 3910]
+                // ifFP: [58012, 3857, 3938, 195530, 3745]
+            }
+            System.out.println("shortcut possible at h0, h1, h2, h0^h1, h1^h2: " + Arrays.toString(isFp));
             int zeros = 0;
             for (int f : fp) {
                 if (f == 0) {
@@ -272,6 +309,21 @@ public class XorFilter_8bit implements Filter {
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
         f ^= fingerprints[h0] ^ fingerprints[h1] ^ fingerprints[h2];
         return (f & 0xff) == 0;
+    }
+
+    public int mayContainAlternative(long key) {
+        long hash = Mix.hash64(key + hashIndex);
+        long f = fingerprint(hash);
+        int r1 = (int) (hash);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        long f1 = fingerprints[h1];
+        int r2 = (int) ((hash >>> 32) ^ hash);
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        long f2 = fingerprints[h2];
+        int r0 = (int) (hash >>> 32);
+        int h0 = reduce(r0, blockLength);
+        long f0 = fingerprints[h0];
+        return ~(int) ((f ^ f0 ^ f1 ^ f2) & 0xff);
     }
 
     /**
