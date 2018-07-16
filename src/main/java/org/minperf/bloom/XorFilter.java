@@ -28,6 +28,14 @@ public class XorFilter implements Filter {
     // maybe with a blocked approach?
     // the number of hashes per key (see the BDZ algorithm)
 
+    // TODO the xor filter can be initialized with random data if this is needed
+    // 91.3% of the entries are hit by keys
+    // 81.3% of the entries are set (so 10% are never hit, and 10% can be any value)
+
+    // in 20% of the cases, fp[h1] ^ fp[h2] == fingerprint,
+    // so we could check this and don't have to read fp[h0],
+    // at the expense of 80% higher fpp
+
     private static final int HASHES = 3;
 
     // the table needs to be 1.23 times the number of keys to store
