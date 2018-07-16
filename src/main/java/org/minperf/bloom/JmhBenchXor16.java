@@ -49,6 +49,23 @@ public class JmhBenchXor16 {
         }
 
     }
+
+   @Benchmark
+   public int xortest_16_batch(StateHolder s) {
+        int sum = 0;
+        if (s.bits == 16) {
+            final int batchsize = 128;
+            final long[] buffer = new long[batchsize];
+            final int[] tmp = new int[4 * batchsize];
+            int k = 0;
+            for (; k+batchsize <= s.Ntest; k+= batchsize) {
+                sum+= (s.xor16.mayContainBatch(s.testkeys, k, batchsize,buffer, tmp));
+            }
+            sum+= (s.xor16.mayContainBatch(s.testkeys, k, s.Ntest % batchsize, buffer, tmp));
+        }
+       return sum;
+   } 
+
    @Benchmark
     public int xortest_16(StateHolder s) {
         int sum = 0;

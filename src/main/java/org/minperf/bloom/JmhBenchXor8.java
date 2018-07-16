@@ -49,6 +49,23 @@ public class JmhBenchXor8 {
         }
 
     }
+
+    @Benchmark
+    public int xortest_8_batch(StateHolder s) {
+        int sum = 0;
+        if (s.bits == 8) {
+            final int batchsize = 128;
+            final long[] buffer = new long[batchsize];
+            final int[] tmp = new int[4 * batchsize];
+            int k = 0;
+            for (; k+batchsize <= s.Ntest; k+= batchsize) {
+                sum+= (s.xor8.mayContainBatch(s.testkeys, k, batchsize,buffer, tmp));
+            }
+            sum+= (s.xor8.mayContainBatch(s.testkeys, k, s.Ntest % batchsize, buffer, tmp));
+        }
+       return sum;
+    }
+
    @Benchmark
     public int xortest_8(StateHolder s) {
         int sum = 0;

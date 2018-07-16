@@ -274,6 +274,45 @@ public class XorFilter_8bit implements Filter {
         return (f & 0xff) == 0;
     }
 
+
+
+    /**
+     * Batch version of whether the filter _may_ contain a key.
+     *
+     * @param keys  the keys to test
+     * @param startpos starting point in keys
+     * @param length how many data points to process
+     * @param accumulator should have at least "length" capacity
+     * @param buffer should have at least 4*length capacity 
+     * @return number of matching keys
+     */
+    public int mayContainBatch(long[] keys, int startpos, int length, long[] accumulator, int[] buffer) {
+      for(int k = 0; k < length; k++) {
+        long hash = Mix.hash64(keys[k] + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
+        int h0 = reduce(r0, blockLength);
+        int h1 = reduce(r1, blockLength) + blockLength;
+        int h2 = reduce(r2, blockLength) + 2 * blockLength;
+        buffer[4 * k] = h0;
+        buffer[4 * k + 1] = h1;
+        buffer[4 * k + 2] = h2;
+        buffer[4 * k + 3] = f;
+      }
+      for(int k = 0; k < length; k++) {
+        accumulator[k] = (buffer[4 * k + 3] ^ fingerprints[buffer[4 * k]] ^ fingerprints[buffer[4 * k + 1]] ^ fingerprints[buffer[4 * k + 2]]);
+      }
+      int pos = 0;
+      for(int k = 0; k < length; k++) {
+        long val = accumulator[k] & 0xFF;
+        accumulator[pos] = keys[k];
+        if(val != 0) pos++;
+      }
+      return pos;
+    }
+
     /**
      * Calculate the hash for a key.
      *
