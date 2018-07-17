@@ -46,7 +46,7 @@ public class GolombRiceCompressedSet implements Filter {
             throw new IllegalArgumentException();
         }
         this.golombShift = fingerprintBits;
-        BitBuffer buckets = new BitBuffer(10 * fingerprintBits * len);
+        BitBuffer buckets = new BitBuffer(10L * fingerprintBits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;
         long last = 0;
@@ -64,7 +64,7 @@ public class GolombRiceCompressedSet implements Filter {
         while (bucket <= bucketCount) {
             startList[bucket++] = buckets.position();
         }
-        buff = new BitBuffer(10 * bitCount * len);
+        buff = new BitBuffer(10L * bitCount * len);
         buff.writeEliasDelta(len + 1);
         start = MultiStageMonotoneList.generate(startList, buff);
         startBuckets = buff.position();

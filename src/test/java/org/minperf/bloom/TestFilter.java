@@ -35,7 +35,7 @@ public class TestFilter {
                 setting = 0;
                 break;
             }
-            test(type, false, 1_000_000, 128_000_000, setting, setting, 0.001, 0.1);
+            test(type, false, 1_000_000, 64_000_000, setting, setting, 0.0, 0.1);
         }
     }
 
@@ -53,7 +53,7 @@ public class TestFilter {
             case MPHF:
             case GCS:
             case GRCS:
-                // continue;
+                continue;
             default:
             }
             if (warmup) {
