@@ -28,6 +28,8 @@ public class XorFilter_8bit implements Filter {
     // maybe with a blocked approach?
     // the number of hashes per key (see the BDZ algorithm)
 
+    // TODO compression; now we have 9% / 11.5% / 36.5% free entries
+
     private static final int HASHES = 3;
 
     // the table needs to be 1.23 times the number of keys to store
@@ -147,59 +149,72 @@ public class XorFilter_8bit implements Filter {
                     t2count[h]++;
                 }
             }
+
             // == generate the queue ==
-            // the list of indexes in the table that are "alone", that is,
-            // only have one key pointing to them - those are the simple cases
-            int[] alone = new int[arrayLength];
-            int alonePos = 0;
             // for each entry that is alone,
             // we remove it from t2, and add it to the reverseOrder list
             reverseOrderPos = 0;
+            // the list of indexes in the table that are "alone", that is,
+            // only have one key pointing to them
+            // we have one list per block, so that one block can have more empty entries
+            int[][] alone = new int[HASHES][blockLength];
+            int[] alonePos = new int[HASHES];
             // nextAloneCheck loops over all entries, to find an entry that is alone
             // once we found one, we remove it, and while removing it, we check
             // if this resulted in yet another entry that is alone -
             // the BDZ algorithm loops over _all_ entries in the beginning,
             // but this results in adding more entries to the alone list multiple times
-            for(int nextAloneCheck = 0; nextAloneCheck < arrayLength;) {
-                while (nextAloneCheck < arrayLength) {
-                    if (t2count[nextAloneCheck] == 1) {
-                        alone[alonePos++] = nextAloneCheck;
-                        // break;
+            for(int nextAlone = 0; nextAlone < HASHES; nextAlone++) {
+                for (int i = 0; i < blockLength; i++) {
+                    if (t2count[nextAlone * blockLength + i] == 1) {
+                        alone[nextAlone][alonePos[nextAlone]++] = nextAlone * blockLength + i;
                     }
-                    nextAloneCheck++;
                 }
-                while (alonePos > 0) {
-                    int i = alone[--alonePos];
-                    if (t2count[i] == 0) {
-                        continue;
+            }
+            int found = -1;
+            while (true) {
+                int i = -1;
+                for (int hi = 0; hi < HASHES; hi++) {
+                    if (alonePos[hi] > 0) {
+                        i = alone[hi][--alonePos[hi]];
+                        found = hi;
+                        break;
                     }
-                    long k = t2[i];
-                    // which index (0, 1, 2) the entry was found
-                    byte found = -1;
-                    for (int hi = 0; hi < HASHES; hi++) {
+                }
+                if (i == -1) {
+                    // no entry found
+                    break;
+                }
+                if (t2count[i] <= 0) {
+                    continue;
+                }
+                long k = t2[i];
+                if (t2count[i] != 1) {
+                    throw new AssertionError();
+                }
+                --t2count[i];
+                // which index (0, 1, 2) the entry was found
+                for (int hi = 0; hi < HASHES; hi++) {
+                    if (hi != found) {
                         int h = getHash(k, hashIndex, hi);
                         int newCount = --t2count[h];
-                        if (newCount == 0) {
-                            found = (byte) hi;
-                        } else {
-                            if (newCount == 1) {
-                            // if (newCount == 1 && h < nextAloneCheck) {
-                                // we found a key that is _now_ alone
-                                alone[alonePos++] = h;
-                            }
-                            // remove this key from the t2 table, using xor
-                            t2[h] ^= k;
+                        if (newCount == 1) {
+                            // we found a key that is _now_ alone
+                            alone[hi][alonePos[hi]++] = h;
                         }
+                        // remove this key from the t2 table, using xor
+                        t2[h] ^= k;
                     }
-                    reverseOrder[reverseOrderPos] = k;
-                    reverseH[reverseOrderPos] = found;
-                    reverseOrderPos++;
                 }
+                reverseOrder[reverseOrderPos] = k;
+                reverseH[reverseOrderPos] = (byte) found;
+                reverseOrderPos++;
             }
             // this means there was no cycle
             if (reverseOrderPos == size) {
                 break;
             }
+            System.out.println("hashIndex++");
             hashIndex++;
         }
         this.hashIndex = hashIndex;
@@ -306,12 +321,14 @@ public class XorFilter_8bit implements Filter {
     public boolean mayContain(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
+
         f ^= fingerprints[h0] ^ fingerprints[h1] ^ fingerprints[h2];
         return (f & 0xff) == 0;
     }
@@ -332,9 +349,9 @@ public class XorFilter_8bit implements Filter {
       for(int k = 0; k < length; k++) {
         long hash = Mix.hash64(keys[k] + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -358,13 +375,13 @@ public class XorFilter_8bit implements Filter {
     public int mayContainAlternative(long key) {
         long hash = Mix.hash64(key + hashIndex);
         long f = fingerprint(hash);
-        int r1 = (int) (hash);
+        int r1 = (int) (hash >>> 16);
         int h1 = reduce(r1, blockLength) + blockLength;
         long f1 = fingerprints[h1];
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r2 = (int) (hash >>> 32);
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
         long f2 = fingerprints[h2];
-        int r0 = (int) (hash >>> 32);
+        int r0 = (int) hash;
         int h0 = reduce(r0, blockLength);
         long f0 = fingerprints[h0];
         return ~(int) ((f ^ f0 ^ f1 ^ f2) & 0xff);
@@ -383,13 +400,13 @@ public class XorFilter_8bit implements Filter {
         int r;
         switch(index) {
         case 0:
-            r = (int) (hash >>> 32);
-            break;
-        case 1:
             r = (int) (hash);
             break;
+        case 1:
+            r = (int) (hash >>> 16);
+            break;
         default:
-            r = (int) ((hash >>> 32) ^  hash);
+            r = (int) (hash >>> 32);
             break;
         }
 
