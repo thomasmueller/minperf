@@ -227,7 +227,8 @@ public class XorFilter implements Filter {
             int change = -1;
             // we set table[change] to the fingerprint of the key,
             // unless the other two entries are already occupied
-            int xor = fingerprint(k);
+            long hash = Mix.hash64(k + hashIndex);
+            int xor = fingerprint(hash);
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(k, hashIndex, hi);
                 if (found == hi) {
@@ -281,11 +282,11 @@ public class XorFilter implements Filter {
      */
     @Override
     public boolean mayContain(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
+        long hash = Mix.hash64(key + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -303,18 +304,18 @@ public class XorFilter implements Filter {
     // special case where bitsPerFingerprint == 32, could be
     // even faster, should special case all relevant bit widths
     // UNTESTED
-     public boolean mayContain32(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
+    public boolean mayContain32(long key) {
+        long hash = Mix.hash64(key + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>1] >>> ((key & 1)<<5);
-        f ^= fingerprints.data[h1>>>1] >>> ((key & 1)<<5);
-        f ^= fingerprints.data[h2>>>1] >>> ((key & 1)<<5);
+        f ^= fingerprints.data[h0 >>> 1] >>> ((key & 1) << 5);
+        f ^= fingerprints.data[h1 >>> 1] >>> ((key & 1) << 5);
+        f ^= fingerprints.data[h2 >>> 1] >>> ((key & 1) << 5);
         return f == 0;
     }
 
@@ -322,11 +323,11 @@ public class XorFilter implements Filter {
     // even faster, should special case all relevant bit widths
     // UNTESTED
     public boolean mayContain16(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
+        long hash = Mix.hash64(key + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -339,21 +340,20 @@ public class XorFilter implements Filter {
     // special case where bitsPerFingerprint == 8, could be
     // even faster, should special case all relevant bit widths
     // UNTESTED
-     public boolean mayContain8(long key) {
-        int f = fingerprint(key);
-        key = Mix.hash64(key + hashIndex);
-        int r0 = (int) (key >>> 32);
-        int r1 = (int) (key);
-        int r2 = (int) ((key >>> 32) ^ key);
+    public boolean mayContain8(long key) {
+        long hash = Mix.hash64(key + hashIndex);
+        int f = fingerprint(hash);
+        int r0 = (int) (hash >>> 32);
+        int r1 = (int) (hash);
+        int r2 = (int) ((hash >>> 32) ^ hash);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        f ^= fingerprints.data[h0>>>3] >>> ((key & 7)<<3);
-        f ^= fingerprints.data[h1>>>3] >>> ((key & 7)<<3);
-        f ^= fingerprints.data[h2>>>3] >>> ((key & 7)<<3);
+        f ^= fingerprints.data[h0 >>> 3] >>> ((key & 7) << 3);
+        f ^= fingerprints.data[h1 >>> 3] >>> ((key & 7) << 3);
+        f ^= fingerprints.data[h2 >>> 3] >>> ((key & 7) << 3);
         return (f & 0xFF) == 0;
     }
-
 
     /**
      * Calculate the hash for a key.
@@ -397,12 +397,11 @@ public class XorFilter implements Filter {
     /**
      * Calculate the fingerprint.
      *
-     * @param key the key
+     * @param hash the hash of the key
      * @return the fingerprint
      */
-    private int fingerprint(long key) {
-        return (int) (key & ((1 << bitsPerFingerprint) - 1));
-        // return (int) hash64(key) & ((1 << bitsPerFingerprint) - 1);
+    private int fingerprint(long hash) {
+        return (int) (hash & ((1 << bitsPerFingerprint) - 1));
     }
 
     /**

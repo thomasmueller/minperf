@@ -408,12 +408,11 @@ public class XorFilter_8bit implements Filter {
     /**
      * Calculate the fingerprint.
      *
-     * @param key the key
+     * @param hash the hash of the key
      * @return the fingerprint
      */
     private int fingerprint(long hash) {
-        // TODO shift by 8 bit, otherwise the address and the fingerprint are similar
-        return (int) ((hash >> 8) & ((1 << BITS_PER_FINGERPRINT) - 1));
+        return (int) (hash & ((1 << BITS_PER_FINGERPRINT) - 1));
     }
 
     /**
