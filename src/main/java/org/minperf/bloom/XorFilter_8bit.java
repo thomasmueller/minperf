@@ -113,30 +113,26 @@ public class XorFilter_8bit implements Filter {
         int m = arrayLength;
 
         // the order in which the fingerprints are inserted, where
-        // keys[reverseOrder[0]] is the last entry to insert,
-        // keys[reverseOrder[1]] the second to last
+        // reverseOrder[0] is the last key to insert,
+        // reverseOrder[1] the second to last
         long[] reverseOrder = new long[size];
+        // when inserting fingerprints, whether to set fp[h0], fp[h1] or fp[h2]
+        byte[] reverseH = new byte[size];
         // current index in the reverseOrder list
         int reverseOrderPos;
-
-        // keys are stored in this array as if it were a regular cuckoo hash
-        // table (we only need this during construction time)
-        long[] at;
 
         // == mapping step ==
         // hashIndex is usually 0; only if we detect a cycle
         // (which is extremely unlikely) we would have to use a larger hashIndex
         int hashIndex = 0;
         while (true) {
-            at = new long[m];
-
             // we use an second table t2 to keep the list of all keys that map
             // to a given entry (with a broken hash function, all keys could map
             // to entry zero).
             // t2count: the number of keys in a given location
-            int[] t2count = new int[m];
+            byte[] t2count = new byte[m];
             // t2 is the table - but we don't store each key, only the xor of
-            // all keys this is possible as when removing a key, we simply xor
+            // keys this is possible as when removing a key, we simply xor
             // again, and once only one is remaining, we know which one it was
             long[] t2 = new long[m];
             // now we loop over all keys and insert them into the t2 table
@@ -144,6 +140,10 @@ public class XorFilter_8bit implements Filter {
                 for (int hi = 0; hi < HASHES; hi++) {
                     int h = getHash(k, hashIndex, hi);
                     t2[h] ^= k;
+                    if (t2count[h] > 120) {
+                        // probably something wrong with the hash function
+                        throw new IllegalArgumentException();
+                    }
                     t2count[h]++;
                 }
             }
@@ -174,12 +174,13 @@ public class XorFilter_8bit implements Filter {
                         continue;
                     }
                     long k = t2[i];
-                    reverseOrder[reverseOrderPos++] = k;
+                    // which index (0, 1, 2) the entry was found
+                    byte found = -1;
                     for (int hi = 0; hi < HASHES; hi++) {
                         int h = getHash(k, hashIndex, hi);
                         int newCount = --t2count[h];
                         if (newCount == 0) {
-                            at[h] = k;
+                            found = (byte) hi;
                         } else {
                             if (newCount == 1) {
                             // if (newCount == 1 && h < nextAloneCheck) {
@@ -190,6 +191,9 @@ public class XorFilter_8bit implements Filter {
                             t2[h] ^= k;
                         }
                     }
+                    reverseOrder[reverseOrderPos] = k;
+                    reverseH[reverseOrderPos] = found;
+                    reverseOrderPos++;
                 }
             }
             // this means there was no cycle
@@ -201,7 +205,7 @@ public class XorFilter_8bit implements Filter {
         this.hashIndex = hashIndex;
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
-        int[] fp = new int[m];
+        byte[] fp = new byte[m];
         // set all entries to some keys fingerprint
         // to support early stopping in some cases
         // for(long k : keys) {
@@ -214,6 +218,7 @@ public class XorFilter_8bit implements Filter {
         for (int i = reverseOrderPos - 1; i >= 0; i--) {
             // the key we insert next
             long k = reverseOrder[i];
+            int found = reverseH[i];
             // which entry in the table we can change
             int change = -1;
             // we set table[change] to the fingerprint of the key,
@@ -222,7 +227,7 @@ public class XorFilter_8bit implements Filter {
             int xor = fingerprint(hash);
             for (int hi = 0; hi < HASHES; hi++) {
                 int h = getHash(k, hashIndex, hi);
-                if (at[h] == k && change == -1) {
+                if (found == hi) {
                     change = h;
                 } else {
                     // this is different from BDZ: using xor to calculate the
@@ -230,7 +235,7 @@ public class XorFilter_8bit implements Filter {
                     xor ^= fp[h];
                 }
             }
-            fp[change] = xor;
+            fp[change] = (byte) xor;
         }
         if (SHOW_ZERO_RATE) {
             int[] isFp = new int[5];
@@ -320,7 +325,7 @@ public class XorFilter_8bit implements Filter {
      * @param startpos starting point in keys
      * @param length how many data points to process
      * @param accumulator should have at least "length" capacity
-     * @param buffer should have at least 4*length capacity 
+     * @param buffer should have at least 4*length capacity
      * @return number of matching keys
      */
     public int mayContainBatch(long[] keys, int startpos, int length, long[] accumulator, int[] buffer) {
@@ -349,7 +354,7 @@ public class XorFilter_8bit implements Filter {
       }
       return pos;
     }
-  
+
     public int mayContainAlternative(long key) {
         long hash = Mix.hash64(key + hashIndex);
         long f = fingerprint(hash);
