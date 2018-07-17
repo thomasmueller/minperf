@@ -214,8 +214,12 @@ public class XorFilter_8bit implements Filter {
             if (reverseOrderPos == size) {
                 break;
             }
-            System.out.println("hashIndex++");
             hashIndex++;
+        }
+        if (hashIndex > 0) {
+            // TODO need a better way to communicate there is a problem
+            // but an assertion is too strong - probably a getter, and verify it's 0 in tests
+            System.out.println("WARNING: hashIndex=" + hashIndex);
         }
         this.hashIndex = hashIndex;
         // == assignment step ==

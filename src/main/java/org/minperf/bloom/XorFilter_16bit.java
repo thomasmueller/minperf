@@ -200,6 +200,11 @@ public class XorFilter_16bit implements Filter {
             }
             hashIndex++;
         }
+        if (hashIndex > 0) {
+            // TODO need a better way to communicate there is a problem
+            // but an assertion is too strong - probably a getter, and verify it's 0 in tests
+            System.out.println("WARNING: hashIndex=" + hashIndex);
+        }
         this.hashIndex = hashIndex;
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
@@ -269,9 +274,9 @@ public class XorFilter_16bit implements Filter {
     public boolean mayContain(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -293,9 +298,9 @@ public class XorFilter_16bit implements Filter {
       for(int k = 0; k < length; k++) {
         long hash = Mix.hash64(keys[k] + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -329,13 +334,13 @@ public class XorFilter_16bit implements Filter {
         int r;
         switch(index) {
         case 0:
-            r = (int) (hash >>> 32);
-            break;
-        case 1:
             r = (int) (hash);
             break;
+        case 1:
+            r = (int) (hash >>> 16);
+            break;
         default:
-            r = (int) ((hash >>> 32) ^  hash);
+            r = (int) (hash >>> 32);
             break;
         }
 

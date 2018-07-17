@@ -215,6 +215,11 @@ public class XorFilter implements Filter {
             }
             hashIndex++;
         }
+        if (hashIndex > 0) {
+            // TODO need a better way to communicate there is a problem
+            // but an assertion is too strong - probably a getter, and verify it's 0 in tests
+            System.out.println("WARNING: hashIndex=" + hashIndex);
+        }
         this.hashIndex = hashIndex;
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
@@ -284,9 +289,9 @@ public class XorFilter implements Filter {
     public boolean mayContain(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -307,9 +312,9 @@ public class XorFilter implements Filter {
     public boolean mayContain32(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -325,9 +330,9 @@ public class XorFilter implements Filter {
     public boolean mayContain16(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -343,9 +348,9 @@ public class XorFilter implements Filter {
     public boolean mayContain8(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-        int r0 = (int) (hash >>> 32);
-        int r1 = (int) (hash);
-        int r2 = (int) ((hash >>> 32) ^ hash);
+        int r0 = (int) hash;
+        int r1 = (int) (hash >>> 16);
+        int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength) + 2 * blockLength;
@@ -364,19 +369,17 @@ public class XorFilter implements Filter {
      * @return the hash (0..arrayLength)
      */
     private int getHash(long key, int hashIndex, int index) {
-        key = Mix.hash64(key + hashIndex);
+        long hash = Mix.hash64(key + hashIndex);
         int r;
         switch(index) {
         case 0:
-            r = (int) (key >>> 32);
+            r = (int) (hash);
             break;
         case 1:
-            r = (int) (key);
-            // r = (int) ((key >>> 32) + key);
+            r = (int) (hash >>> 16);
             break;
         default:
-            r = (int) ((key >>> 32) ^  key);
-            // r = (int) ((key >>> 32) + 2 * key);
+            r = (int) (hash >>> 32);
             break;
         }
 
@@ -402,17 +405,6 @@ public class XorFilter implements Filter {
      */
     private int fingerprint(long hash) {
         return (int) (hash & ((1 << bitsPerFingerprint) - 1));
-    }
-
-    /**
-     * Calculate a supplemental hash. Kind of like a universal hash.
-     *
-     * @param key the key
-     * @param index the index (0..2)
-     * @return the hash
-     */
-    private static int supplementalHash(long key, int index) {
-        return Mix.supplementalHashWeyl(key, index);
     }
 
     /**
