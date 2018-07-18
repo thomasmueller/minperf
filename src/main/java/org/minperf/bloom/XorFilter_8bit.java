@@ -216,11 +216,6 @@ public class XorFilter_8bit implements Filter {
             }
             hashIndex++;
         }
-        if (hashIndex > 0) {
-            // TODO need a better way to communicate there is a problem
-            // but an assertion is too strong - probably a getter, and verify it's 0 in tests
-            System.out.println("WARNING: hashIndex=" + hashIndex);
-        }
         this.hashIndex = hashIndex;
         // == assignment step ==
         // fingerprints (array, then converted to a bit buffer)
@@ -313,6 +308,11 @@ public class XorFilter_8bit implements Filter {
         for(int i=0; i<fp.length; i++) {
             fingerprints[i] = (byte) fp[i];
         }
+    }
+
+    @Override
+    public int getConstructionLoopCount() {
+        return 1 + hashIndex;
     }
 
     /**

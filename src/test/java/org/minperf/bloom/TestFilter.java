@@ -53,7 +53,7 @@ public class TestFilter {
             case MPHF:
             case GCS:
             case GRCS:
-                continue;
+            //    continue;
             default:
             }
             if (warmup) {
@@ -97,6 +97,11 @@ public class TestFilter {
                 long time = System.nanoTime();
                 Filter f = type.construct(keys, setting);
                 long constructTime = (System.nanoTime() - time) / len;
+                if (f.getConstructionLoopCount() != 1) {
+                    String message = "WARNING: " + f.getConstructionLoopCount() + " loops during construction of " + f;
+                    System.out.println(message);
+                    throw new AssertionError(f);
+                }
 
                 // lookup
                 if (!warmup) {

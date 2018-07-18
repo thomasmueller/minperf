@@ -26,6 +26,17 @@ public interface Filter {
 
     long getBitCount();
 
+    /**
+     * Get the number of loops over the whole set that were made during
+     * construction. Normally, this should be 1. A higher number would indicate
+     * there is a problem with the hash algorithm.
+     *
+     * @return the number of loops during construction
+     */
+    default int getConstructionLoopCount() {
+        return 1;
+    }
+
     public enum Type {
         XOR8 {
             @Override
