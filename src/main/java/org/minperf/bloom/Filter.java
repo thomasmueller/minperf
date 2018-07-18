@@ -38,6 +38,12 @@ public interface Filter {
     }
 
     public enum Type {
+        XOR8PLUS {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return XorFilter_8bit_plus.construct(keys);
+            }
+        },
         XOR8 {
             @Override
             public Filter construct(long[] keys, int setting) {

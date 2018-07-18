@@ -31,6 +31,7 @@ public class TestFilter {
             case CUCKOO8_4:
             case CUCKOO16_4:
             case XOR8:
+            case XOR8PLUS:
             case XOR16:
                 setting = 0;
                 break;
@@ -46,6 +47,7 @@ public class TestFilter {
             case BLOOM:
             case XOR:
             case XOR8:
+            case XOR8PLUS:
             case XOR16:
             case CUCKOO:
             case CUCKOO8_4:
@@ -53,7 +55,8 @@ public class TestFilter {
             case MPHF:
             case GCS:
             case GRCS:
-            //    continue;
+                // "continue" to skip the test types specified above
+                // continue;
             default:
             }
             if (warmup) {
