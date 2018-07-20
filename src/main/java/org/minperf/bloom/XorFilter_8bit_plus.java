@@ -1,19 +1,16 @@
 package org.minperf.bloom;
 
 import java.util.Arrays;
+import java.util.BitSet;
 
 import org.minperf.hash.Mix;
+import org.minperf.rank.Rank9;
 
 /**
- * The Xor Filter, a new algorithm that can replace a bloom filter.
- *
- * It needs 1.23 log(1/fpp) bits per key. It is related to the BDZ algorithm [1]
- * (a minimal perfect hash function algorithm).
- *
- * [1] paper: Simple and Space-Efficient Minimal Perfect Hash Functions -
- * http://cmph.sourceforge.net/papers/wads07.pdf
+ * A slower implementation of the Xor filter, which uses slightly less space
+ * (7% less at 8 bit, but more if the fingerprint is larger).
  */
-public class XorFilter_8bit implements Filter {
+public class XorFilter_8bit_plus implements Filter {
 
     private static final int BITS_PER_FINGERPRINT = 8;
 
@@ -56,7 +53,9 @@ public class XorFilter_8bit implements Filter {
     // the fingerprints (internally an array of long)
     private byte[] fingerprints;
 
-    private final int bitCount;
+    private int bitCount;
+
+    private Rank9 rank;
 
     /**
      * The size of the filter, in bits.
@@ -77,11 +76,11 @@ public class XorFilter_8bit implements Filter {
         return (int) (HASHES + (long) FACTOR_TIMES_100 * size / 100);
     }
 
-    public static XorFilter_8bit construct(long[] keys) {
-        return new XorFilter_8bit(keys);
+    public static XorFilter_8bit_plus construct(long[] keys) {
+        return new XorFilter_8bit_plus(keys);
     }
 
-    public XorFilter_8bit(int size, int hashIndex, byte[] fingerprints) {
+    public XorFilter_8bit_plus(int size, int hashIndex, byte[] fingerprints) {
         this.size = size;
         this.arrayLength = getArrayLength(size);
         bitCount = arrayLength * BITS_PER_FINGERPRINT;
@@ -107,7 +106,7 @@ public class XorFilter_8bit implements Filter {
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
      */
-    public XorFilter_8bit(long[] keys) {
+    public XorFilter_8bit_plus(long[] keys) {
         this.size = keys.length;
         arrayLength = getArrayLength(size);
         bitCount = arrayLength * BITS_PER_FINGERPRINT;
@@ -304,10 +303,26 @@ public class XorFilter_8bit implements Filter {
                     " total " + (100. / fp.length * zeros) + "%");
         }
 
-        fingerprints = new byte[m];
-        for(int i=0; i<fp.length; i++) {
+        BitSet set = new BitSet(blockLength);
+        for (int i = 0; i < blockLength; i++) {
+            int f = fp[i + 2 * blockLength];
+            if (f != 0) {
+                set.set(i);
+            }
+        }
+        rank = new Rank9(set, blockLength);
+
+        fingerprints = new byte[2 * blockLength + set.cardinality()];
+        for (int i = 0; i < 2 * blockLength; i++) {
             fingerprints[i] = (byte) fp[i];
         }
+        for (int i = 2 * blockLength, j = i; i < fp.length;) {
+            int f = fp[i++];
+            if (f != 0) {
+                fingerprints[j++] = (byte) f;
+            }
+        }
+        bitCount = fingerprints.length * 8 + rank.getBitCount();
     }
 
     @Override
@@ -331,64 +346,13 @@ public class XorFilter_8bit implements Filter {
         int r2 = (int) (hash >>> 32);
         int h0 = reduce(r0, blockLength);
         int h1 = reduce(r1, blockLength) + blockLength;
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-
-        f ^= fingerprints[h0] ^ fingerprints[h1] ^ fingerprints[h2];
+        int h2 = reduce(r2, blockLength);
+        f ^= fingerprints[h0] ^ fingerprints[h1];
+        long rankAndGet = rank.rankAndGet(h2);
+        if ((rankAndGet & 1) == 1) {
+            f ^= fingerprints[(int) (rankAndGet >>> 1) + 2 * blockLength];
+        }
         return (f & 0xff) == 0;
-    }
-
-
-
-    /**
-     * Batch version of whether the filter _may_ contain a key.
-     *
-     * @param keys  the keys to test
-     * @param startpos starting point in keys
-     * @param length how many data points to process
-     * @param accumulator should have at least "length" capacity
-     * @param buffer should have at least 4*length capacity
-     * @return number of matching keys
-     */
-    public int mayContainBatch(long[] keys, int startpos, int length, long[] accumulator, int[] buffer) {
-      for(int k = 0; k < length; k++) {
-        long hash = Mix.hash64(keys[startpos + k] + hashIndex);
-        int f = fingerprint(hash);
-        int r0 = (int) hash;
-        int r1 = (int) (hash >>> 16);
-        int r2 = (int) (hash >>> 32);
-        int h0 = reduce(r0, blockLength);
-        int h1 = reduce(r1, blockLength) + blockLength;
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        buffer[4 * k] = h0;
-        buffer[4 * k + 1] = h1;
-        buffer[4 * k + 2] = h2;
-        buffer[4 * k + 3] = f;
-      }
-      for(int k = 0; k < length; k++) {
-        accumulator[k] = (buffer[4 * k + 3] ^ fingerprints[buffer[4 * k]] ^ fingerprints[buffer[4 * k + 1]] ^ fingerprints[buffer[4 * k + 2]]);
-      }
-      int pos = 0;
-      for(int k = 0; k < length; k++) {
-        long val = accumulator[k] & 0xFF;
-        accumulator[pos] = keys[startpos + k];
-        if(val == 0) pos++;
-      }
-      return pos;
-    }
-
-    public int mayContainAlternative(long key) {
-        long hash = Mix.hash64(key + hashIndex);
-        long f = fingerprint(hash);
-        int r1 = (int) (hash >>> 16);
-        int h1 = reduce(r1, blockLength) + blockLength;
-        long f1 = fingerprints[h1];
-        int r2 = (int) (hash >>> 32);
-        int h2 = reduce(r2, blockLength) + 2 * blockLength;
-        long f2 = fingerprints[h2];
-        int r0 = (int) hash;
-        int h0 = reduce(r0, blockLength);
-        long f0 = fingerprints[h0];
-        return ~(int) ((f ^ f0 ^ f1 ^ f2) & 0xff);
     }
 
     /**

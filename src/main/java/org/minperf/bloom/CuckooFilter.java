@@ -89,6 +89,9 @@ public class CuckooFilter implements Filter {
     }
 
     private int getFingerprint(long hash) {
+        // unfortunately, this is needed, otherwise the fpp increases with a few
+        // million of entries
+        hash = Mix.hash64(hash);
         int fingerprint =  (int) (hash & fingerprintMask);
         // fingerprint 0 is not allowed -
         // an alternative, with a slightly lower false positive rate with a

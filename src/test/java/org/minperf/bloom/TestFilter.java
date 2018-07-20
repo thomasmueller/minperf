@@ -2,7 +2,7 @@ package org.minperf.bloom;
 
 import org.minperf.hem.RandomGenerator;
 
-public class Test {
+public class TestFilter {
 
     // TODO test with low-entropy keys
 
@@ -11,7 +11,7 @@ public class Test {
         test(true, 100_000, 100_000, 0.001, 0.01);
         System.out.println();
         System.out.println("Test fpp versus bits/key at 1 million keys");
-        test(false, 1_000_000, 1_000_000, 0.001, 0.01);
+        test(false, 1_000_000, 1_000_000, 0.0, 0.05);
         System.out.println("Test speed at 0.01 fpp with 1 - 64 million keys");
         for (Filter.Type type : Filter.Type.values()) {
             int setting = 8;
@@ -19,12 +19,9 @@ public class Test {
             case BLOOM:
                 setting = 10;
                 break;
-            case XOR8:
-                setting = 7;
-                break;
-            case XOR16:
-                setting = 7;
-                break;
+            case GCS:
+            case GRCS:
+            case MPHF:
             case XOR:
                 setting = 7;
                 break;
@@ -32,18 +29,36 @@ public class Test {
                 setting = 9;
                 break;
             case CUCKOO8_4:
-                setting = 0;
-                break;
             case CUCKOO16_4:
+            case XOR8:
+            case XOR8PLUS:
+            case XOR16:
                 setting = 0;
                 break;
             }
-            test(type, false, 1_000_000, 128_000_000, setting, setting, 0.001, 0.1);
+            test(type, false, 1_000_000, 64_000_000, setting, setting, 0.0, 0.1);
         }
     }
 
     private static void test(boolean warmup, int minLen, int maxLen, double minFpp, double maxFpp) {
         for (Filter.Type type : Filter.Type.values()) {
+            // optionally skip some types
+            switch (type) {
+            case BLOOM:
+            case XOR:
+            case XOR8:
+            case XOR8PLUS:
+            case XOR16:
+            case CUCKOO:
+            case CUCKOO8_4:
+            case CUCKOO16_4:
+            case MPHF:
+            case GCS:
+            case GRCS:
+                // "continue" to skip the test types specified above
+                // continue;
+            default:
+            }
             if (warmup) {
                 System.out.print(type.name().toLowerCase());
             }
@@ -85,6 +100,11 @@ public class Test {
                 long time = System.nanoTime();
                 Filter f = type.construct(keys, setting);
                 long constructTime = (System.nanoTime() - time) / len;
+                if (f.getConstructionLoopCount() != 1) {
+                    String message = "WARNING: " + f.getConstructionLoopCount() + " loops during construction of " + f;
+                    System.out.println(message);
+                    throw new AssertionError(f);
+                }
 
                 // lookup
                 if (!warmup) {

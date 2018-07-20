@@ -1,8 +1,9 @@
 package org.minperf.bloom.gcs;
 
 import org.minperf.BitBuffer;
+import org.minperf.bloom.Filter;
 import org.minperf.bloom.mphf.Builder;
-//import org.minperf.hem.RandomGenerator;
+import org.minperf.hash.Mix;
 import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
 
@@ -14,45 +15,8 @@ import org.minperf.monotoneList.MultiStageMonotoneList;
  * log2(1/e) + 1/(1-(1-e)^(1/e)) So the overhead is about 1.5 bits/key (the pure
  * Golomb coding overhead is about 0.5 bits).
  */
-public class GolombRiceCompressedSet {
-/*
-    public static void main(String... args) {
-        for(int bitsPerKey = 3; bitsPerKey < 15; bitsPerKey++) {
-            test(bitsPerKey);
-        }
-    }
+public class GolombRiceCompressedSet implements Filter {
 
-    public static void test(int bitsPerKey) {
-        int testCount = 1;
-        int len = 4 * 1024 * 1024;
-        long[] list = new long[len * 2];
-        RandomGenerator.createRandomUniqueListFast(list, len);
-        long time = System.nanoTime();
-        GolombRiceCompressedSet f = new GolombRiceCompressedSet(list, len, bitsPerKey);
-        long addTime = (System.nanoTime() - time) / len;
-        time = System.nanoTime();
-        int falsePositives = 0;
-        for (int test = 0; test < testCount; test++) {
-            for (int i = 0; i < len; i++) {
-                if (!f.mayContain(list[i])) {
-                    f.mayContain(list[i]);
-                    throw new AssertionError();
-                }
-            }
-            for (int i = len; i < len * 2; i++) {
-                if (f.mayContain(list[i])) {
-                    falsePositives++;
-                }
-            }
-        }
-        long getTime = (System.nanoTime() - time) / len / testCount;
-        double falsePositiveRate = (100. / testCount / len * falsePositives);
-        double bitsPerKeyResult = (double) f.getBitCount() / len;
-        System.out.println("GRCS false positives: " + falsePositiveRate +
-                "% " + bitsPerKeyResult + " bits/key " +
-                "add: " + addTime + " get: " + getTime + " ns/key overhead " + (bitsPerKeyResult - bitsPerKey));
-    }
-*/
     private final BitBuffer buff;
     private final int golombShift;
     private final int bufferSize;
@@ -62,9 +26,17 @@ public class GolombRiceCompressedSet {
     private final MultiStageMonotoneList start;
     private final int startBuckets;
 
-    GolombRiceCompressedSet(long[] hashes, int len, int bits) {
+    public static GolombRiceCompressedSet construct(long[] keys, int setting) {
+        return new GolombRiceCompressedSet(keys, keys.length, setting);
+    }
+
+    GolombRiceCompressedSet(long[] keys, int len, int fingerprintBits) {
         int averageBucketSize = 16;
-        int bitCount = 63 - Long.numberOfLeadingZeros((long) len << bits);
+        int bitCount = 63 - Long.numberOfLeadingZeros((long) len << fingerprintBits);
+        long[] hashes = new long[len];
+        for (int i = 0; i < len; i++) {
+            hashes[i] = Mix.hash64(keys[i]);
+        }
         Sort.parallelSortUnsigned(hashes, 0, len);
         bucketCount = Builder.getBucketCount(len, averageBucketSize);
         int bucketBitCount = 31 - Integer.numberOfLeadingZeros(bucketCount);
@@ -73,8 +45,8 @@ public class GolombRiceCompressedSet {
         if (bucketShift <= 0 || bucketShift >= 64) {
             throw new IllegalArgumentException();
         }
-        this.golombShift = bits;
-        BitBuffer buckets = new BitBuffer(10 * bits * len);
+        this.golombShift = fingerprintBits;
+        BitBuffer buckets = new BitBuffer(10L * fingerprintBits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;
         long last = 0;
@@ -92,7 +64,7 @@ public class GolombRiceCompressedSet {
         while (bucket <= bucketCount) {
             startList[bucket++] = buckets.position();
         }
-        buff = new BitBuffer(10 * bitCount * len);
+        buff = new BitBuffer(10L * bitCount * len);
         buff.writeEliasDelta(len + 1);
         start = MultiStageMonotoneList.generate(startList, buff);
         startBuckets = buff.position();
@@ -100,11 +72,14 @@ public class GolombRiceCompressedSet {
         bufferSize = buff.position();
     }
 
-    int getBitCount() {
+    @Override
+    public long getBitCount() {
         return bufferSize;
     }
 
-    boolean mayContain(long hashCode) {
+    @Override
+    public boolean mayContain(long key) {
+        long hashCode = Mix.hash64(key);
         long match = hashCode >>> bitShift;
         int b = (int) (match >>> bucketShift);
         long startPair = start.getPair(b);

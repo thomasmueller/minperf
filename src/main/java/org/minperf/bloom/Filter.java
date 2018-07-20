@@ -1,5 +1,9 @@
 package org.minperf.bloom;
 
+import org.minperf.bloom.gcs.GolombCompressedSet;
+import org.minperf.bloom.gcs.GolombRiceCompressedSet;
+import org.minperf.bloom.mphf.MPHFilter;
+
 public interface Filter {
 
     /**
@@ -22,23 +26,28 @@ public interface Filter {
 
     long getBitCount();
 
+    /**
+     * Get the number of loops over the whole set that were made during
+     * construction. Normally, this should be 1. A higher number would indicate
+     * there is a problem with the hash algorithm.
+     *
+     * @return the number of loops during construction
+     */
+    default int getConstructionLoopCount() {
+        return 1;
+    }
+
     public enum Type {
+        XOR8PLUS {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return XorFilter_8bit_plus.construct(keys);
+            }
+        },
         XOR8 {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return XorFilter_8bit.construct(keys);
-            }
-        },
-        BLOOM {
-            @Override
-            public Filter construct(long[] keys, int setting) {
-                return BloomFilter.construct(keys, setting);
-            }
-        },
-        CUCKOO16_4 {
-            @Override
-            public Filter construct(long[] keys, int setting) {
-                return CuckooFilter_16bit_4entries.construct(keys);
             }
         },
         CUCKOO8_4 {
@@ -47,10 +56,22 @@ public interface Filter {
                 return CuckooFilter_8bit_4entries.construct(keys);
             }
         },
+        BLOOM {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return BloomFilter.construct(keys, setting);
+            }
+        },
         XOR16 {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return XorFilter_16bit.construct(keys);
+            }
+        },
+        CUCKOO16_4 {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return CuckooFilter_16bit_4entries.construct(keys);
             }
         },
         XOR {
@@ -65,13 +86,24 @@ public interface Filter {
                 return CuckooFilter.construct(keys, setting);
             }
         },
-//        MPHF {
-//            @Override
-//            Filter construct(long[] keys, int setting) {
-//                return MPHFilter.construct(keys, setting);
-//            }
-//        };
-        ;
+        MPHF {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return MPHFilter.construct(keys, setting);
+            }
+        },
+        GRCS {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return GolombRiceCompressedSet.construct(keys, setting);
+            }
+        },
+        GCS {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return GolombCompressedSet.construct(keys, setting);
+            }
+        };
 
         /**
          * Construct the filter with the given keys and the setting.
