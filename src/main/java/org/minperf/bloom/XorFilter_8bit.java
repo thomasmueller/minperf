@@ -351,7 +351,7 @@ public class XorFilter_8bit implements Filter {
      */
     public int mayContainBatch(long[] keys, int startpos, int length, long[] accumulator, int[] buffer) {
       for(int k = 0; k < length; k++) {
-        long hash = Mix.hash64(keys[k] + hashIndex);
+        long hash = Mix.hash64(keys[startpos + k] + hashIndex);
         int f = fingerprint(hash);
         int r0 = (int) hash;
         int r1 = (int) (hash >>> 16);
@@ -370,8 +370,8 @@ public class XorFilter_8bit implements Filter {
       int pos = 0;
       for(int k = 0; k < length; k++) {
         long val = accumulator[k] & 0xFF;
-        accumulator[pos] = keys[k];
-        if(val != 0) pos++;
+        accumulator[pos] = keys[startpos + k];
+        if(val == 0) pos++;
       }
       return pos;
     }
