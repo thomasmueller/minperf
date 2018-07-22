@@ -10,10 +10,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class BatchTest {
-    final int N = 50000;
+    final int N = 500000;
     long[] keys = new long[N];
     HashSet<Long> keyset = new HashSet<Long>();
-    final int Ntest = 50000;
+    final int Ntest = 500000;
     long[] testkeys = new long[Ntest];
     long[] testpresentkeys = new long[Ntest];
     long[] testmixedkeys = new long[Ntest];
