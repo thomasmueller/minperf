@@ -315,6 +315,10 @@ public class XorFilter_8bit implements Filter {
         return 1 + hashIndex;
     }
 
+    public int getHashIndex() {
+        return hashIndex;
+    }
+
     /**
      * Whether the filter _may_ contain a key.
      *
@@ -447,6 +451,10 @@ public class XorFilter_8bit implements Filter {
     private static int reduce(int hash, int n) {
         // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
         return (int) (((hash & 0xffffffffL) * n) >>> 32);
+    }
+
+    public byte[] getFingerprints() {
+        return fingerprints;
     }
 
 }
