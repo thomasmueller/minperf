@@ -80,6 +80,12 @@ public interface Filter {
                 return XorFilter.construct(keys, bitsPerKey);
             }
         },
+        XOR_N {
+            @Override
+            public Filter construct(long[] keys, int bitsPerKey) {
+                return XorFilter_nbit.construct(keys, bitsPerKey);
+            }
+        },
         CUCKOO {
             @Override
             public Filter construct(long[] keys, int setting) {

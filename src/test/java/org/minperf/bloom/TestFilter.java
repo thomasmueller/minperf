@@ -10,6 +10,10 @@ public class TestFilter {
         System.out.println("Warmup");
         test(true, 100_000, 100_000, 0.001, 0.01);
         System.out.println();
+
+        // test(Filter.Type.XOR_N, false, 1_000_000, 64_000_000, 4, 10, 0.0, 0.1);
+        // test(Filter.Type.XOR, false, 1_000_000, 64_000_000, 4, 10, 0.0, 0.1);
+
         System.out.println("Test fpp versus bits/key at 1 million keys");
         test(false, 1_000_000, 1_000_000, 0.0, 0.05);
         System.out.println("Test speed at 0.01 fpp with 1 - 64 million keys");
@@ -23,6 +27,7 @@ public class TestFilter {
             case GRCS:
             case MPHF:
             case XOR:
+            case XOR_N:
                 setting = 7;
                 break;
             case CUCKOO:
@@ -48,6 +53,7 @@ public class TestFilter {
             case XOR:
             case XOR8:
             case XOR8PLUS:
+            case XOR_N:
             case XOR16:
             case CUCKOO:
             case CUCKOO8_4:
