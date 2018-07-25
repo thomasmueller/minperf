@@ -101,6 +101,32 @@ public class Rank9 {
                 ((x >>> pos) & 1);
     }
 
+    /**
+     * Get the bit itself, and a part of the rank (use remainingRank to get the
+     * rest).
+     *
+     * @param pos the position
+     * @return the number of ones multiplied by 2, plus the bit (0 or 1)
+     */
+    public long getAndPartialRank(long pos) {
+        int word = (int) (pos >>> 6);
+        long x = bits[word];
+        return ((Long.bitCount(x & ((1L << pos) - 1))) << 1) + ((x >>> pos) & 1);
+    }
+
+    /**
+     * Get the second part of the rank (see getAndPartialRank).
+     *
+     * @param pos the position
+     * @return the number of ones
+     */
+    public long remainingRank(long pos) {
+        int word = (int) (pos >>> 6);
+        int block = (word >> 2) & ~1;
+        int offset = (word & 7) - 1;
+        return counts[block] + (counts[block + 1] >>> (offset + (offset >>> 32 - 4 & 8)) * 9 & 0x1ff);
+    }
+
     public int getBitCount() {
         return bits.length * 64 + counts.length * 64;
     }

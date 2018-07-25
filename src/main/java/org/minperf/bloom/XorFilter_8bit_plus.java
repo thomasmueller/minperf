@@ -340,7 +340,6 @@ public class XorFilter_8bit_plus implements Filter {
     public boolean mayContain(long key) {
         long hash = Mix.hash64(key + hashIndex);
         int f = fingerprint(hash);
-
         int r0 = (int) hash;
         int r1 = (int) (hash >>> 16);
         int r2 = (int) (hash >>> 32);
@@ -348,9 +347,10 @@ public class XorFilter_8bit_plus implements Filter {
         int h1 = reduce(r1, blockLength) + blockLength;
         int h2 = reduce(r2, blockLength);
         f ^= fingerprints[h0] ^ fingerprints[h1];
-        long rankAndGet = rank.rankAndGet(h2);
-        if ((rankAndGet & 1) == 1) {
-            f ^= fingerprints[(int) (rankAndGet >>> 1) + 2 * blockLength];
+        long getAndPartialRank = rank.getAndPartialRank(h2);
+        if ((getAndPartialRank & 1) == 1) {
+            int h2x = (int) ((getAndPartialRank >> 1) + rank.remainingRank(h2));
+            f ^= fingerprints[h2x + 2 * blockLength];
         }
         return (f & 0xff) == 0;
     }
