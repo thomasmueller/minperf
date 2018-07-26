@@ -2,7 +2,6 @@ package org.minperf.bloom.gcs;
 
 import org.minperf.BitBuffer;
 import org.minperf.bloom.Filter;
-import org.minperf.bloom.mphf.Builder;
 import org.minperf.hash.Mix;
 import org.minperf.hem.Sort;
 import org.minperf.monotoneList.MultiStageMonotoneList;
@@ -21,8 +20,7 @@ public class GolombRiceCompressedSet implements Filter {
     private final int golombShift;
     private final int bufferSize;
     private final int bucketCount;
-    private final int bitShift;
-    private final int bucketShift;
+    private final int fingerprintMask;
     private final MultiStageMonotoneList start;
     private final int startBuckets;
 
@@ -31,32 +29,32 @@ public class GolombRiceCompressedSet implements Filter {
     }
 
     GolombRiceCompressedSet(long[] keys, int len, int fingerprintBits) {
-        int averageBucketSize = 16;
-        int bitCount = 63 - Long.numberOfLeadingZeros((long) len << fingerprintBits);
-        long[] hashes = new long[len];
+        // this was found experimentally
+        golombShift = fingerprintBits - 1;
+        int averageBucketSize = 64;
+        // due to average bucket size of 64
+        fingerprintBits += 6;
+        long[] data = new long[len];
+        fingerprintMask = (1 << fingerprintBits) - 1;
+        bucketCount = (int) ((len + averageBucketSize - 1) / averageBucketSize);
         for (int i = 0; i < len; i++) {
-            hashes[i] = Mix.hash64(keys[i]);
+            long h = Mix.hash64(keys[i]);
+            long b = reduce((int) (h >>> 32), bucketCount);
+            data[i] = (b << 32) | (h & fingerprintMask);
         }
-        Sort.parallelSortUnsigned(hashes, 0, len);
-        bucketCount = Builder.getBucketCount(len, averageBucketSize);
-        int bucketBitCount = 31 - Integer.numberOfLeadingZeros(bucketCount);
-        bitShift = 64 - bitCount;
-        bucketShift = 64 - bucketBitCount - bitShift;
-        if (bucketShift <= 0 || bucketShift >= 64) {
-            throw new IllegalArgumentException();
-        }
-        this.golombShift = fingerprintBits;
+        Sort.parallelSortUnsigned(data, 0, len);
         BitBuffer buckets = new BitBuffer(10L * fingerprintBits * len);
         int[] startList = new int[bucketCount + 1];
         int bucket = 0;
         long last = 0;
         for (int i = 0; i < len; i++) {
-            long x = hashes[i] >>> bitShift;
-            int b = (int) (x >>> bucketShift);
+            long x = data[i];
+            int b = (int) (x >>> 32);
             while (bucket <= b) {
                 startList[bucket++] = buckets.position();
-                last = ((long) b) << bucketShift;
+                last = 0;
             }
+            x &= fingerprintMask;
             long diff = x - last;
             last = x;
             buckets.writeGolombRice(golombShift, diff);
@@ -64,7 +62,7 @@ public class GolombRiceCompressedSet implements Filter {
         while (bucket <= bucketCount) {
             startList[bucket++] = buckets.position();
         }
-        buff = new BitBuffer(10L * bitCount * len);
+        buff = new BitBuffer(10L *  fingerprintBits * len);
         buff.writeEliasDelta(len + 1);
         start = MultiStageMonotoneList.generate(startList, buff);
         startBuckets = buff.position();
@@ -80,23 +78,29 @@ public class GolombRiceCompressedSet implements Filter {
     @Override
     public boolean mayContain(long key) {
         long hashCode = Mix.hash64(key);
-        long match = hashCode >>> bitShift;
-        int b = (int) (match >>> bucketShift);
+        int b = reduce((int) (hashCode >>> 32), bucketCount);
+        long fingerprint = hashCode & fingerprintMask;
         long startPair = start.getPair(b);
         int p = startBuckets + (int) (startPair >>> 32);
         int startNext = startBuckets + (int) startPair;
-        long x = ((long) b) << bucketShift;
+        long x = 0;
         while (p < startNext) {
-            long v = buff.readGolombRice(p, golombShift);
-            x += v;
-            p += BitBuffer.getGolombRiceSize(golombShift, v);
-            if (x == match) {
+            long q = buff.readUntilZero(p);
+            p += q + 1;
+            x += (q << golombShift) | buff.readNumber(p, golombShift);
+            if (x == fingerprint) {
                 return true;
-            } else if (x > match) {
+            } else if (x > fingerprint) {
                 break;
             }
+            p += golombShift;
         }
         return false;
+    }
+
+    private static int reduce(int hash, int n) {
+        // http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+        return (int) (((hash & 0xffffffffL) * n) >>> 32);
     }
 
 }
