@@ -23,6 +23,7 @@ public class XorFilter implements Filter {
     // (GolombCompressedSet, Cuckoo filter,...)?
     // how many additional bits are needed to support merging?
     // Multi-layered design as described in "Don’t Thrash: How to Cache Your Hash on Flash"?
+    // or use a Cuckoo hash table (2/2?), and store n additional bits.
 
     // TODO could multiple entries for a key be in the same cache line (64 bytes)?
     // maybe with a blocked approach?
@@ -487,9 +488,9 @@ public class XorFilter implements Filter {
         return new XorFilter(size, bitsPerFingerprint, hashIndex, fingerprints);
     }
 
-    // private final static int PROB_ONE = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.18));
-    private final static int PROB_ONE_0 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.325));
-    private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.148));
-    private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.087));
+    // private final static int PROB_ONE = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.19));
+    private final static int PROB_ONE_0 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.09));
+    private final static int PROB_ONE_1 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.11));
+    private final static int PROB_ONE_2 = (int) (BinaryArithmeticBuffer.MAX_PROBABILITY * (1.0 - 0.37));
 
 }

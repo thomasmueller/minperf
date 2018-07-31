@@ -53,7 +53,7 @@ public class CuckooFilter implements Filter {
         this.fingerprintBits = fingerprintBits;
         this.fingerprintBitsPerBucket = fingerprintBits * entriesPerBucket;
         if (fingerprintBitsPerBucket > 63) {
-            throw new AssertionError("too many fingerprint bits for the BitBuffer; max is 15 sorry");
+            throw new AssertionError("Too many fingerprint bits for the BitBuffer");
         }
         this.buffer = new BitBuffer(fingerprintBits * bucketCount * entriesPerBucket);
         this.fingerprintMask = (1 << fingerprintBits) - 1;

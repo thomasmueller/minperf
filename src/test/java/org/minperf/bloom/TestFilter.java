@@ -4,16 +4,15 @@ import org.minperf.hem.RandomGenerator;
 
 public class TestFilter {
 
-    // TODO test with low-entropy keys
-
     public static void main(String... args) {
         System.out.println("Warmup");
-        test(true, 100_000, 100_000, 0.001, 0.01);
+        test(true, 100_000, 1_000_000, 0.001, 0.01);
         System.out.println();
-
-        // test(Filter.Type.XOR_N, false, 1_000_000, 64_000_000, 4, 10, 0.0, 0.1);
-        // test(Filter.Type.XOR, false, 1_000_000, 64_000_000, 4, 10, 0.0, 0.1);
-
+        for (int size = 1_000_000; size <= 1_000_000; size *= 1.05) {
+            test(Filter.Type.GRCS, false, size, size, 8, 12, 0.0, 0.1);
+            test(Filter.Type.XOR_8, false, size, size, 8, 12, 0.0, 0.1);
+            test(Filter.Type.XOR_8_PLUS, false, size, size, 8, 12, 0.0, 0.1);
+        }
         System.out.println("Test fpp versus bits/key at 1 million keys");
         test(false, 1_000_000, 1_000_000, 0.0, 0.05);
         System.out.println("Test speed at 0.01 fpp with 1 - 64 million keys");
@@ -30,14 +29,17 @@ public class TestFilter {
             case XOR_N:
                 setting = 7;
                 break;
+            case CUCKOO_PLUS:
+                setting = 7;
+                break;
             case CUCKOO:
                 setting = 9;
                 break;
-            case CUCKOO8_4:
+            case CUCKOO_8_4:
             case CUCKOO16_4:
-            case XOR8:
-            case XOR8PLUS:
-            case XOR16:
+            case XOR_8:
+            case XOR_8_PLUS:
+            case XOR_16:
                 setting = 0;
                 break;
             }
@@ -51,12 +53,12 @@ public class TestFilter {
             switch (type) {
             case BLOOM:
             case XOR:
-            case XOR8:
-            case XOR8PLUS:
+            case XOR_8:
+            case XOR_8_PLUS:
             case XOR_N:
-            case XOR16:
+            case XOR_16:
             case CUCKOO:
-            case CUCKOO8_4:
+            case CUCKOO_8_4:
             case CUCKOO16_4:
             case MPHF:
             case GCS:

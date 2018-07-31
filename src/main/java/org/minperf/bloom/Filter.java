@@ -38,19 +38,25 @@ public interface Filter {
     }
 
     public enum Type {
-        XOR8PLUS {
+        CUCKOO_PLUS {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return CuckooFilterPlus.construct(keys, setting);
+            }
+        },
+        XOR_8_PLUS {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return XorFilter_8bit_plus.construct(keys);
             }
         },
-        XOR8 {
+        XOR_8 {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return XorFilter_8bit.construct(keys);
             }
         },
-        CUCKOO8_4 {
+        CUCKOO_8_4 {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return CuckooFilter_8bit_4entries.construct(keys);
@@ -62,7 +68,7 @@ public interface Filter {
                 return BloomFilter.construct(keys, setting);
             }
         },
-        XOR16 {
+        XOR_16 {
             @Override
             public Filter construct(long[] keys, int setting) {
                 return XorFilter_16bit.construct(keys);
