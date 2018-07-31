@@ -62,6 +62,12 @@ public interface Filter {
                 return CuckooFilter_8bit_4entries.construct(keys);
             }
         },
+        BLOCKED_BLOOM {
+            @Override
+            public Filter construct(long[] keys, int setting) {
+                return BlockedBloomFilter.construct(keys, setting);
+            }
+        },
         BLOOM {
             @Override
             public Filter construct(long[] keys, int setting) {
