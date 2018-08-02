@@ -78,7 +78,7 @@ public class XorFilter_8bit implements Filter {
     }
 
     public static XorFilter_8bit construct(long[] keys) {
-        return new XorFilter_8bit(keys);
+        return new XorFilter_8bit(keys, getArrayLength(keys.length));
     }
 
     public XorFilter_8bit(int size, int hashIndex, byte[] fingerprints) {
@@ -107,9 +107,9 @@ public class XorFilter_8bit implements Filter {
      * @param keys the list of entries (keys)
      * @param bitsPerFingerprint the fingerprint size in bits
      */
-    public XorFilter_8bit(long[] keys) {
+    public XorFilter_8bit(long[] keys, int arrayLength) {
         this.size = keys.length;
-        arrayLength = getArrayLength(size);
+        this.arrayLength = arrayLength;
         bitCount = arrayLength * BITS_PER_FINGERPRINT;
         blockLength = arrayLength / HASHES;
         int m = arrayLength;
