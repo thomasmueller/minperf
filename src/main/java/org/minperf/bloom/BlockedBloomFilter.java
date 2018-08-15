@@ -45,7 +45,7 @@ public class BlockedBloomFilter implements Filter {
         this.k = k;
         long bits = (long) entryCount * bitsPerKey;
         this.blocks = (int) (bits + BITS_PER_BLOCK - 1) / BITS_PER_BLOCK;
-        data = new long[(int) (blocks * LONGS_PER_BLOCK)];
+        data = new long[(int) (blocks * LONGS_PER_BLOCK) + 8];
     }
 
     void add(long key) {

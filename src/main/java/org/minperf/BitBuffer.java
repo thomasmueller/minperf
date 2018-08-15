@@ -190,7 +190,6 @@ public class BitBuffer {
         // }
     }
 
-
 //    public void writeVarLong(long x) {
 //        while ((x & ~0x7f) != 0) {
 //            writeNumber((0x80 | (x & 0x7f)) & 0xff, 8);
@@ -328,6 +327,10 @@ public class BitBuffer {
 
     public void clear() {
         Arrays.fill(data, 0);
+    }
+
+    public long[] getLongArray() {
+        return data;
     }
 
     public static int getGolombRiceSize(int shift, long value) {
