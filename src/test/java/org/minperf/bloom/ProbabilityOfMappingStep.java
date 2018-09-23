@@ -11,9 +11,9 @@ public class ProbabilityOfMappingStep {
     public static void main(String... args) {
         int seed = 0;
         int testCount = 1000;
-        for(int add = 2; add < 128; add *= 2) {
+        for(int add = 2; add < 16; add += 2) {
             System.out.println("with arraySize = 1.23 * size + " + add + " ============");
-            for (int size = 1; size < 65536; size *= 2) {
+            for (int size = 1; size < 65536; size = (int) ((size + 1) * 1.1)) {
                 long[] list = new long[size];
                 int arrayLength = 0;
                 int totalRetries = 0;
@@ -24,7 +24,12 @@ public class ProbabilityOfMappingStep {
                     int retryCount = getRetryCount(list, arrayLength, 0);
                     totalRetries += retryCount;
                 }
-                System.out.println("size " + size + ": " + (double) (testCount - totalRetries) / testCount);
+                double p = (double) (testCount - totalRetries) / testCount;
+                System.out.println("size " + size + ": " + p);
+                if (p < 0.5) {
+                    System.out.println("not enough");
+                    break;
+                }
                 if (totalRetries == 0 && size > 100) {
                     break;
                 }
