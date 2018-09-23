@@ -10,36 +10,65 @@ public class ProbabilityOfMappingStep {
 
     public static void main(String... args) {
         int seed = 0;
-        for (int size = 1; size < 10000000; size *= 10) {
-            long[] list = new long[size];
-            for (int add = 2;; add *= 2) {
+        int testCount = 1000;
+        for(int add = 2; add < 128; add *= 2) {
+            System.out.println("with arraySize = 1.23 * size + " + add + " ============");
+            for (int size = 1; size < 65536; size *= 2) {
+                long[] list = new long[size];
+                int arrayLength = 0;
                 int totalRetries = 0;
-                for (int test = 0; test < 1000; test++) {
+                for(int test = 0; test < testCount; test++) {
                     RandomGenerator.createRandomUniqueListFast(list, seed);
                     seed += list.length;
-                    int arrayLength = (int) ((size * 1.23) + add) / 3 * 3;
-                    int retryCount = getRetryCount(list, arrayLength);
+                    arrayLength = (int) ((size * 1.23) + add) / 3 * 3;
+                    int retryCount = getRetryCount(list, arrayLength, 0);
                     totalRetries += retryCount;
                 }
-                // System.out.println("    size " + size + " add " + add + " totalRetries " + totalRetries);
-                if (totalRetries == 0) {
-                    System.out.println("size " + size + " add " + add);
+                System.out.println("size " + size + ": " + (double) (testCount - totalRetries) / testCount);
+                if (totalRetries == 0 && size > 100) {
                     break;
                 }
             }
         }
     }
 
-    public static int getRetryCount(long[] keys, int arrayLength) {
+    public static void mainAdd(String... args) {
+        int seed = 0;
+        for (int size = 1; size < 10000000; size *= 2) {
+            long[] list = new long[size];
+            for (int add = 2;; add *= 2) {
+                int totalRetries = 0;
+                int arrayLength = 0;
+                for (int test = 0; test < 1000; test++) {
+                    RandomGenerator.createRandomUniqueListFast(list, seed);
+                    seed += list.length;
+                    arrayLength = (int) ((size * 1.23) + add) / 3 * 3;
+                    int retryCount = getRetryCount(list, arrayLength, 0);
+                    totalRetries += retryCount;
+                    if (totalRetries > 0) {
+                        break;
+                    }
+                }
+                // System.out.println("    size " + size + " add " + add + " totalRetries " + totalRetries);
+                if (totalRetries == 0) {
+                    System.out.println("size " + size + ": " + ((double) arrayLength / size) + " * size = arrayLength (1.23 * size + " + add + ")");
+                    if (add == 2 && size > 1000) {
+                        System.out.println("done");
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    public static int getRetryCount(long[] keys, int arrayLength, int maxRetries) {
         int size = keys.length;
         int blockLength = arrayLength / HASHES;
         int m = arrayLength;
         int retryCount = 0;
         Random random = new Random(1);
         while (true) {
-            if (retryCount > 1000) {
-                break;
-            }
             int seed = random.nextInt();
             byte[] t2count = new byte[m];
             long[] t2 = new long[m];
@@ -106,6 +135,9 @@ public class ProbabilityOfMappingStep {
                 break;
             }
             retryCount++;
+            if (retryCount > maxRetries) {
+                break;
+            }
         }
         return retryCount;
     }
