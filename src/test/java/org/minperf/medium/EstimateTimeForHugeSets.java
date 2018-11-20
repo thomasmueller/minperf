@@ -4,8 +4,6 @@ import java.math.BigInteger;
 
 import org.minperf.Probability;
 
-import javafx.util.Duration;
-
 public class EstimateTimeForHugeSets {
 
     public static void main(String... args) {
@@ -218,17 +216,6 @@ public class EstimateTimeForHugeSets {
 //        }
 //        return bits + " bits";
 //    }
-
-    public static String formatDuration(Duration duration) {
-        long seconds = (long) duration.toSeconds();
-        long absSeconds = Math.abs(seconds);
-        String positive = String.format(
-            "%d:%02d:%02d",
-            absSeconds / 3600,
-            (absSeconds % 3600) / 60,
-            absSeconds % 60);
-        return seconds < 0 ? "-" + positive : positive;
-    }
 
     public static void mainChunked(String... args) {
         int chunks = 10;
