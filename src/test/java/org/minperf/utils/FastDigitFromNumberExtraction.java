@@ -105,7 +105,7 @@ public class FastDigitFromNumberExtraction {
             dummy += extractMulMul(x, ix & 0xff);
         }
         time = System.nanoTime() - time;
-        System.out.println("multiplyFastMod " + time / size + " ns/key dummy " + dummy);
+        System.out.println("multiplyMultiply " + time / size + " ns/key dummy " + dummy);
 
         System.out.println();
     }
