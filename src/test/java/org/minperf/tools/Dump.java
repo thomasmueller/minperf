@@ -37,6 +37,7 @@ public class Dump {
             long start = System.nanoTime();
             BitBuffer buff = RecSplitBuilder.newInstance(hash).
                     leafSize(leafSize).
+                    parallelism(1).
                     averageBucketSize(avgBucketSize).
                     eliasFanoMonotoneLists(true).
                     generate(list);
