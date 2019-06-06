@@ -54,6 +54,7 @@ public class Generator<T> {
             return;
         }
         long index = startIndex + 1;
+//        num_split_count++;
         while (true) {
             if (Settings.needNewUniversalHashIndex(index)) {
                 long x = Settings.getUniversalHashIndex(index);
@@ -98,6 +99,7 @@ public class Generator<T> {
     private long getIndex(T[] data, long[] hashes, long startIndex) {
         int size = data.length;
         long index = startIndex + 1;
+//        num_bij_counts[size]++;
         outer: while (true) {
             if (Settings.needNewUniversalHashIndex(index)) {
                 long x = Settings.getUniversalHashIndex(index);
@@ -139,6 +141,7 @@ public class Generator<T> {
             for (int i = 0; i < size; i++) {
                 long h = hashes[i];
                 int x = Settings.supplementalHash(h, index);
+//                num_split_evals++;
                 x = Settings.reduce(x, size);
                 if (x < limit) {
                     if (--firstPart < 0) {
@@ -158,6 +161,7 @@ public class Generator<T> {
             long h = hashes[i];
             int x = Settings.supplementalHash(h, index);
             x = Settings.reduce(x, split);
+//            num_split_evals++;
             if (--count[x] < 0) {
                 return false;
             }
@@ -202,20 +206,28 @@ public class Generator<T> {
             hashes2[bucket][p] = h;
         }
     }
+    
+//    public static long num_split_count;
+//    public static long num_split_evals;
+//    public static long[] num_bij_evals = new long[20];
+//    public static long[] num_bij_counts = new long[20];
 
     static <T> boolean tryUnique(long[] hashes, long index) {
         int bits = 0;
         int size = hashes.length;
+        int found = (1 << size) - 1;
         for (int i = 0; i < size; i++) {
             long x = hashes[i];
             int h = Settings.supplementalHash(x, index);
             h = Settings.reduce(h, size);
-            if ((bits & (1 << h)) != 0) {
-                return false;
-            }
+//            ++num_bij_evals[size];            
+//            if ((bits & (1 << h)) != 0) {
+//                return false;
+//            }
             bits |= 1 << h;
         }
-        return true;
+        return bits == found;
+//        return true;
     }
 
     public BitBuffer generate(Collection<T> collection) {

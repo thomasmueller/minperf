@@ -3,9 +3,11 @@ package org.minperf.tools;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.minperf.BitBuffer;
 import org.minperf.RecSplitBuilder;
+import org.minperf.generator.Generator;
 import org.minperf.universal.LongHash;
 
 /**
@@ -48,6 +50,15 @@ public class Dump {
             byte[] data = buff.toByteArray();
             System.out.println(data.length * 8. / n + " bits/key");
             out.write(data);
+//            System.out.println("split_evals: " + Generator.num_split_evals);
+//            System.out.println("split_count: " + Generator.num_split_count);
+//            System.out.println("evals/split: " + (double) Generator.num_split_evals / Generator.num_split_count);
+//            System.out.println("bij_evals: " + Arrays.toString(Generator.num_bij_evals));
+//            System.out.println("bij_counts: " + Arrays.toString(Generator.num_bij_counts));
+//            for(int i=0; i<20; i++) {
+//                if (Generator.num_bij_counts[i] > 0)
+//                System.out.println("evals/bij: " + i + " " + (double) Generator.num_bij_evals[i] / Generator.num_bij_counts[i]);
+//            }
             out.close();
         }
     }

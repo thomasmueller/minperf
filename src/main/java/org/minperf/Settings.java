@@ -260,9 +260,8 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         return (int) x;
     }
 
-    public static int supplementalHash(long hash, long index) {
-        // it would be better to use long,
-        // but with some processors, 32-bit multiplication
+    public static int supplementalHashInt(long hash, long index) {
+        // but with some JVMs, 32-bit multiplication
         // seem to be much faster
         // (about 1200 ms for 32 bit, about 2000 ms for 64 bit)
         int x = (int) (Long.rotateLeft(hash, (int) index) ^ index);
@@ -272,14 +271,14 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         return x;
     }
 
-    public static long supplementalHashLong(long hash, long index) {
-        long x = hash ^ index;
+    public static int supplementalHash(long hash, long index) {
+        long x = hash + index;
         // from http://zimbry.blogspot.it/2011/09/better-bit-mixing-improving-on.html
         // also used in it.unimi.dsi.fastutil
         x = (x ^ (x >>> 30)) * 0xbf58476d1ce4e5b9L;
         x = (x ^ (x >>> 27)) * 0x94d049bb133111ebL;
         x = x ^ (x >>> 31);
-        return x;
+        return (int) x;
     }
 
     public static int getBucketCount(long size, int averageBucketSize) {
