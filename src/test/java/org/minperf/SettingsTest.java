@@ -414,31 +414,6 @@ public class SettingsTest {
         }
     }
 
-    @Test
-    public void verifyRiceSplit2() {
-        Settings s = new Settings(1, 65536);
-        int last = 0;
-        for (int i = 1; i < 65; i++) {
-            int split = s.getSplit(i);
-            if (split > 2) {
-                continue;
-            }
-            int rice = s.getGolombRiceShift(i);
-            if (rice != last) {
-                double p = Probability.probabilitySplitIntoMSubsetsOfSizeN(2,
-                        i / 2);
-                int k = BitCodes.calcBestGolombRiceShift(p);
-                double p2 = Probability.probabilitySplitIntoMSubsetsOfSizeN(2,
-                        (i - 1) / 2);
-                int k2 = BitCodes.calcBestGolombRiceShift(p2);
-                // System.out.println(i + " " + k + " at " + (i / 2) +
-                // " previous k " + k2 + " at " + ((i - 1) / 2));
-                assertTrue("i " + i + " k " + k + " k2 " + k2, k2 + 1 == k);
-                last = rice;
-            }
-        }
-    }
-
     static void generateRiceLeaf() {
         StringBuilder buff = new StringBuilder();
         buff.append("int[] RICE_LEAF = {");
