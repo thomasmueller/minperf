@@ -142,6 +142,9 @@ public static final boolean IMPROVED_SPLIT_RULES = true;
         this.averageBucketSize = averageBucketSize;
         if (IMPROVED_SPLIT_RULES) {
             int[] splitRules = SPLIT_RULES[leafSize];
+            if (splitRules[0] == 0) {
+                throw new IllegalArgumentException("No split rules for leafSize: " + leafSize);
+            }
             for (int i = 0; i < splitRules.length; i += 3) {
                 int size = splitRules[i];
                 splits[size] = splitRules[i + 1];
