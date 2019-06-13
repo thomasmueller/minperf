@@ -144,16 +144,10 @@ public class Generator<T> {
 //                num_split_evals++;
                 x = Settings.reduce(x, size);
                 if (x < limit) {
-                    if (--firstPart < 0) {
-                        return false;
-                    }
-                } else {
-                    if (--otherPart < 0) {
-                        return false;
-                    }
+                    firstPart--;
                 }
             }
-            return true;
+            return firstPart == 0;
         }
         int[] count = new int[split];
         Arrays.fill(count, firstPart);
@@ -162,7 +156,10 @@ public class Generator<T> {
             int x = Settings.supplementalHash(h, index);
             x = Settings.reduce(x, split);
 //            num_split_evals++;
-            if (--count[x] < 0) {
+            count[x]--;
+        }
+        for (int i = 0; i < split; i++) {
+            if (count[i] != 0) {
                 return false;
             }
         }
