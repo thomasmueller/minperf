@@ -167,15 +167,6 @@ public class RandomSetGenerator {
         return x;
     }
 
-    public static long hash48(long x) {
-        x = (x ^ (x >>> 7)) * 0xbf58476d1ce4e5b9L;
-        x &= 0xffff;
-        x = (x ^ (x >>> 5)) * 0x94d049bb133111ebL;
-        x &= 0xffff;
-        x = x ^ (x >>> 9);
-        return x & 0xffff;
-    }
-
     public static long hash44(long x) {
         x = (x ^ (x >>> 20)) * 0xbf58476d1ce4e5b9L;
         x &= (1L << 44) - 1;
