@@ -50,7 +50,7 @@ This only needs around 2 bits per key.
 
 The main disadvantage of a minimal perfect hash functions is that it 
 requires a fixed, pre-defined set of keys
-(even thought there exist techniques that support modifications,
+(even though there exist techniques that support modifications,
 under the name Dynamic Perfect Hashing).
 Then, not storing the key means you must only do lookups
 by a key that are in the set, or that false positives are OK.
